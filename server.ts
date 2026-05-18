@@ -13,15 +13,16 @@ console.log("[Server] Initializing with OPENAI_API_KEY:", process.env.OPENAI_API
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
-
-// Request logger middleware
+// 1. Move Logger to the very top to catch all requests
 app.use((req, res, next) => {
   if (req.url.startsWith('/api')) {
-    console.log(`[Server] ${req.method} ${req.url}`);
+    console.log(`[Server] ${new Date().toISOString()} ${req.method} ${req.url}`);
   }
   next();
 });
+
+// 2. Body Parser
+app.use(express.json());
 
 // Initialize OpenAI client lazily
 let openaiClient: OpenAI | null = null;
@@ -37,28 +38,23 @@ function getOpenAI() {
   return openaiClient;
 }
 
-// API Routes
-app.all("/api/planner", async (req, res) => {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ 
-      error: "Method Not Allowed", 
-      message: `Expected POST, received ${req.method}. Please check your client code.`
-    });
-  }
+// 3. API Router
+const apiRouter = express.Router();
 
+apiRouter.post("/planner", async (req, res) => {
   try {
     const { topic, context, period, channels, sharedMemory, advanced } = req.body;
     
-    console.log(`[Server] Handling synthesis request: ${topic}`);
+    console.log(`[AI Request] Started synthesis for: "${topic}"`);
     
     if (!topic || !period || !channels) {
-      return res.status(400).json({ error: "Missing required fields" });
+      console.warn("[AI Request] Validation failed: Missing required fields");
+      return res.status(400).json({ error: "Missing required fields (topic, period, or channels)" });
     }
 
     const client = getOpenAI();
     const prompt = buildPlannerPrompt({ topic, context, period, channels }, sharedMemory || [], advanced);
 
-    console.log("[AI] Requesting completion for topic:", topic);
     const startTime = Date.now();
 
     const response = await client.chat.completions.create({
@@ -74,13 +70,13 @@ app.all("/api/planner", async (req, res) => {
     const rawContent = response.choices[0].message.content;
 
     if (!rawContent) {
-      throw new Error("Empty response from AI");
+      throw new Error("OpenAI returned an empty response body");
     }
 
     const parsedContent = JSON.parse(rawContent);
     const validated = PlannerResultSchema.parse(parsedContent);
 
-    console.log(`[AI] Success. Duration: ${duration}ms`);
+    console.log(`[AI Response] Success. Topic: "${topic}". Duration: ${duration}ms`);
     
     res.json({ 
       ...validated, 
@@ -100,25 +96,30 @@ app.all("/api/planner", async (req, res) => {
   }
 });
 
-// Catch-all for unmatched API routes
-app.all("/api/*", (req, res) => {
-  console.warn(`[Server] 404/405 - Unmatched or unsupported request: ${req.method} ${req.url}`);
+// Catch-all for API router to provide better error messages
+apiRouter.all("*", (req, res) => {
+  console.warn(`[Server] Unhandled API request: ${req.method} ${req.url}`);
   res.status(404).json({ 
-    error: "API Route not found", 
-    message: `The ${req.method} request to ${req.url} did not match any server-side routes.`,
-    availableRoutes: ["POST /api/planner"]
+    error: "Resource not found", 
+    message: `The ${req.method} request to /api${req.url} does not exist.`,
+    validRoutes: ["POST /api/planner"]
   });
 });
+
+// Mount the API router
+app.use("/api", apiRouter);
 
 // Vite middleware setup
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
+    console.log("[Server] Starting Vite in middleware mode...");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
+    console.log("[Server] Serving static files from dist...");
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
@@ -127,7 +128,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`[Server] Listening on http://localhost:${PORT}`);
   });
 }
 

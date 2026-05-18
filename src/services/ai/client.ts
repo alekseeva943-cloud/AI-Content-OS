@@ -18,15 +18,27 @@ export async function generateContentPlan(req: PlannerRequest & { sharedMemory: 
       let errorData: any = null;
       try {
         const text = await response.text();
+        console.group('[AI Client] Request Failed');
+        console.error('URL:', '/api/planner');
+        console.error('Status:', response.status);
+        console.error('Status Text:', response.statusText);
+        console.error('Raw Response:', text);
+        console.groupEnd();
+
         try {
           errorData = JSON.parse(text);
           errorMessage = errorData.error || errorData.message || errorMessage;
         } catch (e) {
-          errorMessage = `Server Error (${response.status}): ${text.substring(0, 100) || response.statusText || 'No status text'}`;
+          // It's not JSON, maybe HTML or plain text
+          if (text.includes('<!DOCTYPE html>')) {
+            errorMessage = `Server Error (${response.status}): Received HTML instead of JSON. Check server logs.`;
+          } else {
+            errorMessage = `Server Error (${response.status}): ${text.substring(0, 150) || response.statusText || 'No detailed error available'}`;
+          }
           errorData = { rawResponse: text };
         }
       } catch (e) {
-        errorMessage = `Network or Parsing Error (${response.status}): ${response.statusText || 'No status text'}`;
+        errorMessage = `Network or Parsing Error (${response.status}): ${response.statusText || 'Unable to read response body'}`;
       }
       
       log({ 
