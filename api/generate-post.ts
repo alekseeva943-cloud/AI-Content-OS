@@ -6,7 +6,7 @@ import type {
   VercelResponse
 } from "@vercel/node";
 
-import { getPostPrompts } from "../lib/prompts";
+import { getPostPrompts } from "../lib/prompts.js";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY

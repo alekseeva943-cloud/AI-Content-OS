@@ -3,7 +3,7 @@
 import { OpenAI } from "openai";
 import { z } from "zod";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getPlannerPrompts } from "../lib/prompts";
+import { getPlannerPrompts } from "../lib/prompts.js";
 
 const PlannerItemSchema = z.object({
   id: z.string(),
