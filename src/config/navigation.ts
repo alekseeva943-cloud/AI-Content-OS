@@ -12,41 +12,41 @@ export interface NavItem {
   label: string;
   path: string;
   icon: any;
-  component: string; // The module id it belongs to
+  component: string;
 }
 
 export const NAVIGATION_CONFIG: NavItem[] = [
   {
     id: 'planner',
-    label: 'Content Planner',
+    label: 'Планировщик',
     path: '/planner',
     icon: LayoutGrid,
     component: 'content-planner',
   },
   {
     id: 'newsletters',
-    label: 'Newsletters',
+    label: 'Рассылки',
     path: '/newsletters',
     icon: Mail,
     component: 'newsletters',
   },
   {
     id: 'podcasts',
-    label: 'Podcasts',
+    label: 'Подкасты',
     path: '/podcasts',
     icon: Mic2,
     component: 'podcasts',
   },
   {
     id: 'avatars',
-    label: 'Video Avatar',
+    label: 'AI-Аватары',
     path: '/avatars',
     icon: Video,
     component: 'avatars',
   },
   {
     id: 'longreads',
-    label: 'Longreads',
+    label: 'Лонгриды',
     path: '/longreads',
     icon: FileText,
     component: 'longreads',
@@ -56,7 +56,7 @@ export const NAVIGATION_CONFIG: NavItem[] = [
 export const FOOTER_NAVIGATION: NavItem[] = [
   {
     id: 'settings',
-    label: 'Settings',
+    label: 'Настройки',
     path: '/settings',
     icon: Settings2,
     component: 'settings',

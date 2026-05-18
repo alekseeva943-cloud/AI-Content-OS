@@ -13,7 +13,7 @@ export const AI_PROVIDERS: AIProviderConfig[] = [
   {
     id: 'openai',
     name: 'OpenAI',
-    description: 'Powering intelligence, text generation, and planning.',
+    description: 'Основной интеллект системы для планирования и генерации смыслов.',
     isEnabled: true,
     requiresKey: true,
     documentationUrl: 'https://platform.openai.com/',
@@ -21,7 +21,7 @@ export const AI_PROVIDERS: AIProviderConfig[] = [
   {
     id: 'heygen',
     name: 'HeyGen',
-    description: 'Video avatar generation and synthesis.',
+    description: 'Генерация видео-аватаров и фотореалистичного контента.',
     isEnabled: false,
     requiresKey: true,
     documentationUrl: 'https://www.heygen.com/',
@@ -29,7 +29,7 @@ export const AI_PROVIDERS: AIProviderConfig[] = [
   {
     id: 'elevenlabs',
     name: 'ElevenLabs',
-    description: 'Premium AI voice synthesis.',
+    description: 'Синтез голоса и аудио-продакшн высшего качества.',
     isEnabled: false,
     requiresKey: true,
     documentationUrl: 'https://elevenlabs.io/',

@@ -1,6 +1,7 @@
-import { NavLink } from 'react-router-dom';
+import React from 'react';
+import { NavLink, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, LogOut, Terminal } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Terminal, Sparkles } from 'lucide-react';
 import { NAVIGATION_CONFIG, FOOTER_NAVIGATION } from '@/src/config/navigation';
 import { useAppStore } from '@/src/stores/useAppStore';
 import { useDebugStore } from '@/src/stores/useDebugStore';
@@ -12,66 +13,75 @@ export function Sidebar() {
 
   return (
     <motion.div
-      animate={{ width: sidebarCollapsed ? 80 : 260 }}
-      className="h-full bg-[#0B0F14]/80 backdrop-blur-3xl border-r border-white/5 flex flex-col relative z-50 overflow-hidden"
+      animate={{ width: sidebarCollapsed ? 80 : 280 }}
+      transition={{ duration: 0.5, ease: [0.19, 1, 0.22, 1] }}
+      className="h-full bg-[#0B0F14]/95 backdrop-blur-3xl border-r border-white/5 flex flex-col relative z-50 overflow-hidden"
     >
-      {/* Logo */}
-      <div className="p-6 mb-4 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex-shrink-0 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-          <div className="w-4 h-4 border-2 border-white/90 rounded-full" />
+      {/* Logo Area */}
+      <Link to="/" className="h-20 px-6 flex items-center gap-3 border-b border-white/[0.03] group/logo transition-colors hover:bg-white/[0.01]">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex-shrink-0 flex items-center justify-center shadow-lg shadow-emerald-500/20 relative">
+          <div className="absolute inset-0 bg-white/20 blur-lg rounded-full opacity-0 group-hover/logo:opacity-100 transition-opacity" />
+          <Sparkles className="w-5 h-5 text-white relative z-10 transition-transform group-hover/logo:scale-110" />
         </div>
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {!sidebarCollapsed && (
-            <motion.span
+            <motion.div
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
-              className="font-bold text-white tracking-tight whitespace-nowrap"
+              className="flex flex-col whitespace-nowrap"
             >
-              AI Content OS
-            </motion.span>
+              <span className="font-bold text-white tracking-[0.14em] text-sm uppercase">AI Content OS</span>
+              <span className="text-[10px] text-emerald-400/40 font-mono tracking-tighter uppercase group-hover/logo:text-emerald-400/60 transition-colors">Premium Workspace</span>
+            </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </Link>
 
-      {/* Nav Items */}
-      <nav className="flex-1 px-4 space-y-1 overflow-y-auto no-scrollbar">
+      {/* Main Navigation */}
+      <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto no-scrollbar">
         {NAVIGATION_CONFIG.map((item) => (
           <NavLink
             key={item.id}
             to={item.path}
             className={({ isActive }) => cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative",
+              "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group relative",
               isActive 
-                ? "bg-white/10 text-white" 
-                : "text-white/40 hover:text-white/70 hover:bg-white/5"
+                ? "bg-white/[0.08] text-white shadow-[0_4px_20px_rgba(0,0,0,0.2)]" 
+                : "text-white/40 hover:text-white/80 hover:bg-white/[0.04]"
             )}
           >
-            <item.icon className="w-5 h-5 flex-shrink-0" />
-            {!sidebarCollapsed && (
-              <span className="text-sm font-medium whitespace-nowrap">{item.label}</span>
+            {({ isActive }) => (
+              <>
+                <item.icon className={cn(
+                  "w-5 h-5 flex-shrink-0 transition-all duration-300 group-hover:scale-110",
+                  isActive ? "text-emerald-400 opacity-100" : "opacity-60 group-hover:opacity-100"
+                )} />
+                {!sidebarCollapsed && (
+                  <span className="text-sm font-medium tracking-tight whitespace-nowrap">{item.label}</span>
+                )}
+                
+                {/* Active Glow Indicator */}
+                <div
+                  className={cn(
+                    "absolute left-[-2px] w-[3px] h-5 bg-emerald-500 rounded-r-full transition-all duration-500 opacity-0 blur-[2px]",
+                    isActive && "opacity-100 scale-y-100"
+                  )}
+                />
+              </>
             )}
-            
-            {/* Active Indicator */}
-            <NavLink
-              to={item.path}
-              className={({ isActive }) => cn(
-                "absolute left-0 w-1 h-4 bg-emerald-500 rounded-r-full transition-opacity duration-200 opacity-0",
-                isActive && "opacity-100"
-              )}
-            />
           </NavLink>
         ))}
       </nav>
 
-      {/* Footer Nav */}
-      <div className="p-4 border-t border-white/5 space-y-1">
+      {/* System & Footer */}
+      <div className="p-4 border-t border-white/[0.03] space-y-1.5">
         <button
           onClick={toggleDebug}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/40 hover:text-white/70 hover:bg-white/5 transition-all group"
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-white/30 hover:text-white/70 hover:bg-white/[0.04] transition-all group"
         >
-          <Terminal className="w-5 h-5 flex-shrink-0" />
-          {!sidebarCollapsed && <span className="text-sm font-medium">Debug Panel</span>}
+          <Terminal className="w-5 h-5 flex-shrink-0 opacity-40 group-hover:opacity-100 transition-opacity" />
+          {!sidebarCollapsed && <span className="text-xs font-mono uppercase tracking-widest whitespace-nowrap">Консоль отладки</span>}
         </button>
 
         {FOOTER_NAVIGATION.map((item) => (
@@ -79,14 +89,21 @@ export function Sidebar() {
             key={item.id}
             to={item.path}
             className={({ isActive }) => cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group",
+              "flex items-center gap-3 px-3 py-3 rounded-xl transition-all group",
               isActive 
-                ? "bg-white/10 text-white" 
-                : "text-white/40 hover:text-white/70 hover:bg-white/5"
+                ? "bg-white/[0.08] text-white" 
+                : "text-white/40 hover:text-white/80 hover:bg-white/[0.04]"
             )}
           >
-            <item.icon className="w-5 h-5 flex-shrink-0" />
-            {!sidebarCollapsed && <span className="text-sm font-medium">{item.label}</span>}
+            {({ isActive }) => (
+              <>
+                <item.icon className={cn(
+                  "w-5 h-5 flex-shrink-0 transition-opacity",
+                  isActive ? "text-emerald-400 opacity-100" : "opacity-60 group-hover:opacity-100"
+                )} />
+                {!sidebarCollapsed && <span className="text-sm font-medium tracking-tight">{item.label}</span>}
+              </>
+            )}
           </NavLink>
         ))}
       </div>
@@ -94,9 +111,9 @@ export function Sidebar() {
       {/* Collapse Toggle */}
       <button
         onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-        className="absolute bottom-6 -right-3 w-6 h-6 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-emerald-500 transition-colors z-50"
+        className="absolute bottom-10 -right-0 w-6 h-12 bg-white/[0.02] hover:bg-white/[0.05] border-y border-l border-white/[0.05] flex items-center justify-center text-white/20 hover:text-emerald-400 transition-all rounded-l-lg z-50 overflow-hidden"
       >
-        {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        {sidebarCollapsed ? <ChevronRight size={12} strokeWidth={3} /> : <ChevronLeft size={12} strokeWidth={3} />}
       </button>
     </motion.div>
   );
