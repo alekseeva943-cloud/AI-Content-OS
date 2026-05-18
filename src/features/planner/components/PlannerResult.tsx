@@ -9,11 +9,13 @@ import {
   Hash, 
   Copy, 
   Check,
-  ChevronRight
+  ChevronRight,
+  PlusCircle
 } from 'lucide-react';
 import { PlannerItem, PlannerResult } from '@/src/types/planner';
 import { GlassCard, Button } from '@/src/shared/components/UI';
 import { cn } from '@/src/lib/utils';
+import { useMemoryStore } from '@/src/stores/memoryStore';
 
 interface PlannerResultProps {
   result: PlannerResult;
@@ -64,11 +66,16 @@ export function PlannerResultDisplay({ result }: PlannerResultProps) {
 
 function PlanItemCard({ item, index }: { item: PlannerItem; index: number; key?: string }) {
   const [copied, setCopied] = React.useState(false);
+  const addToSharedMemory = useMemoryStore(state => state.addToSharedMemory);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(`${item.topic}\n\n${item.description || ''}`);
+    navigator.clipboard.writeText(`${item.topic}\n\n${item.description || ''}\n\nAngle: ${item.angle || ''}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleAddToMemory = () => {
+    addToSharedMemory(`Идея из планировщика: ${item.topic}. Контекст: ${item.description || ''}`);
   };
 
   const channelIcons = {
@@ -85,14 +92,21 @@ function PlanItemCard({ item, index }: { item: PlannerItem; index: number; key?:
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.05, duration: 0.4 }}
     >
-        <GlassCard className="p-8 bg-white border-[#E5E7EB] group hover:border-[#10B981]/40 transition-all duration-500 shadow-sm hover:shadow-xl">
-        <div className="flex items-center justify-between mb-8">
+        <GlassCard className="p-8 bg-white border-[#E5E7EB] group hover:border-[#10B981]/40 transition-all duration-500 shadow-sm hover:shadow-xl flex flex-col h-full">
+        <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] text-[#9CA3AF] flex items-center justify-center transition-all group-hover:text-[#10B981] group-hover:bg-[#10B981]/5 group-hover:border-[#10B981]/20">
                     <Icon size={22} />
                 </div>
                 <div className="flex flex-col gap-1">
-                   <span className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.2em] leading-none">{item.channel}</span>
+                   <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.2em] leading-none">{item.channel}</span>
+                        {item.angle && (
+                             <span className="text-[9px] font-bold text-[#10B981] bg-[#10B981]/10 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                {item.angle}
+                             </span>
+                        )}
+                   </div>
                    <div className="flex items-center gap-2 text-[#6B7280]">
                       <Clock size={12} strokeWidth={2.5} />
                       <span className="text-[13px] font-bold leading-none">{item.time}</span>
@@ -100,6 +114,13 @@ function PlanItemCard({ item, index }: { item: PlannerItem; index: number; key?:
                 </div>
             </div>
             <div className="flex items-center gap-2">
+               <button 
+                  onClick={handleAddToMemory}
+                  className="p-2.5 rounded-xl bg-white border border-[#E5E7EB] text-[#9CA3AF] hover:text-[#10B981] hover:border-[#10B981]/30 transition-all shadow-sm"
+                  title="Add to AI Memory"
+               >
+                  <PlusCircle size={16} />
+               </button>
                <button 
                   onClick={handleCopy}
                   className="p-2.5 rounded-xl bg-white border border-[#E5E7EB] text-[#9CA3AF] hover:text-[#10B981] hover:border-[#10B981]/30 transition-all shadow-sm"
@@ -115,13 +136,21 @@ function PlanItemCard({ item, index }: { item: PlannerItem; index: number; key?:
         </h4>
         
         {item.description && (
-            <p className="text-[15px] text-[#6B7280] leading-relaxed mb-8 font-medium">
+            <p className="text-[15px] text-[#6B7280] leading-relaxed mb-6 font-medium flex-1">
                 {item.description}
             </p>
         )}
 
+        {item.rationale && (
+            <div className="mb-6 p-4 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] border-l-2 border-l-[#10B981]">
+                <p className="text-[12px] text-[#4B5563] italic font-medium leading-relaxed">
+                    <span className="font-bold text-[#10B981] not-italic mr-1">AI:</span> {item.rationale}
+                </p>
+            </div>
+        )}
+
         {item.hashtags && item.hashtags.length > 0 && (
-            <div className="flex flex-wrap gap-2.5">
+            <div className="flex flex-wrap gap-2.5 mt-auto">
                 {item.hashtags.map(tag => (
                    <span key={tag} className="text-[11px] font-bold text-[#059669] bg-[#10B981]/5 px-3 py-1.5 rounded-lg border border-[#10B981]/10">#{tag}</span>
                 ))}

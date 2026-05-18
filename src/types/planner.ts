@@ -13,6 +13,8 @@ export const PlannerItemSchema = z.object({
   channel: ContentChannelSchema,
   topic: z.string(),
   description: z.string().optional(),
+  angle: z.string().optional(), // The specific creative angle or hook
+  rationale: z.string().optional(), // Why this post matters
   hashtags: z.array(z.string()).optional(),
 });
 

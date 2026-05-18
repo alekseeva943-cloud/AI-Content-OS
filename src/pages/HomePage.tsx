@@ -7,7 +7,7 @@ import { NAVIGATION_CONFIG } from '@/src/config/navigation';
 
 export function HomePage() {
   const creativeModules = NAVIGATION_CONFIG.filter(item => 
-    ['planner', 'newsletter', 'podcasts', 'avatars', 'longreads'].includes(item.id)
+    ['planner', 'newsletters', 'podcasts', 'avatars', 'longreads'].includes(item.id)
   );
 
   return (

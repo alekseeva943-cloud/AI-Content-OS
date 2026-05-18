@@ -17,6 +17,7 @@ interface ModulePageProps {
 
 export function ModulePage({ config }: ModulePageProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStep, setGenerationStep] = useState<string>('Инициализация...');
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -35,9 +36,26 @@ export function ModulePage({ config }: ModulePageProps) {
     setFormValues(prev => ({ ...prev, [id]: value }));
   };
 
+  const steps = [
+    'Анализирую контекст...',
+    'Формирую стратегию...',
+    'Синтезирую идеи...',
+    'Упаковываю результат...'
+  ];
+
   const handleGenerate = async () => {
     setIsGenerating(true);
+    setResult(null);
     setError(null);
+    
+    let stepIndex = 0;
+    const stepInterval = setInterval(() => {
+        if (stepIndex < steps.length) {
+            setGenerationStep(steps[stepIndex]);
+            stepIndex++;
+        }
+    }, 1500);
+
     try {
       if (config.id === 'planner') {
          const request = {
@@ -61,12 +79,13 @@ export function ModulePage({ config }: ModulePageProps) {
             }
          });
       } else {
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 3000));
         setResult({ mock: true });
       }
     } catch (err: any) {
       setError(err.message || 'Generation failed');
     } finally {
+      clearInterval(stepInterval);
       setIsGenerating(false);
     }
   };
@@ -222,7 +241,7 @@ export function ModulePage({ config }: ModulePageProps) {
                     className="h-full flex-1"
                   >
                     <GlassCard className="h-full flex-1 flex items-center justify-center bg-[#F9FAFB]/50 border-dashed border-[#CBD5E1] rounded-[3rem]">
-                       <GenerationLoader status="Генерирую шедевр..." statusColor="#10B981" />
+                       <GenerationLoader status={generationStep} statusColor="#10B981" />
                     </GlassCard>
                   </motion.div>
                 ) : result ? (

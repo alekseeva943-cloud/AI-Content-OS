@@ -13,34 +13,39 @@ CRITICAL RULES:
 `;
 
 export function buildPlannerPrompt(req: PlannerRequest, context: string[]): string {
-  return `Generate a content plan for: "${req.topic}"
-Planning Period: ${req.period}
+  return `Generate a professional, high-impact content plan for: "${req.topic}"
+Target Period: ${req.period}
 Channels: ${req.channels.join(', ')}
 
-Business Context/Shared Memory:
+Business Context / Shared Memory:
 ${context.length > 0 ? context.map(c => `- ${c}`).join('\n') : "No additional context available."}
 
-Additional User Requirements:
+Additional User Preferences:
 ${req.context || "None"}
 
-Output Schema Requirements:
+OUTPUT SCHEMA:
 {
-  "title": "Creative title of the plan",
-  "summary": "Brief strategy overview in Russian",
+  "title": "Creative and catchy title for this campaign (in Russian)",
+  "summary": "Brief strategy overview of the content narrative. Why this plan works. (in Russian)",
   "items": [
     {
-      "id": "unique-id-1",
-      "day": "Day identifier (e.g. Day 1, Monday)",
-      "time": "Recommended time (HH:MM)",
+      "id": "item-1",
+      "day": "Day label (e.g. День 1, Понедельник)",
+      "time": "Recommended posting time (HH:MM)",
       "channel": "one of: telegram, email, vk",
-      "topic": "Concise but catchy topic",
-      "description": "Short internal brief about the post",
+      "topic": "Compelling headline or topic",
+      "description": "Short internal brief explaining the content structure",
+      "angle": "Specific creative hook or angle of this post (e.g. 'Закулисье', 'Экспертный разбор', 'Провокационный вопрос')",
+      "rationale": "Short AI rationale: why we publish this exactly now and for this channel",
       "hashtags": ["list", "of", "relevant", "hashtags"]
     }
   ]
 }
 
-Make sure topics are specific, not generic. Group items by day. 
-For 3+ days, ensure a logical progression in the content narrative.
+REFINED GUIDELINES:
+- Ensure the tone is consistent with a "Creative AI Partner".
+- Use modern, human-like Russian language. Avoid clichés like "В современном мире" or "Важно отметить".
+- Make the 'angle' unique and the 'rationale' insightful.
+- For longer periods, create a content arc: Introduction -> Deep Dive -> Social Proof/Trust -> Call to Action.
 `;
 }
