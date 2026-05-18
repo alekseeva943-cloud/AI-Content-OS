@@ -75,6 +75,15 @@ export function Sidebar() {
 
       {/* Footer area */}
       <div className="p-3 border-t border-[#E5E7EB] space-y-1 bg-white">
+        <button
+          onClick={toggleDebug}
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group text-[#6B7280] hover:text-[#111827] hover:bg-black/[0.02]"
+          )}
+        >
+          <Terminal className="w-5 h-5 flex-shrink-0 text-[#9CA3AF] group-hover:text-[#6B7280]" />
+          {!sidebarCollapsed && <span className="text-[14px] font-semibold whitespace-nowrap">Дебаг Логи</span>}
+        </button>
         {FOOTER_NAVIGATION.map((item) => (
           <NavLink
             key={item.id}

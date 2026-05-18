@@ -43,12 +43,6 @@ export function DashboardLayout() {
                      <span className="text-[13px] font-bold text-[#10B981] mt-1 tracking-tight">AX-720</span>
                   </div>
                </div>
-               <button 
-                  onClick={toggleDebug}
-                  className="w-10 h-10 rounded-full bg-[#F3F4F6] border border-[#E5E7EB] flex items-center justify-center text-[#6B7280] hover:text-[#10B981] transition-colors cursor-pointer"
-               >
-                  <Activity size={18} />
-               </button>
             </div>
         </header>
 
