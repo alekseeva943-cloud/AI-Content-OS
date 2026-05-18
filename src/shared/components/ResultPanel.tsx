@@ -15,38 +15,38 @@ interface ResultCardProps {
 export function ResultCard({ title, timestamp, children, tags, type = 'text' }: ResultCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       className="w-full"
     >
-      <GlassCard className="w-full mb-8 group/card hover:border-emerald-500/30 transition-all duration-700 bg-[#111827]/40 ring-1 ring-white/[0.03]">
-        <div className="p-6 border-b border-white/[0.03] flex items-center justify-between bg-white/[0.01]">
-           <div className="flex flex-col gap-1">
+      <GlassCard className="w-full mb-8 group/card hover:border-[#10B981]/30 transition-all duration-300 bg-[#15181E] border-[#242933]">
+        <div className="p-5 border-b border-[#242933] flex items-center justify-between">
+           <div className="flex flex-col gap-0.5">
              <div className="flex items-center gap-2">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400 opacity-60" />
-                <h4 className="text-sm font-bold text-white tracking-tight uppercase">{title}</h4>
+                <Sparkles size={14} className="text-[#10B981]/60" />
+                <h4 className="text-[13px] font-bold text-[#F1F2F4] tracking-widest uppercase font-mono">{title}</h4>
              </div>
-             <p className="text-[10px] text-white/20 font-mono uppercase tracking-[0.2em]">{timestamp}</p>
+             <p className="text-[10px] text-[#4B5262] font-bold font-mono uppercase tracking-widest">{timestamp}</p>
            </div>
            
-           <div className="flex items-center gap-1.5 opacity-0 group-hover/card:opacity-100 transition-all duration-500 translate-x-2 group-hover/card:translate-x-0">
+           <div className="flex items-center gap-1.5 opacity-0 group-hover/card:opacity-100 transition-all duration-300">
               <ActionButton icon={Copy} tooltip="Копировать" />
               <ActionButton icon={Download} tooltip="Скачать" />
               <ActionButton icon={Share2} tooltip="Поделиться" />
-              <div className="w-px h-4 bg-white/5 mx-1" />
+              <div className="w-[1px] h-4 bg-[#383E4C] mx-1" />
               <ActionButton icon={MoreHorizontal} tooltip="Больше" />
            </div>
         </div>
         
-        <div className="p-8 text-[15px] text-white/70 leading-[1.7] font-sans prose prose-invert max-w-none">
+        <div className="p-8 text-[15px] text-[#E2E4E9] leading-relaxed font-sans prose prose-invert max-w-none">
           {children}
         </div>
 
         {tags && tags.length > 0 && (
-          <div className="px-8 py-4 bg-white/[0.01] border-t border-white/[0.03] flex gap-3 overflow-x-auto no-scrollbar">
+          <div className="px-8 py-4 bg-[#0D0F12] border-t border-[#242933] flex gap-3 overflow-x-auto no-scrollbar">
             {tags.map((tag) => (
-              <span key={tag} className="text-[10px] font-mono text-emerald-400/80 px-2.5 py-1.5 rounded-lg bg-emerald-500/[0.08] border border-emerald-500/10 whitespace-nowrap tracking-wide">
-                #{tag.toUpperCase()}
+              <span key={tag} className="text-[10px] font-bold font-mono text-[#10B981]/80 px-2 py-1 rounded-md bg-[#10B981]/[0.05] border border-[#10B981]/10 whitespace-nowrap tracking-widest leading-none">
+                {tag.toUpperCase()}
               </span>
             ))}
           </div>
@@ -59,7 +59,7 @@ export function ResultCard({ title, timestamp, children, tags, type = 'text' }: 
 function ActionButton({ icon: Icon, tooltip }: { icon: any, tooltip: string }) {
   return (
     <button 
-      className="p-2.5 hover:bg-white/5 rounded-xl text-white/30 hover:text-emerald-400 transition-all active:scale-90 border border-transparent hover:border-white/5"
+      className="p-2 hover:bg-[#1C2028] rounded-lg text-[#4B5262] hover:text-[#10B981] transition-all border border-transparent hover:border-[#383E4C]"
       title={tooltip}
     >
       <Icon size={16} />
@@ -67,22 +67,23 @@ function ActionButton({ icon: Icon, tooltip }: { icon: any, tooltip: string }) {
   );
 }
 
-export function GenerationLoader({ status = 'Обработка данных...' }: { status?: string }) {
+export function GenerationLoader({ status = 'Processing...', statusColor = '#10B981' }: { status?: string; statusColor?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center p-20 text-center h-full gap-8">
+    <div className="flex flex-col items-center justify-center p-12 text-center h-full gap-8">
       <div className="relative">
         <motion.div 
-          animate={{ scale: [1, 1.2, 1], rotate: 360 }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className="w-20 h-20 rounded-[2.5rem] bg-emerald-500/5 border border-emerald-500/20 blur-xl absolute inset-0"
+          animate={{ scale: [1, 1.15, 1] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          style={{ backgroundColor: `${statusColor}08` }}
+          className="w-24 h-24 rounded-3xl border border-[#10B981]/10 blur-xl absolute inset-0"
         />
-        <div className="w-20 h-20 rounded-[2.5rem] bg-[#111827] border border-white/10 flex items-center justify-center relative z-10 shadow-2xl">
-          <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin transition-all duration-1000" />
+        <div className="w-24 h-24 rounded-3xl bg-[#1C2028] border border-[#383E4C] flex items-center justify-center relative z-10 shadow-2xl">
+          <RefreshCw size={32} className="text-[#10B981] animate-spin duration-[2000ms]" />
         </div>
       </div>
-      <div className="space-y-2">
-        <h3 className="text-sm font-bold text-white uppercase tracking-[0.3em] font-mono animate-pulse">{status}</h3>
-        <p className="text-xs text-white/30 max-w-[200px] leading-relaxed mx-auto">Система анализирует контекст и синтезирует финальный результат...</p>
+      <div className="space-y-3">
+        <h3 className="text-[11px] font-bold text-[#F1F2F4] uppercase tracking-[0.4em] font-mono animate-pulse">{status}</h3>
+        <p className="text-[11px] text-[#4B5262] max-w-[220px] leading-relaxed mx-auto font-medium">Система анализирует контекст и синтезирует финальный результат...</p>
       </div>
     </div>
   );
@@ -90,13 +91,12 @@ export function GenerationLoader({ status = 'Обработка данных...'
 
 export function EmptyResultState({ title, description }: { title: string; description: string }) {
   return (
-    <div className="flex flex-col items-center justify-center p-20 text-center h-full group">
-      <div className="w-20 h-20 rounded-[2.5rem] bg-white/[0.02] border border-white/5 flex items-center justify-center mb-8 relative transition-all duration-700 group-hover:border-emerald-500/20 group-hover:bg-emerald-500/[0.02]">
-          <div className="absolute inset-0 bg-emerald-500/0 blur-2xl rounded-full group-hover:bg-emerald-500/[0.05] transition-all duration-700" />
-          <Layers className="w-8 h-8 text-white/10 group-hover:text-emerald-500/40 transition-all duration-700" />
+    <div className="flex flex-col items-center justify-center p-12 text-center h-full group">
+      <div className="w-24 h-24 rounded-3xl bg-[#1C2028] border border-[#383E4C] flex items-center justify-center mb-8 transition-all duration-500 group-hover:border-[#10B981]/30">
+          <Layers size={32} className="text-[#242933] group-hover:text-[#10B981]/30 transition-all duration-500" />
       </div>
-      <h3 className="text-lg font-bold text-white mb-3 tracking-tight">{title}</h3>
-      <p className="text-sm text-white/30 max-w-[320px] leading-[1.6]">{description}</p>
+      <h3 className="text-sm font-bold text-[#F1F2F4] mb-3 uppercase tracking-widest font-display">{title}</h3>
+      <p className="text-xs text-[#4B5262] max-w-[300px] leading-relaxed font-medium">{description}</p>
     </div>
   );
 }

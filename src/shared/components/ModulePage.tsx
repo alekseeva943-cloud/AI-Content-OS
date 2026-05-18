@@ -28,34 +28,34 @@ export function ModulePage({ config }: ModulePageProps) {
   };
 
   return (
-    <div className="grid grid-cols-12 gap-10 h-full min-h-[calc(100vh-160px)] pb-16">
+    <div className="grid grid-cols-12 gap-8 h-full min-h-[calc(100vh-160px)]">
       {/* Input Side */}
       <div className="col-span-12 lg:col-span-5 flex flex-col gap-6">
-        <section className="flex flex-col gap-2">
+        <section className="flex flex-col gap-1">
            <div className="flex items-center gap-3">
-             <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05] text-emerald-400">
-               <config.icon size={22} />
+             <div className="p-2.5 rounded-lg bg-[#1C2028] border border-[#383E4C] text-[#10B981]">
+               <config.icon size={18} />
              </div>
              <div className="flex flex-col">
-                <h1 className="text-2xl font-bold tracking-tight text-white/95 leading-none mb-1 font-display uppercase">{config.title}</h1>
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
-                  <span className="text-[9px] font-bold font-mono text-white/20 uppercase tracking-[0.2em]">Система Готова</span>
+                <h1 className="text-xl font-bold tracking-tight text-[#F1F2F4] uppercase font-display leading-none">{config.title}</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="w-1 h-1 rounded-full bg-[#10B981]/40" />
+                  <span className="text-[9px] font-bold font-mono text-[#4B5262] uppercase tracking-[0.2em] leading-none">Modular Node Active</span>
                 </div>
              </div>
            </div>
-           <p className="text-white/40 text-[13px] leading-relaxed max-w-md ml-0.5">
+           <p className="text-[#898E9E] text-[14px] leading-relaxed max-w-md mt-2">
              {config.description}
            </p>
         </section>
 
         <div className="space-y-6 flex-1">
-          <GlassCard className="p-8 w-full bg-[#161B26]/30 border-white/[0.04]">
+          <GlassCard className="p-6 w-full bg-[#15181E] border-[#242933]">
             <div className="space-y-6">
                 {config.fields.map((field) => (
                   <AIField key={field.id} label={field.label} id={field.id}>
                     {field.type === 'text' && <AIInput placeholder={field.placeholder} />}
-                    {field.type === 'textarea' && <AITextarea placeholder={field.placeholder} rows={5} />}
+                    {field.type === 'textarea' && <AITextarea placeholder={field.placeholder} />}
                     {field.type === 'select' && (
                       <AISelect 
                         defaultValue={field.defaultValue} 
@@ -66,55 +66,51 @@ export function ModulePage({ config }: ModulePageProps) {
                 ))}
             </div>
 
-            <div className="mt-10 pt-8 border-t border-white/[0.03] flex items-center justify-between">
+            <div className="mt-8 pt-6 border-t border-[#242933] flex items-center justify-between">
               <button 
                 onClick={handleReset}
-                className="flex items-center gap-2 text-[10px] font-bold font-mono uppercase tracking-[0.2em] text-white/20 hover:text-white/50 transition-colors"
-                title="Очистить поля"
+                className="flex items-center gap-2 text-[10px] font-bold font-mono uppercase tracking-[0.2em] text-[#4B5262] hover:text-[#898E9E] transition-colors"
               >
-                <RotateCcw size={12} className="opacity-50" />
-                Сброс
+                <RotateCcw size={12} />
+                Reset
               </button>
               
               <div className="flex items-center gap-3">
-                <Button variant="outline" size="md" className="gap-2 text-[10px] font-bold uppercase tracking-widest bg-white/[0.01]">
-                  <Save size={14} className="opacity-50" />
-                  Черновик
+                <Button variant="outline" size="md" className="gap-2 text-[#4B5262] border-[#383E4C]">
+                  <Save size={14} />
+                  Draft
                 </Button>
                 <Button 
                   onClick={handleGenerate}
                   isLoading={isGenerating}
                   size="md" 
-                  className="gap-2.5 px-6 font-display"
+                  className="gap-2 shadow-[0_4px_12px_rgba(16,185,129,0.2)]"
                 >
-                  <Wand2 size={16} className="group-hover:rotate-12 transition-transform" />
-                  <span className="uppercase tracking-widest font-bold text-[11px]">{config.actionLabel}</span>
+                  <Wand2 size={14} />
+                  <span>{config.actionLabel}</span>
                 </Button>
               </div>
             </div>
           </GlassCard>
 
-          {/* Prompt Assist Tip */}
-          <div className="p-4 rounded-xl border border-white/[0.03] bg-emerald-500/[0.01] flex gap-3 items-start">
-            <Sparkles size={14} className="text-emerald-400 mt-0.5 opacity-40 shrink-0" />
-            <div className="space-y-1">
-               <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Ассистент</p>
-               <p className="text-[11px] text-white/30 leading-relaxed font-medium">Контекст имеет значение. Детальное описание задачи значительно повышает качество первого черновика.</p>
-            </div>
+          {/* Efficiency Tip */}
+          <div className="p-4 rounded-xl border border-[#242933] bg-[#0D0F12] flex gap-3 items-center">
+            <Sparkles size={14} className="text-[#10B981]/60 shrink-0" />
+            <p className="text-[11px] text-[#4B5262] leading-tight font-medium">Контекстная глубина напрямую коррелирует с точностью синтеза.</p>
           </div>
         </div>
       </div>
 
       {/* Result Side */}
-      <div className="col-span-12 lg:col-span-7 flex flex-col gap-6">
-         <div className="flex items-center justify-between px-1 mt-2">
-            <div className="flex items-center gap-2.5">
-               <span className="text-[10px] font-bold font-mono uppercase tracking-[0.3em] text-white/20 leading-none">Результаты</span>
-               <div className="h-px w-10 bg-white/[0.04]" />
+      <div className="col-span-12 lg:col-span-7 flex flex-col gap-4">
+         <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-3">
+               <span className="text-[11px] font-bold font-mono uppercase tracking-widest text-[#4B5262]">Outputs</span>
+               <div className="h-[1px] w-4 bg-[#242933]" />
             </div>
-            <div className="flex items-center gap-5 text-white/20 text-[10px] font-mono uppercase tracking-widest font-bold">
-               <span className="hover:text-emerald-400 transition-colors cursor-pointer">Все типы</span>
-               <span className="hover:text-emerald-400 transition-colors cursor-pointer">Сначала новые</span>
+            <div className="flex items-center gap-6 text-[#4B5262] text-[10px] font-bold font-mono uppercase tracking-widest">
+               <span className="hover:text-[#10B981] transition-colors cursor-pointer">Filter</span>
+               <span className="hover:text-[#10B981] transition-colors cursor-pointer">Export</span>
             </div>
          </div>
 
@@ -128,31 +124,32 @@ export function ModulePage({ config }: ModulePageProps) {
                     exit={{ opacity: 0 }}
                     className="h-full"
                   >
-                    <GlassCard className="h-full flex items-center justify-center bg-[#161B26]/10 border-dashed border-white/[0.05]">
-                       <GenerationLoader status="Генерация..." />
+                    <GlassCard className="h-full flex items-center justify-center bg-[#0D0F12]/30 border-dashed border-[#242933]">
+                       <GenerationLoader status="Synthesizing context..." statusColor="#10B981" />
                     </GlassCard>
                   </motion.div>
                ) : hasResult ? (
                   <div className="space-y-6 h-full">
-                     <div className="flex flex-col items-center justify-center h-full p-20 text-center bg-[#161B26]/10 border border-dashed border-white/[0.05] rounded-3xl">
-                        <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 mb-6 border border-emerald-500/20">
+                     <div className="flex flex-col items-center justify-center h-full p-12 text-center bg-[#15181E] border border-[#242933] rounded-2xl shadow-xl">
+                        <div className="w-12 h-12 rounded-xl bg-[#10B981]/[0.05] flex items-center justify-center text-[#10B981] mb-6 border border-[#10B981]/20">
                             <Sparkles size={24} />
                         </div>
-                        <h3 className="text-white/80 font-bold mb-2">Контент успешно синтезирован</h3>
-                        <p className="text-white/30 text-xs font-medium max-w-xs">Ожидание подключения к OpenAI API для получения реальных данных.</p>
+                        <h3 className="text-[#F1F2F4] font-bold uppercase tracking-widest text-sm mb-2">Generation Ready</h3>
+                        <p className="text-[#898E9E] text-xs font-medium max-w-sm mb-8 leading-relaxed">Система подготовила структуру данных. Подключите OpenAI API для финального синтеза.</p>
+                        <Button variant="secondary" size="md">Открыть редактор</Button>
                      </div>
                   </div>
                ) : (
-                 <motion.div 
+                  <motion.div 
                     key="empty"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className="h-full"
                   >
-                    <GlassCard className="h-full flex items-center justify-center bg-[#161B26]/10 border-dashed border-white/[0.05] hover:border-emerald-500/10 transition-all duration-500">
+                    <GlassCard className="h-full flex items-center justify-center bg-[#0D0F12]/30 border-dashed border-[#242933] hover:border-[#383E4C] transition-all duration-300">
                        <EmptyResultState 
-                        title="Система Ожидания"
-                        description={`Укажите детали слева и нажмите «${config.actionLabel}» для запуска рабочего процесса.`}
+                        title="Waiting for input"
+                        description={`Настройте параметры и нажмите «${config.actionLabel}» для начала.`}
                        />
                     </GlassCard>
                   </motion.div>

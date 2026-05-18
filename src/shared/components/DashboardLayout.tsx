@@ -8,49 +8,43 @@ import { NAVIGATION_CONFIG } from '@/src/config/navigation';
 export function DashboardLayout() {
   const location = useLocation();
   const currentNav = NAVIGATION_CONFIG.find(item => item.path === location.pathname);
-  const pageTitle = currentNav ? currentNav.label : location.pathname === '/' ? 'Главная' : 'Настройки';
+  const pageTitle = currentNav ? currentNav.label : location.pathname === '/' ? 'Home' : 'Settings';
 
   return (
-    <div className="flex h-screen w-full bg-[#0F1115] text-white/90 overflow-hidden selection:bg-emerald-500/30 selection:text-emerald-200 font-sans">
-      {/* Premium Ambient Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] rounded-full bg-emerald-500/[0.02] blur-[160px]" />
-        <div className="absolute bottom-[5%] right-[-5%] w-[35%] h-[35%] rounded-full bg-teal-500/[0.02] blur-[160px]" />
-      </div>
-
+    <div className="flex h-screen w-full bg-[#0D0F12] text-[#E2E4E9] overflow-hidden selection:bg-[#10B981]/30 selection:text-white font-sans">
       <Sidebar />
       
       <main className="flex-1 flex flex-col min-w-0 relative z-10 overflow-hidden">
-        <header className="h-20 flex items-center justify-between px-10 border-b border-white/[0.05] bg-[#131720]/40 backdrop-blur-xl shrink-0">
+        <header className="h-16 flex items-center justify-between px-8 border-b border-[#242933] bg-[#15181E] shrink-0">
            <AnimatePresence mode="wait">
              <motion.div 
                key={pageTitle}
                initial={{ opacity: 0, x: -10 }}
                animate={{ opacity: 1, x: 0 }}
                exit={{ opacity: 0, x: 10 }}
-               transition={{ duration: 0.4, ease: [0.19, 1, 0.22, 1] }}
-               className="flex items-center gap-4"
+               transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+               className="flex items-center gap-3"
              >
-               <span className="text-white/30 text-[10px] font-bold font-mono tracking-[0.25em] uppercase">Консоль</span>
-               <div className="w-[1px] h-3 bg-white/10" />
-               <span className="text-white/90 text-sm font-bold tracking-tight uppercase font-display">{pageTitle}</span>
+               <span className="text-[#4B5262] text-[11px] font-bold font-mono tracking-widest uppercase">Workspace</span>
+               <div className="w-[1px] h-3 bg-[#383E4C]" />
+               <h1 className="text-[#F1F2F4] text-[13px] font-bold tracking-widest uppercase font-display">{pageTitle}</h1>
              </motion.div>
            </AnimatePresence>
            
            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-emerald-500/[0.03] border border-emerald-500/10">
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
-                <span className="text-[10px] font-bold font-mono text-emerald-400 tracking-widest uppercase leading-none">Системы Активны</span>
+              <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-[#10B981]/[0.03] border border-[#10B981]/10">
+                <div className="h-1.5 w-1.5 rounded-full bg-[#10B981]" />
+                <span className="text-[10px] font-bold font-mono text-[#10B981]/80 tracking-widest uppercase leading-none">OS Active</span>
               </div>
            </div>
         </header>
 
-        <section className="flex-1 overflow-y-auto overflow-x-hidden p-10 no-scrollbar custom-scroll">
+        <section className="flex-1 overflow-y-auto p-8 no-scrollbar custom-scroll">
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+            transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
             className="max-w-7xl mx-auto w-full h-full"
           >
             <Outlet />

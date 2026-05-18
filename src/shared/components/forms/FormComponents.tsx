@@ -14,7 +14,7 @@ export function AIField({ label, children, id }: AIFieldProps) {
     <div className="space-y-2 group">
       <label 
         htmlFor={id}
-        className="text-[11px] font-bold font-mono text-white/50 uppercase tracking-[0.16em] group-focus-within:text-emerald-400 transition-colors ml-1"
+        className="text-[11px] font-bold font-mono text-[#898E9E] uppercase tracking-widest group-focus-within:text-[#10B981] transition-colors ml-0.5"
       >
         {label}
       </label>
@@ -32,7 +32,7 @@ export function AIInput({
   return (
     <input
       className={cn(
-        "w-full bg-white/[0.03] border border-white/[0.1] rounded-xl px-5 py-3.5 text-[13px] focus:outline-none focus:border-emerald-500/30 font-sans transition-all placeholder:text-white/20 text-white/90 focus:bg-white/[0.05] shadow-sm",
+        "w-full bg-[#0D0F12] border border-[#383E4C] rounded-xl px-4 py-3 text-[14px] leading-relaxed focus:outline-none focus:border-[#10B981]/50 focus:ring-1 focus:ring-[#10B981]/20 font-sans transition-all placeholder:text-[#383E4C] text-[#F1F2F4] shadow-sm",
         className
       )}
       {...props}
@@ -47,7 +47,7 @@ export function AITextarea({
   return (
     <textarea
       className={cn(
-        "w-full bg-white/[0.03] border border-white/[0.1] rounded-xl px-5 py-3.5 text-[13px] focus:outline-none focus:border-emerald-500/30 font-sans resize-none transition-all placeholder:text-white/20 text-white/90 focus:bg-white/[0.05] shadow-sm min-h-[120px]",
+        "w-full bg-[#0D0F12] border border-[#383E4C] rounded-xl px-4 py-3 text-[14px] leading-relaxed focus:outline-none focus:border-[#10B981]/50 focus:ring-1 focus:ring-[#10B981]/20 font-sans resize-none transition-all placeholder:text-[#383E4C] text-[#F1F2F4] shadow-sm min-h-[120px]",
         className
       )}
       {...props}
@@ -64,18 +64,18 @@ export function AISelect({
     <div className="relative group">
       <select
         className={cn(
-          "w-full bg-white/[0.03] border border-white/[0.1] rounded-xl px-5 py-3.5 text-[13px] focus:outline-none focus:border-emerald-500/30 font-sans transition-all appearance-none text-white/70 focus:bg-white/[0.05] shadow-sm",
+          "w-full bg-[#0D0F12] border border-[#383E4C] rounded-xl px-4 py-3 text-[14px] leading-relaxed focus:outline-none focus:border-[#10B981]/50 focus:ring-1 focus:ring-[#10B981]/20 font-sans transition-all appearance-none text-[#F1F2F4] shadow-sm cursor-pointer",
           className
         )}
         {...props}
       >
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value} className="bg-[#1B2230] text-white/80">
+          <option key={opt.value} value={opt.value} className="bg-[#1C2028] text-[#E2E4E9]">
             {opt.label}
           </option>
         ))}
       </select>
-      <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-white/30 group-focus-within:text-emerald-400 group-hover:text-white/50 transition-colors">
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#898E9E] group-hover:text-[#E2E4E9] transition-colors">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
