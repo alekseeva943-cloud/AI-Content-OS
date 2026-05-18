@@ -38,25 +38,35 @@ function getOpenAI() {
   return openaiClient;
 }
 
-// 3. API Router
-const apiRouter = express.Router();
+// 3. API Routes
+app.get("/api/ping", (req, res) => {
+  res.json({ status: "pong", time: new Date().toISOString() });
+});
 
-apiRouter.post("/planner", async (req, res) => {
+app.all("/api/planner", async (req, res) => {
+  console.log(`[Server] ${req.method} request to /api/planner`);
+  
+  if (req.method !== 'POST') {
+    return res.status(405).json({ 
+      error: "Method Not Allowed", 
+      message: `Received ${req.method}, but this endpoint requires POST.`,
+      tip: "Check if your client-side fetch is sending a POST request."
+    });
+  }
+
   try {
     const { topic, context, period, channels, sharedMemory, advanced } = req.body;
     
-    console.log(`[AI Request] Started synthesis for: "${topic}"`);
+    console.log(`[AI Request] Topic: "${topic}"`);
     
     if (!topic || !period || !channels) {
-      console.warn("[AI Request] Validation failed: Missing required fields");
-      return res.status(400).json({ error: "Missing required fields (topic, period, or channels)" });
+      return res.status(400).json({ error: "Missing required fields: topic, period, or channels" });
     }
 
     const client = getOpenAI();
     const prompt = buildPlannerPrompt({ topic, context, period, channels }, sharedMemory || [], advanced);
 
     const startTime = Date.now();
-
     const response = await client.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -76,7 +86,7 @@ apiRouter.post("/planner", async (req, res) => {
     const parsedContent = JSON.parse(rawContent);
     const validated = PlannerResultSchema.parse(parsedContent);
 
-    console.log(`[AI Response] Success. Topic: "${topic}". Duration: ${duration}ms`);
+    console.log(`[AI Response] Success in ${duration}ms`);
     
     res.json({ 
       ...validated, 
@@ -90,24 +100,16 @@ apiRouter.post("/planner", async (req, res) => {
     console.error("[AI Error]", error);
     res.status(500).json({ 
       error: error.message || "AI Synthesis failed",
-      details: error.errors,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      details: error.errors
     });
   }
 });
 
-// Catch-all for API router to provide better error messages
-apiRouter.all("*", (req, res) => {
-  console.warn(`[Server] Unhandled API request: ${req.method} ${req.url}`);
-  res.status(404).json({ 
-    error: "Resource not found", 
-    message: `The ${req.method} request to /api${req.url} does not exist.`,
-    validRoutes: ["POST /api/planner"]
-  });
+// 4. Catch-all for other API routes
+app.all("/api/*", (req, res) => {
+  console.warn(`[Server] 404 - Unknown API Route: ${req.method} ${req.url}`);
+  res.status(404).json({ error: "API Route not found" });
 });
-
-// Mount the API router
-app.use("/api", apiRouter);
 
 // Vite middleware setup
 async function startServer() {
