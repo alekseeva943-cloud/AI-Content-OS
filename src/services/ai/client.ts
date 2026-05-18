@@ -16,41 +16,25 @@ export async function generateContentPlan(req: PlannerRequest & { sharedMemory: 
     if (!response.ok) {
       let errorMessage = 'Failed to generate plan';
       let errorData: any = null;
+      
       try {
         const text = await response.text();
-        console.group('[AI Client] Request Failed');
-        console.error('URL:', '/api/planner');
-        console.error('Status:', response.status);
-        console.error('Status Text:', response.statusText);
-        console.error('Raw Response:', text);
-        console.groupEnd();
-
         try {
           errorData = JSON.parse(text);
           errorMessage = errorData.error || errorData.message || errorMessage;
         } catch (e) {
-          // It's not JSON, maybe HTML or plain text
-          if (text.includes('<!DOCTYPE html>')) {
-            errorMessage = `Server Error (${response.status}): Received HTML instead of JSON. Check server logs.`;
-          } else {
-            errorMessage = `Server Error (${response.status}): ${text.substring(0, 150) || response.statusText || 'No detailed error available'}`;
-          }
+          errorMessage = `Server Error (${response.status}): ${text.substring(0, 100) || response.statusText || 'Unknown Error'}`;
           errorData = { rawResponse: text };
         }
       } catch (e) {
-        errorMessage = `Network or Parsing Error (${response.status}): ${response.statusText || 'Unable to read response body'}`;
+        errorMessage = `Network Error (${response.status})`;
       }
       
       log({ 
         type: 'error', 
         module: 'Content Planner', 
         message: `Synthesis failed: ${errorMessage}`,
-        data: {
-          url: '/api/planner',
-          status: response.status,
-          statusText: response.statusText,
-          details: errorData
-        }
+        data: { status: response.status, details: errorData }
       });
       
       throw new Error(errorMessage);

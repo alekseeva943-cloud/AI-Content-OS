@@ -36,18 +36,14 @@ function getOpenAI() {
   return openaiClient;
 }
 
-// 3. API Router
-const api = express.Router();
-
-api.get("/health", (req, res) => res.json({ status: "alive" }));
-
-api.post("/planner", async (req, res) => {
+// 3. API Routes
+app.post("/api/planner", async (req, res) => {
   try {
     const { topic, context, period, channels, sharedMemory, advanced } = req.body;
-    console.log(`[API] Planner called for: ${topic}`);
+    console.log(`[API] Processing planner request for topic: ${topic}`);
 
     if (!topic || !period || !channels) {
-      return res.status(400).json({ error: "Missing required fields" });
+      return res.status(400).json({ error: "Missing required fields (topic, period, or channels)" });
     }
 
     const client = getOpenAI();
@@ -64,7 +60,7 @@ api.post("/planner", async (req, res) => {
     });
 
     const rawContent = response.choices[0].message.content;
-    if (!rawContent) throw new Error("Empty AI response");
+    if (!rawContent) throw new Error("OpenAI returned an empty response");
 
     const validated = PlannerResultSchema.parse(JSON.parse(rawContent));
     const duration = Date.now() - startTime;
@@ -73,16 +69,23 @@ api.post("/planner", async (req, res) => {
     res.json({ ...validated, debug: { duration, model: "gpt-4o" } });
   } catch (error: any) {
     console.error("[API Error]", error);
-    res.status(500).json({ error: error.message || "Synthesis failed" });
+    res.status(500).json({ 
+      error: error.message || "Synthesis failed",
+      details: error.errors
+    });
   }
 });
 
-app.use("/api", api);
-
-// 4. Catch-all for API (must be before Vite)
+// 4. API Catch-all (helpful for debugging mismatches)
 app.all("/api/*", (req, res) => {
-  console.warn(`[Route 404] ${req.method} ${req.url}`);
-  res.status(404).json({ error: "Endpoint not found" });
+  console.warn(`[API 404] ${req.method} ${req.url}`);
+  res.status(404).json({ 
+    error: "API Endpoint not found",
+    received: {
+      method: req.method,
+      path: req.url
+    }
+  });
 });
 
 // Vite middleware setup
