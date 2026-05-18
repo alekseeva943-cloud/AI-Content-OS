@@ -4,7 +4,8 @@ import {
   Mic2, 
   Video, 
   FileText, 
-  Settings2 
+  Settings2,
+  Star
 } from 'lucide-react';
 
 export interface NavItem {
@@ -54,6 +55,13 @@ export const NAVIGATION_CONFIG: NavItem[] = [
 ];
 
 export const FOOTER_NAVIGATION: NavItem[] = [
+  {
+    id: 'favorites',
+    label: 'Избранное',
+    path: '/favorites',
+    icon: Star,
+    component: 'favorites',
+  },
   {
     id: 'settings',
     label: 'Настройки',

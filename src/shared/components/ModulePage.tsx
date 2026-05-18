@@ -22,6 +22,8 @@ import { AIField, AIInput, AITextarea, AISelect, AIToggleGroup, AIPillSelector }
 import { ModuleConfig } from '@/src/config/modules';
 import { generateContentPlan } from '@/src/services/ai/client';
 import { useMemoryStore } from '@/src/stores/memoryStore';
+import { useFavoritesStore } from '@/src/stores/favoritesStore';
+import { toast } from 'sonner';
 import { PlannerResultDisplay } from '@/src/features/planner/components/PlannerResult';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/src/lib/utils';
@@ -60,6 +62,7 @@ export function ModulePage({ config }: ModulePageProps) {
 
   const addGeneration = useMemoryStore(state => state.addGeneration);
   const sharedMemory = useMemoryStore(state => state.sharedMemory);
+  const addFavorite = useFavoritesStore(state => state.addFavorite);
 
   const handleInputChange = (id: string, value: any) => {
     setFormValues(prev => ({ ...prev, [id]: value }));
@@ -380,7 +383,26 @@ export function ModulePage({ config }: ModulePageProps) {
                           <p className="text-[#6B7280] text-[18px] font-medium max-w-md mb-14 leading-relaxed">Ваш проект готов к публикации или экспорту. Просмотрите детали ниже.</p>
                           <div className="flex items-center gap-6">
                              <Button size="xl" className="rounded-2xl px-12">Редактировать</Button>
-                             <Button variant="outline" size="xl" className="rounded-2xl border-[#E5E7EB]">Сохранить в облако</Button>
+                             <Button 
+                                variant="outline" 
+                                size="xl" 
+                                className="rounded-2xl border-[#E5E7EB]"
+                                onClick={() => {
+                                  addFavorite({
+                                    id: `${config.id}-${Date.now()}`,
+                                    moduleId: config.id,
+                                    type: 'result',
+                                    title: `${config.title} Result`,
+                                    content: result,
+                                    metadata: {
+                                      generatedAt: new Date().toISOString()
+                                    }
+                                  });
+                                  toast.success('Сохранено в избранное');
+                                }}
+                             >
+                                Сохранить в избранное
+                             </Button>
                           </div>
                        </div>
                     )}

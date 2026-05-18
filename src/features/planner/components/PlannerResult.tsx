@@ -21,6 +21,8 @@ import { GlassCard, Button } from '@/src/shared/components/UI';
 import { cn } from '@/src/lib/utils';
 import { useMemoryStore } from '@/src/stores/memoryStore';
 import { generatePostText } from '@/src/services/ai/client';
+import { useFavoritesStore } from '@/src/stores/favoritesStore';
+import { toast } from 'sonner';
 
 interface PlannerResultProps {
   result: PlannerResult;
@@ -28,6 +30,22 @@ interface PlannerResultProps {
 }
 
 export function PlannerResultDisplay({ result }: PlannerResultProps) {
+  const { addFavorite } = useFavoritesStore();
+
+  const handleSaveAll = () => {
+    addFavorite({
+      id: `planner-${result.title}-${Date.now()}`,
+      moduleId: 'planner',
+      type: 'plan',
+      title: result.title,
+      content: result,
+      metadata: {
+        itemCount: result.items.length
+      }
+    });
+    toast.success('Весь план сохранен в избранное');
+  };
+
   // Debug log to trace response shape
   console.log('[PlannerResultDisplay] Rendering with result:', result);
 
@@ -98,7 +116,12 @@ export function PlannerResultDisplay({ result }: PlannerResultProps) {
               <span>Экспортировать весь план</span>
               <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
            </Button>
-           <Button variant="outline" size="xl" className="rounded-2xl px-12 border-[#E5E7EB]">
+           <Button 
+                variant="outline" 
+                size="xl" 
+                className="rounded-2xl px-12 border-[#E5E7EB]"
+                onClick={handleSaveAll}
+            >
               Сохранить в избранное
            </Button>
         </div>
@@ -110,10 +133,33 @@ export function PlannerResultDisplay({ result }: PlannerResultProps) {
 
 function PlanItemCard({ item, index }: { item: PlannerItem; index: number; key?: string }) {
   const [copied, setCopied] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedText, setGeneratedText] = useState<string | null>(null);
   const addToSharedMemory = useMemoryStore(state => state.addToSharedMemory);
+  const { addFavorite, removeFavorite, isFavorite } = useFavoritesStore();
+  const favoriteId = item.id || `${item.day}-${index}`;
+  const activeFavorite = isFavorite(favoriteId);
+
+  const toggleFavorite = () => {
+    if (activeFavorite) {
+      removeFavorite(favoriteId);
+      toast.error('Удалено из избранного');
+    } else {
+      addFavorite({
+        id: favoriteId,
+        moduleId: 'planner',
+        type: item.type || 'idea',
+        title: item.topic,
+        content: item,
+        metadata: {
+          day: item.day,
+          channel: item.channel,
+          time: item.time
+        }
+      });
+      toast.success('Сохранено в избранное');
+    }
+  };
 
   const handleCopy = (textToCopy?: string) => {
     const text = textToCopy || `Тема: ${item.topic}\nОписание: ${item.description || ''}`;
@@ -157,21 +203,21 @@ function PlanItemCard({ item, index }: { item: PlannerItem; index: number; key?:
         <GlassCard className="p-10 bg-white border-[#E5E7EB] hover:border-[#10B981]/50 transition-all duration-700 shadow-sm hover:shadow-2xl flex flex-col h-full rounded-[2.5rem] relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#10B981]/5 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 -z-10" />
 
-        <div className="flex items-center justify-between mb-10">
-            <div className="flex items-center gap-5">
-                <div className="w-14 h-14 rounded-[1.25rem] bg-[#F9FAFB] border border-[#E5E7EB] text-[#9CA3AF] flex items-center justify-center transition-all group-hover/card:text-[#10B981] group-hover/card:bg-[#10B981]/10 group-hover/card:border-[#10B981]/30 group-hover/card:scale-110 duration-500 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-10">
+            <div className="flex items-center gap-5 flex-wrap">
+                <div className="w-14 h-14 shrink-0 rounded-[1.25rem] bg-[#F9FAFB] border border-[#E5E7EB] text-[#9CA3AF] flex items-center justify-center transition-all group-hover/card:text-[#10B981] group-hover/card:bg-[#10B981]/10 group-hover/card:border-[#10B981]/30 group-hover/card:scale-110 duration-500 shadow-sm">
                     <Icon size={26} strokeWidth={2} />
                 </div>
-                <div className="flex flex-col gap-1.5">
-                   <div className="flex items-center gap-2.5">
-                        <span className="text-[12px] font-black text-[#111827] uppercase tracking-[0.15em] leading-none">{item.channel}</span>
+                <div className="flex flex-col gap-2 min-w-0">
+                   <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[12px] font-black text-[#111827] uppercase tracking-[0.15em] leading-none shrink-0">{item.channel}</span>
                         {item.type && (
-                             <span className="text-[10px] font-black text-white bg-[#111827] px-2.5 py-1 rounded-md uppercase tracking-widest">
+                             <span className="text-[10px] font-black text-white bg-[#111827] px-2.5 py-1 rounded-md uppercase tracking-widest whitespace-nowrap">
                                 {item.type}
                              </span>
                         )}
                         {item.angle && (
-                             <span className="text-[9px] font-black text-[#10B981] bg-[#10B981]/10 px-2.5 py-1 rounded-md uppercase tracking-widest border border-[#10B981]/20">
+                             <span className="text-[9px] font-black text-[#10B981] bg-[#10B981]/10 px-2.5 py-1 rounded-md uppercase tracking-widest border border-[#10B981]/20 whitespace-nowrap">
                                 {item.angle}
                              </span>
                         )}
@@ -183,10 +229,10 @@ function PlanItemCard({ item, index }: { item: PlannerItem; index: number; key?:
                 </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 self-end sm:self-start">
                <ActionButton 
-                  isActive={isFavorite}
-                  onClick={() => setIsFavorite(!isFavorite)}
+                  isActive={activeFavorite}
+                  onClick={toggleFavorite}
                   icon={Star}
                   activeColor="#EAB308"
                   activeBg="#FEF9C3"
@@ -200,12 +246,12 @@ function PlanItemCard({ item, index }: { item: PlannerItem; index: number; key?:
         </div>
 
         <div className="space-y-6 flex-1 flex flex-col">
-          <div className="flex items-start justify-between gap-4">
-            <h4 className="text-2xl font-bold text-[#111827] leading-[1.2] group-hover/card:text-[#10B981] transition-colors font-display tracking-tight">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <h4 className="text-2xl font-bold text-[#111827] leading-[1.2] group-hover/card:text-[#10B981] transition-colors font-display tracking-tight flex-1">
                 {item.topic}
             </h4>
             {item.goal && (
-              <span className="shrink-0 text-[10px] font-bold text-[#6B7280] border border-[#E5E7EB] px-2 py-1 rounded-lg uppercase tracking-tighter">
+              <span className="shrink-0 self-start text-[10px] font-bold text-[#6B7280] border border-[#E5E7EB] px-2.5 py-1 rounded-lg uppercase tracking-widest whitespace-nowrap bg-[#F9FAFB]">
                 {item.goal}
               </span>
             )}

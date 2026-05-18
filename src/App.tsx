@@ -12,6 +12,7 @@ import { Newsletters } from './pages/modules/Newsletters';
 import { Podcasts } from './pages/modules/Podcasts';
 import { VideoAvatar } from './pages/modules/VideoAvatar';
 import { Longreads } from './pages/modules/Longreads';
+import { FavoritesPage } from './pages/FavoritesPage';
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="podcasts" element={<Podcasts />} />
           <Route path="avatars" element={<VideoAvatar />} />
           <Route path="longreads" element={<Longreads />} />
+          <Route path="favorites" element={<FavoritesPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
