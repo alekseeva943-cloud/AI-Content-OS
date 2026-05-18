@@ -8,10 +8,20 @@ import { PlannerResultSchema } from "./src/types/planner.ts";
 
 dotenv.config();
 
+console.log("[Server] Initializing with OPENAI_API_KEY:", process.env.OPENAI_API_KEY ? "PRESENT" : "MISSING");
+
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+// Request logger middleware
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api')) {
+    console.log(`[Server] ${req.method} ${req.url}`);
+  }
+  next();
+});
 
 // Initialize OpenAI client lazily
 let openaiClient: OpenAI | null = null;
@@ -28,9 +38,18 @@ function getOpenAI() {
 }
 
 // API Routes
-app.post("/api/ai/planner", async (req, res) => {
+app.all("/api/planner", async (req, res) => {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ 
+      error: "Method Not Allowed", 
+      message: `Expected POST, received ${req.method}. Please check your client code.`
+    });
+  }
+
   try {
     const { topic, context, period, channels, sharedMemory, advanced } = req.body;
+    
+    console.log(`[Server] Handling synthesis request: ${topic}`);
     
     if (!topic || !period || !channels) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -75,9 +94,20 @@ app.post("/api/ai/planner", async (req, res) => {
     console.error("[AI Error]", error);
     res.status(500).json({ 
       error: error.message || "AI Synthesis failed",
-      details: error.errors
+      details: error.errors,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
+});
+
+// Catch-all for unmatched API routes
+app.all("/api/*", (req, res) => {
+  console.warn(`[Server] 404/405 - Unmatched or unsupported request: ${req.method} ${req.url}`);
+  res.status(404).json({ 
+    error: "API Route not found", 
+    message: `The ${req.method} request to ${req.url} did not match any server-side routes.`,
+    availableRoutes: ["POST /api/planner"]
+  });
 });
 
 // Vite middleware setup

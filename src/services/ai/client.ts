@@ -7,21 +7,40 @@ export async function generateContentPlan(req: PlannerRequest & { sharedMemory: 
   log({ type: 'request', module: 'Content Planner', message: `Initiating synthesis for: ${req.topic}`, data: { period: req.period, channels: req.channels } });
 
   try {
-    const response = await fetch('/api/ai/planner', {
+    const response = await fetch('/api/planner', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req),
+      body: JSON.stringify({ ...req, advanced: req.advanced }),
     });
 
     if (!response.ok) {
       let errorMessage = 'Failed to generate plan';
+      let errorData: any = null;
       try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
+        const text = await response.text();
+        try {
+          errorData = JSON.parse(text);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (e) {
+          errorMessage = `Server Error (${response.status}): ${text.substring(0, 100) || response.statusText || 'No status text'}`;
+          errorData = { rawResponse: text };
+        }
       } catch (e) {
-        // If response is not JSON, use the status text
-        errorMessage = `Server Error (${response.status}): ${response.statusText}`;
+        errorMessage = `Network or Parsing Error (${response.status}): ${response.statusText || 'No status text'}`;
       }
+      
+      log({ 
+        type: 'error', 
+        module: 'Content Planner', 
+        message: `Synthesis failed: ${errorMessage}`,
+        data: {
+          url: '/api/planner',
+          status: response.status,
+          statusText: response.statusText,
+          details: errorData
+        }
+      });
+      
       throw new Error(errorMessage);
     }
 

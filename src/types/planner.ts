@@ -33,4 +33,5 @@ export interface PlannerRequest {
   context?: string;
   period: PlanningPeriod;
   channels: ContentChannel[];
+  advanced?: any;
 }
