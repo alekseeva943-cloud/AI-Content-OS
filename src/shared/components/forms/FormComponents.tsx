@@ -11,16 +11,96 @@ type AIFieldProps = {
 
 export function AIField({ label, children, id }: AIFieldProps) {
   return (
-    <div className="space-y-2 group">
+    <div className="space-y-3 group">
       <label 
         htmlFor={id}
-        className="text-[11px] font-bold font-mono text-[#898E9E] uppercase tracking-widest group-focus-within:text-[#10B981] transition-colors ml-0.5"
+        className="text-[13px] font-bold text-[#4B5262] group-focus-within:text-[#10B981] transition-colors ml-0.5"
       >
         {label}
       </label>
       <div className="relative">
         {children}
       </div>
+    </div>
+  );
+}
+
+export function AIToggleGroup({ 
+  options, 
+  value, 
+  onChange,
+  className 
+}: { 
+  options: { value: string; label: string }[]; 
+  value: any; 
+  onChange: (val: any) => void;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex flex-wrap gap-2", className)}>
+      {options.map((opt) => {
+        const isActive = value === opt.value;
+        return (
+          <button
+            key={opt.value}
+            onClick={() => onChange(opt.value)}
+            className={cn(
+              "px-4 py-2 rounded-xl text-xs font-semibold transition-all border",
+              isActive 
+                ? "bg-[#10B981] border-[#10B981] text-[#0D0F12] shadow-[0_2px_8px_rgba(16,185,129,0.2)]" 
+                : "bg-[#1C2028] border-[#383E4C] text-[#898E9E] hover:border-[#4B5262] hover:text-[#E2E4E9]"
+            )}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function AIPillSelector({ 
+  options, 
+  value, 
+  onChange,
+  className 
+}: { 
+  options: { value: string; label: string }[]; 
+  value: any[]; 
+  onChange: (val: any[]) => void;
+  className?: string;
+}) {
+  const toggle = (val: string) => {
+    if (value.includes(val)) {
+      onChange(value.filter(v => v !== val));
+    } else {
+      onChange([...value, val]);
+    }
+  };
+
+  return (
+    <div className={cn("flex flex-wrap gap-2", className)}>
+      {options.map((opt) => {
+        const isActive = value.includes(opt.value);
+        return (
+          <button
+            key={opt.value}
+            onClick={() => toggle(opt.value)}
+            className={cn(
+              "px-4 py-2 rounded-xl text-xs font-semibold transition-all border flex items-center gap-2",
+              isActive 
+                ? "bg-[#10B981]/10 border-[#10B981]/30 text-[#10B981]" 
+                : "bg-[#1C2028] border-[#383E4C] text-[#898E9E] hover:border-[#4B5262] hover:text-[#E2E4E9]"
+            )}
+          >
+            <div className={cn(
+              "w-1.5 h-1.5 rounded-full transition-all",
+              isActive ? "bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-[#4B5262]"
+            )} />
+            {opt.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

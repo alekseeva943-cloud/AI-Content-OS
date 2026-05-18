@@ -13,55 +13,59 @@ export function Sidebar() {
 
   return (
     <motion.div
-      animate={{ width: sidebarCollapsed ? 72 : 260 }}
+      animate={{ width: sidebarCollapsed ? 72 : 240 }}
       transition={{ duration: 0.3, ease: [0.19, 1, 0.22, 1] }}
-      className="h-full bg-[#15181E] border-r border-[#242933] flex flex-col relative z-50 overflow-hidden"
+      className="h-full bg-[#0D0F12] border-r border-[#242933] flex flex-col relative z-50 overflow-hidden"
     >
-      {/* Logo Area */}
-      <Link to="/" className="h-16 px-6 flex items-center gap-3 border-b border-[#242933] group/logo transition-colors hover:bg-[#1C2028]">
-        <div className="w-8 h-8 rounded-lg bg-[#10B981] flex-shrink-0 flex items-center justify-center shadow-lg shadow-emerald-500/10 relative">
-          <Sparkles className="w-4 h-4 text-[#0D0F12] relative z-10" />
+      {/* Brand area */}
+      <Link to="/" className="h-20 px-6 flex items-center gap-4 group/logo transition-colors hover:bg-white/[0.02]">
+        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#10B981] to-[#059669] flex-shrink-0 flex items-center justify-center shadow-lg shadow-[#10B981]/10 relative">
+          <Sparkles className="w-5 h-5 text-[#0D0F12] relative z-10" />
+          <div className="absolute inset-0 rounded-2xl bg-white/20 opacity-0 group-hover/logo:opacity-100 transition-opacity" />
         </div>
-        <AnimatePresence mode="wait">
-          {!sidebarCollapsed && (
-            <motion.div
-              initial={{ opacity: 0, x: -4 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -4 }}
-              className="flex flex-col whitespace-nowrap"
-            >
-              <span className="font-bold text-[#F1F2F4] tracking-wider text-[14px]">CONTENT OS</span>
-              <span className="text-[9px] text-[#10B981] font-bold font-mono tracking-widest uppercase">Workspace</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {!sidebarCollapsed && (
+          <motion.div
+            initial={{ opacity: 0, x: -4 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex flex-col whitespace-nowrap"
+          >
+            <span className="font-bold text-[#F1F2F4] text-[16px] font-display tracking-tight">Studio AI</span>
+            <span className="text-[10px] text-[#10B981] font-bold tracking-[0.1em] uppercase opacity-60">Creative OS</span>
+          </motion.div>
+        )}
       </Link>
 
-      {/* Main Navigation */}
-      <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto no-scrollbar">
+      {/* Tools area */}
+      <nav className="flex-1 px-3 py-8 space-y-2 overflow-y-auto no-scrollbar">
+        {!sidebarCollapsed && (
+          <div className="px-4 mb-4 text-[10px] font-bold text-[#4B5262] uppercase tracking-[0.2em]">Инструменты</div>
+        )}
         {NAVIGATION_CONFIG.map((item) => (
           <NavLink
             key={item.id}
             to={item.path}
             className={({ isActive }) => cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative",
+              "flex items-center gap-3 px-3 py-3 rounded-xl transition-all group relative",
               isActive 
-                ? "bg-[#1C2028] text-[#F1F2F4] border border-[#383E4C]" 
-                : "text-[#898E9E] hover:text-[#E2E4E9] hover:bg-[#1C2028]/50"
+                ? "bg-[#1C2028] text-[#10B981] border border-[#383E4C] shadow-sm" 
+                : "text-[#898E9E] hover:text-[#E2E4E9] hover:bg-white/[0.03]"
             )}
           >
             {({ isActive }) => (
               <>
                 <item.icon className={cn(
-                  "w-4.5 h-4.5 flex-shrink-0 transition-colors",
-                  isActive ? "text-[#10B981]" : "text-[#4B5262] group-hover:text-[#898E9E]"
+                  "w-5 h-5 flex-shrink-0 transition-all",
+                  isActive ? "text-[#10B981] scale-110" : "text-[#4B5262] group-hover:text-[#898E9E]"
                 )} />
                 {!sidebarCollapsed && (
-                  <span className="text-[13px] font-medium tracking-tight whitespace-nowrap">{item.label}</span>
+                  <span className="text-[14px] font-semibold tracking-tight whitespace-nowrap">{item.label}</span>
                 )}
                 
                 {isActive && (
-                  <div className="absolute right-3 w-1.5 h-1.5 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                  <motion.div 
+                    layoutId="active-indicator"
+                    className="absolute left-[-12px] w-1 h-6 bg-[#10B981] rounded-r-full shadow-[0_0_12px_rgba(16,185,129,0.5)]" 
+                  />
                 )}
               </>
             )}
@@ -69,46 +73,37 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* System & Footer */}
-      <div className="p-3 border-t border-[#242933] space-y-1 bg-[#15181E]">
-        <button
-          onClick={toggleDebug}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#4B5262] hover:text-[#898E9E] hover:bg-[#1C2028]/50 transition-all group"
-        >
-          <Terminal className="w-4.5 h-4.5 flex-shrink-0" />
-          {!sidebarCollapsed && <span className="text-[11px] font-bold font-mono uppercase tracking-widest whitespace-nowrap">Debug Logs</span>}
-        </button>
-
+      {/* Footer area */}
+      <div className="p-3 border-t border-[#242933] space-y-1 bg-[#0D0F12]">
         {FOOTER_NAVIGATION.map((item) => (
           <NavLink
             key={item.id}
             to={item.path}
             className={({ isActive }) => cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group",
+              "flex items-center gap-3 px-3 py-3 rounded-xl transition-all group",
               isActive 
                 ? "bg-[#1C2028] text-[#F1F2F4]" 
-                : "text-[#898E9E] hover:text-[#E2E4E9] hover:bg-[#1C2028]/50"
+                : "text-[#898E9E] hover:text-[#E2E4E9] hover:bg-white/[0.03]"
             )}
           >
             {({ isActive }) => (
               <>
                 <item.icon className={cn(
-                  "w-4.5 h-4.5 flex-shrink-0 transition-colors",
+                  "w-5 h-5 flex-shrink-0 transition-colors",
                   isActive ? "text-[#10B981]" : "text-[#4B5262] group-hover:text-[#898E9E]"
                 )} />
-                {!sidebarCollapsed && <span className="text-[13px] font-medium tracking-tight">{item.label}</span>}
+                {!sidebarCollapsed && <span className="text-[14px] font-semibold whitespace-nowrap">{item.label}</span>}
               </>
             )}
           </NavLink>
         ))}
       </div>
 
-      {/* Collapse Toggle */}
       <button
         onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-        className="absolute bottom-10 -right-0 w-6 h-12 bg-[#1C2028] hover:bg-[#242933] border-y border-l border-[#383E4C] flex items-center justify-center text-[#4B5262] hover:text-[#10B981] transition-all rounded-l-lg z-50 overflow-hidden"
+        className="absolute bottom-10 -right-0 w-6 h-12 bg-[#1C2028] border-y border-l border-[#383E4C] flex items-center justify-center text-[#4B5262] hover:text-[#10B981] transition-all rounded-l-lg z-50 overflow-hidden"
       >
-        {sidebarCollapsed ? <ChevronRight size={12} strokeWidth={3} /> : <ChevronLeft size={12} strokeWidth={3} />}
+        {sidebarCollapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
       </button>
     </motion.div>
   );

@@ -8,8 +8,26 @@
 }
 
 @layer base {
+  * {
+    @apply transition-colors duration-200 outline-none;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-[#242933] rounded-full hover:bg-[#383E4C] transition-colors;
+  }
+
   body {
-    @apply bg-[#0D0F12] text-[#E2E4E9] antialiased selection:bg-emerald-500/30 selection:text-emerald-200;
+    @apply bg-[#0D0F12] text-[#E2E4E9] antialiased selection:bg-[#10B981]/20 selection:text-[#10B981];
   }
 
   h1, h2, h3, h4, h5, h6 {

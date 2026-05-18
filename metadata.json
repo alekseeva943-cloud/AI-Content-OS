@@ -1,6 +1,6 @@
 {
-  "name": "AI Content OS",
-  "description": "A premium AI-native foundation for content production and planning.",
+  "name": "Studio AI",
+  "description": "Premium AI-Creative Workspace for modern content production.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

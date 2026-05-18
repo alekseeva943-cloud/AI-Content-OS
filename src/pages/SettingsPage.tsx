@@ -18,120 +18,127 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="max-w-5xl space-y-10 pb-20">
-      <section className="flex flex-col gap-3">
+    <div className="max-w-4xl space-y-12 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <section className="flex flex-col gap-2">
         <div className="flex items-center gap-4">
-            <h1 className="text-4xl font-bold tracking-tight text-white uppercase">
-              Настройки Инфраструктуры
+            <h1 className="text-4xl font-bold tracking-tight text-[#F1F2F4] font-display">
+              Настройки
             </h1>
-            <Shield className="text-emerald-400 w-8 h-8" />
+            <div className="w-10 h-10 rounded-xl bg-[#10B981]/10 flex items-center justify-center text-[#10B981]">
+                <Shield size={20} />
+            </div>
         </div>
-        <p className="text-white/30 max-w-xl text-[14px] leading-relaxed font-medium">
-          Управляйте вашими API-ключами и настройками безопасности. Все данные хранятся локально в зашифрованном виде.
+        <p className="text-[#898E9E] max-w-xl text-[16px] font-medium leading-relaxed mt-2">
+          Управляйте вашими ключами и доступом к внешним сервисам. Все данные хранятся локально в зашифрованном виде.
         </p>
       </section>
 
-      <div className="space-y-8">
-        <GlassCard className="p-12 w-full bg-[#111827]/40 ring-1 ring-white/[0.03]">
-           <div className="flex items-center gap-4 mb-12">
-             <div className="p-3 rounded-2xl bg-emerald-500/5 border border-emerald-500/10">
-               <Key className="w-6 h-6 text-emerald-400" />
+      <div className="space-y-10">
+        <GlassCard className="p-10 w-full bg-[#15181E] border-[#242933] shadow-xl">
+           <div className="flex items-center gap-4 mb-10">
+             <div className="p-3 rounded-xl bg-[#1C2028] border border-[#383E4C]">
+               <Key className="w-6 h-6 text-[#10B981]" />
              </div>
              <div className="flex flex-col">
-                <h2 className="text-xl font-bold uppercase tracking-widest text-white/90">API Провайдеры</h2>
-                <span className="text-[10px] font-mono text-white/20 uppercase tracking-[0.2em]">Подключение облачных технологий</span>
+                <h2 className="text-xl font-bold text-[#F1F2F4] tracking-tight">API Интеграции</h2>
+                <span className="text-[12px] font-medium text-[#4B5262]">Подключение облачных технологий для синтеза контента</span>
              </div>
            </div>
 
-           <div className="grid grid-cols-1 gap-12">
+           <div className="space-y-10">
               {AI_PROVIDERS.map((provider) => (
                 <div key={provider.id} className="flex flex-col md:flex-row md:items-start gap-8 group">
                    <div className="w-full md:w-64 flex-shrink-0">
                       <div className="flex items-center gap-3 mb-2">
-                        <span className="text-sm font-bold text-white uppercase tracking-wider">{provider.name}</span>
+                        <span className="text-[15px] font-bold text-[#E2E4E9] group-hover:text-[#10B981] transition-colors">{provider.name}</span>
                         {provider.isEnabled ? (
-                          <CheckCircle2 size={14} className="text-emerald-500" />
+                          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#10B981]/10 border border-[#10B981]/20">
+                             <CheckCircle2 size={10} className="text-[#10B981]" />
+                             <span className="text-[9px] font-bold text-[#10B981] uppercase tracking-wider">Active</span>
+                          </div>
                         ) : (
-                          <span className="text-[9px] font-mono text-white/10 bg-white/5 px-2 py-0.5 rounded-md uppercase tracking-widest border border-white/5">Скоро</span>
+                          <span className="text-[9px] font-bold text-[#4B5262] bg-[#1C2028] px-2 py-0.5 rounded-md border border-[#383E4C]">Cкоро</span>
                         )}
                       </div>
-                      <p className="text-[11px] text-white/30 leading-relaxed font-medium mb-4">{provider.description}</p>
+                      <p className="text-[12px] text-[#898E9E] leading-relaxed font-medium mb-4">{provider.description}</p>
                       <a 
                         href={provider.documentationUrl} 
                         target="_blank" 
                         rel="noopener noreferrer" 
-                        className="inline-flex items-center gap-2 text-[10px] font-mono text-emerald-400/60 hover:text-emerald-400 transition-colors uppercase tracking-widest"
+                        className="inline-flex items-center gap-2 text-[11px] font-bold text-[#10B981] opacity-60 hover:opacity-100 transition-all"
                       >
-                        Документация
-                        <ExternalLink size={10} />
+                        Как получить ключ
+                        <ExternalLink size={12} />
                       </a>
                    </div>
                    
-                   <div className="flex-1 relative">
-                      <input 
-                        type="password"
-                        placeholder={`${provider.name} API Ключ`}
-                        disabled={!provider.isEnabled}
-                        value={
-                          provider.id === 'openai' ? openaiKey :
-                          provider.id === 'heygen' ? heygenKey :
-                          elevenlabsKey
-                        }
-                        onChange={(e) => {
-                          if (provider.id === 'openai') setOpenAIKey(e.target.value);
-                          if (provider.id === 'heygen') setHeygenKey(e.target.value);
-                          if (provider.id === 'elevenlabs') setElevenlabsKey(e.target.value);
-                        }}
-                        className="w-full bg-black/40 border border-white/5 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-emerald-500/30 transition-all font-mono placeholder:text-white/5 disabled:opacity-30 disabled:cursor-not-allowed group-hover:border-white/10"
-                      />
-                      <div className="absolute inset-0 rounded-2xl bg-emerald-500/[0.01] opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
+                   <div className="flex-1">
+                      <div className="relative group/input">
+                        <input 
+                            type="password"
+                            placeholder={`${provider.name} API Ключ`}
+                            disabled={!provider.isEnabled}
+                            value={
+                                provider.id === 'openai' ? openaiKey :
+                                provider.id === 'heygen' ? heygenKey :
+                                elevenlabsKey
+                            }
+                            onChange={(e) => {
+                                if (provider.id === 'openai') setOpenAIKey(e.target.value);
+                                if (provider.id === 'heygen') setHeygenKey(e.target.value);
+                                if (provider.id === 'elevenlabs') setElevenlabsKey(e.target.value);
+                            }}
+                            className="w-full bg-[#0D0F12] border border-[#242933] rounded-2xl px-6 py-4 text-[14px] font-mono text-[#F1F2F4] focus:outline-none focus:border-[#10B981]/40 transition-all placeholder:text-[#4B5262] disabled:opacity-30 disabled:cursor-not-allowed group-hover/input:border-[#383E4C]"
+                        />
+                        <div className="absolute inset-0 rounded-2xl bg-[#10B981]/[0.02] opacity-0 group-focus-within/input:opacity-100 transition-opacity pointer-events-none" />
+                      </div>
                    </div>
                 </div>
               ))}
            </div>
 
-           <div className="mt-16 pt-10 border-t border-white/[0.03] flex justify-end">
+           <div className="mt-12 pt-10 border-t border-[#242933] flex justify-end">
               <Button 
                 onClick={handleSave} 
-                className="w-64 py-4 uppercase tracking-[0.2em] font-bold text-xs shadow-xl shadow-emerald-500/10"
+                className="w-full md:w-64 shadow-xl shadow-[#10B981]/10 rounded-xl"
               >
-                Сохранить ключи
+                Сохранить настройки
               </Button>
            </div>
         </GlassCard>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-           <GlassCard className="p-10 h-auto group bg-white/[0.01] hover:bg-white/[0.02] transition-colors ring-1 ring-white/[0.03]">
+           <GlassCard className="p-8 group bg-[#15181E] border-[#242933] transition-all hover:border-[#10B981]/20">
               <div className="flex items-center gap-4 mb-6">
-                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
-                  <Database className="w-5 h-5 text-emerald-400" />
+                <div className="p-2.5 rounded-xl bg-[#1C2028] border border-[#383E4C] text-[#898E9E] group-hover:text-[#10B981] transition-colors">
+                  <Database size={20} />
                 </div>
-                <h3 className="text-sm font-bold uppercase tracking-widest">Очистка Кэша</h3>
+                <h3 className="text-base font-bold text-[#F1F2F4]">Хранилище данных</h3>
               </div>
-              <p className="text-xs text-white/30 leading-relaxed mb-8 font-medium">
-                Вы можете вручную очистить все временные данные и кэшированные ответы нейросетей из локального хранилища.
+              <p className="text-[13px] text-[#898E9E] leading-relaxed mb-8 font-medium">
+                Вы можете очистить все временные данные и сбросить кэш нейронной памяти.
               </p>
-              <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300 hover:bg-red-500/10 px-0 hover:px-4">
-                Удалить кэш системы
+              <Button variant="outline" size="sm" className="text-red-400 border-red-500/20 hover:bg-red-500/10 hover:border-red-500/40 rounded-xl font-bold">
+                Сбросить кэш
               </Button>
            </GlassCard>
 
-           <GlassCard className="p-10 h-auto group bg-white/[0.01] hover:bg-white/[0.02] transition-colors ring-1 ring-white/[0.03]">
+           <GlassCard className="p-8 group bg-[#15181E] border-[#242933] transition-all hover:border-[#10B981]/20">
               <div className="flex items-center gap-4 mb-6">
-                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5">
-                  <Zap className="w-5 h-5 text-emerald-400" />
+                <div className="p-2.5 rounded-xl bg-[#1C2028] border border-[#383E4C] text-[#898E9E] group-hover:text-[#10B981] transition-colors">
+                  <Zap size={20} />
                 </div>
-                <h3 className="text-sm font-bold uppercase tracking-widest">Визуальные Эффекты</h3>
+                <h3 className="text-base font-bold text-[#F1F2F4]">Глубина интерфейса</h3>
               </div>
-              <p className="text-xs text-white/30 leading-relaxed mb-8 font-medium">
-                Настройте баланс между визуальной глубиной интерфейса и скоростью отрисовки.
+              <p className="text-[13px] text-[#898E9E] leading-relaxed mb-8 font-medium">
+                Настройте баланс между визуальными эффектами и скоростью работы.
               </p>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">Glassmorphism High-Fidelity</span>
-                <div className="w-12 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 p-1 flex items-center justify-end shadow-[inset_0_0_10px_rgba(16,185,129,0.1)]">
+                <span className="text-[11px] font-bold text-[#4B5262] uppercase tracking-wider">High Fidelity Mode</span>
+                <div className="w-12 h-6 rounded-full bg-[#10B981]/10 border border-[#10B981]/30 p-1 flex items-center justify-end shadow-inner">
                    <motion.div 
                      layout
-                     className="w-4 h-4 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" 
+                     className="w-4 h-4 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.5)] cursor-pointer" 
                    />
                 </div>
               </div>
