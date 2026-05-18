@@ -1,0 +1,6 @@
+{
+  "name": "AI Content OS",
+  "description": "A premium AI-native foundation for content production and planning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
