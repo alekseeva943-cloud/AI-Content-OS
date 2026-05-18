@@ -4,20 +4,28 @@ import { cn } from '@/src/shared/utils/cn';
 
 type AIFieldProps = {
   label: string;
+  description?: string;
   children: ReactNode;
   id?: string;
   key?: React.Key;
 };
 
-export function AIField({ label, children, id }: AIFieldProps) {
+export function AIField({ label, description, children, id }: AIFieldProps) {
   return (
-    <div className="space-y-2 group">
-      <label 
-        htmlFor={id}
-        className="text-[13px] font-bold text-[#6B7280] group-focus-within:text-[#059669] transition-colors ml-0.5"
-      >
-        {label}
-      </label>
+    <div className="space-y-3 group">
+      <div className="space-y-1 ml-0.5">
+        <label 
+          htmlFor={id}
+          className="text-[14px] font-bold text-[#111827] group-focus-within:text-[#10B981] transition-colors"
+        >
+          {label}
+        </label>
+        {description && (
+          <p className="text-[12px] text-[#9CA3AF] font-medium leading-relaxed">
+            {description}
+          </p>
+        )}
+      </div>
       <div className="relative">
         {children}
       </div>
@@ -37,7 +45,7 @@ export function AIToggleGroup({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-wrap gap-2", className)}>
+    <div className={cn("flex flex-nowrap gap-1.5 bg-[#F3F4F6] p-1.5 rounded-2xl border border-[#E5E7EB] w-fit overflow-x-auto no-scrollbar", className)}>
       {options.map((opt) => {
         const isActive = value === opt.value;
         return (
@@ -45,10 +53,10 @@ export function AIToggleGroup({
             key={opt.value}
             onClick={() => onChange(opt.value)}
             className={cn(
-              "px-4 py-2.5 rounded-xl text-xs font-bold transition-all border",
+              "px-5 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap min-w-[100px] active:scale-95",
               isActive 
-                ? "bg-[#10B981] border-[#10B981] text-white shadow-[0_4px_12px_rgba(16,185,129,0.2)]" 
-                : "bg-white border-[#E5E7EB] text-[#6B7280] hover:border-[#D1D5DB] hover:text-[#111827]"
+                ? "bg-white text-[#10B981] shadow-sm border border-[#E5E7EB]" 
+                : "text-[#9CA3AF] hover:text-[#4B5563]"
             )}
           >
             {opt.label}
@@ -79,7 +87,7 @@ export function AIPillSelector({
   };
 
   return (
-    <div className={cn("flex flex-wrap gap-2", className)}>
+    <div className={cn("flex flex-nowrap gap-2 overflow-x-auto no-scrollbar pb-1", className)}>
       {options.map((opt) => {
         const isActive = value.includes(opt.value);
         return (
@@ -87,15 +95,15 @@ export function AIPillSelector({
             key={opt.value}
             onClick={() => toggle(opt.value)}
             className={cn(
-              "px-4 py-2.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-2",
+              "px-6 py-3 rounded-2xl text-xs font-bold transition-all border flex items-center gap-2.5 whitespace-nowrap active:scale-95",
               isActive 
-                ? "bg-[#10B981]/10 border-[#10B981]/30 text-[#059669]" 
-                : "bg-white border-[#E5E7EB] text-[#6B7280] hover:border-[#D1D5DB] hover:text-[#111827]"
+                ? "bg-[#10B981] border-[#10B981] text-white shadow-[0_4px_12px_rgba(16,185,129,0.2)]" 
+                : "bg-white border-[#E5E7EB] text-[#6B7280] hover:border-[#D1D5DB] hover:text-[#111827] shadow-sm"
             )}
           >
             <div className={cn(
-              "w-1.5 h-1.5 rounded-full transition-all",
-              isActive ? "bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-[#9CA3AF]"
+              "w-2 h-2 rounded-full transition-all shrink-0",
+              isActive ? "bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)] scale-110" : "bg-[#CBD5E1]"
             )} />
             {opt.label}
           </button>

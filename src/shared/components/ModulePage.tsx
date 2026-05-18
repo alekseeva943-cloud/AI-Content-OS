@@ -139,7 +139,12 @@ export function ModulePage({ config }: ModulePageProps) {
            <GlassCard className="p-8 bg-white border-[#E5E7EB] shadow-xl space-y-10">
               <div className="space-y-8">
                 {config.fields.map((field) => (
-                  <AIField key={field.id} label={field.label} id={field.id}>
+                  <AIField 
+                    key={field.id} 
+                    label={field.label} 
+                    description={field.description}
+                    id={field.id}
+                  >
                     {field.type === 'text' && (
                         <AIInput 
                             placeholder={field.placeholder} 

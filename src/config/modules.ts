@@ -5,6 +5,7 @@ export type FieldType = 'text' | 'textarea' | 'select' | 'toggle';
 export interface ModuleField {
   id: string;
   label: string;
+  description?: string;
   placeholder?: string;
   type: FieldType;
   options?: { value: string; label: string }[];
@@ -31,20 +32,22 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     actionLabel: 'Сформировать план',
     fields: [
       {
-        id: 'goal',
-        label: 'Вектор кампании',
-        placeholder: 'Например: Запуск нового продукта или прогрев аудитории',
+        id: 'topic',
+        label: 'О чём хотите писать?',
+        description: 'Например: запуск нового курса по английскому',
+        placeholder: 'Опишите главную тему...',
         type: 'text',
       },
       {
         id: 'context',
-        label: 'Смысловой фундамент',
+        label: 'Что хотите донести?',
+        description: 'Например: помочь людям начать инвестировать без страха',
         placeholder: 'Опишите главную мысль, которую должен считать зритель...',
         type: 'textarea',
       },
       {
         id: 'period',
-        label: 'Период планирования',
+        label: 'На какой срок?',
         type: 'select',
         options: [
           { value: '3days', label: '3 дня' },
@@ -55,18 +58,18 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
       },
       {
         id: 'tone',
-        label: 'Тональность',
+        label: 'Какой стиль нужен?',
         type: 'select',
         options: [
-          { value: 'friendly', label: 'Дружелюбная' },
-          { value: 'expert', label: 'Экспертная' },
+          { value: 'friendly', label: 'Дружелюбный' },
+          { value: 'expert', label: 'Экспертный' },
           { value: 'minimal', label: 'Минимализм' },
         ],
         defaultValue: 'friendly',
       },
       {
         id: 'channels',
-        label: 'Каналы вещания',
+        label: 'Где публиковать?',
         type: 'select',
         options: [
           { value: 'telegram', label: 'Telegram' },
@@ -87,14 +90,16 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     fields: [
       {
         id: 'subject',
-        label: 'Смысловой импульс',
-        placeholder: 'О чем будет письмо?',
+        label: 'О чём будет письмо?',
+        description: 'Например: запуск нового продукта или итоги месяца',
+        placeholder: 'Введите тему...',
         type: 'text',
       },
       {
         id: 'insights',
-        label: 'Тезисный ряд',
-        placeholder: 'Перечислите основные идеи, которые нужно раскрыть...',
+        label: 'Основные идеи',
+        description: 'О чем обязательно нужно упомянуть?',
+        placeholder: 'Перечислите основные моменты...',
         type: 'textarea',
       },
     ],
@@ -109,13 +114,15 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     fields: [
       {
         id: 'guest',
-        label: 'Контекст гостя',
-        placeholder: 'Имя, экспертиза или уникальный опыт...',
+        label: 'Кто Ваш гость?',
+        description: 'Имя, экспертиза или уникальный бэкграунд',
+        placeholder: 'Например: Иван Иванов, серийный предприниматель',
         type: 'text',
       },
       {
         id: 'theme',
-        label: 'ДНК эпизода',
+        label: 'Стиль выпуска',
+        description: 'Какой формат беседы выберем?',
         type: 'select',
         options: [
           { value: 'deep', label: 'Погружение' },
@@ -136,18 +143,20 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     fields: [
       {
         id: 'style',
-        label: 'Ролевая модель',
+        label: 'Голос и стиль',
+        description: 'Как должен звучать Ваш аватар?',
         type: 'select',
         options: [
-          { value: 'business', label: 'Эксперт' },
-          { value: 'casual', label: 'Ментор' },
+          { value: 'business', label: 'Экспертный' },
+          { value: 'casual', label: 'Дружелюбный' },
         ],
         defaultValue: 'business',
       },
       {
         id: 'script',
-        label: 'Смысловое ядро',
-        placeholder: 'Основное сообщение, которое должен транслировать аватар...',
+        label: 'Текст для аватара',
+        description: 'О чем он должен рассказать сегодня?',
+        placeholder: 'Основное сообщение...',
         type: 'textarea',
       },
     ],
@@ -162,13 +171,15 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     fields: [
       {
         id: 'title',
-        label: 'Архитектура лонгрида',
-        placeholder: 'Аналитический отчет: Рынок AI в 2024...',
+        label: 'Тема статьи',
+        description: 'Например: Рынок AI в 2024 году',
+        placeholder: 'Введите заголовок...',
         type: 'text',
       },
       {
         id: 'style',
-        label: 'Формат',
+        label: 'Формат подачи',
+        description: 'Выберите тон повествования',
         type: 'select',
         options: [
           { value: 'scientific', label: 'Научный' },
@@ -179,8 +190,9 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
       },
       {
         id: 'layers',
-        label: 'Фактологические слои',
-        placeholder: 'Добавьте специфические темы, данные или исследования...',
+        label: 'Что добавить?',
+        description: 'Данные исследований, специфика отрасли или Ваши мысли',
+        placeholder: 'Введите дополнительный контекст...',
         type: 'textarea',
       },
     ],

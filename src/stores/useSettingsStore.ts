@@ -18,7 +18,7 @@ export const useSettingsStore = create<SettingsState>()(
       openaiKey: '',
       heygenKey: '',
       elevenlabsKey: '',
-      isDarkMode: true,
+      isDarkMode: false,
       setOpenAIKey: (openaiKey) => set({ openaiKey }),
       setHeygenKey: (heygenKey) => set({ heygenKey }),
       setElevenlabsKey: (elevenlabsKey) => set({ elevenlabsKey }),

@@ -16,11 +16,13 @@ export class OpenAIClient {
 
   private getClient(): OpenAI | null {
     const { openaiKey } = useSettingsStore.getState();
+    const envKey = (import.meta as any).env.VITE_OPENAI_API_KEY;
+    const finalKey = openaiKey || envKey;
     
-    if (!openaiKey) return null;
+    if (!finalKey) return null;
 
     return new OpenAI({
-      apiKey: openaiKey,
+      apiKey: finalKey,
       dangerouslyAllowBrowser: true // Ideally proxied through server, but foundation allows this for now
     });
   }
