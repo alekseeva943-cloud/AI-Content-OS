@@ -19,12 +19,22 @@ function getPromptPath(
   group: string,
   fileName: string
 ) {
-  return path.join(
-    process.cwd(),
+  const cwd = process.cwd();
+  const filePath = path.join(
+    cwd,
     "prompts",
     group,
     fileName
   );
+  
+  console.log(`[PromptLoader] Resolving path:`, {
+    cwd,
+    group,
+    fileName,
+    resolvedPath: filePath
+  });
+
+  return filePath;
 }
 
 export function loadPrompt(
@@ -42,10 +52,24 @@ export function loadPrompt(
   const filePath =
     getPromptPath(group, fileName);
 
-  if (!fs.existsSync(filePath)) {
+  const exists = fs.existsSync(filePath);
+  console.log(`[PromptLoader] File exists check:`, {
+    filePath,
+    exists
+  });
+
+  if (!exists) {
+    const promptsDir = path.join(process.cwd(), "prompts");
+    const promptsDirExists = fs.existsSync(promptsDir);
+    let dirContents: string[] = [];
+    if (promptsDirExists) {
+      try {
+        dirContents = fs.readdirSync(promptsDir);
+      } catch (e) {}
+    }
 
     console.error(
-      `[PromptLoader] Missing prompt: ${cacheKey}`
+      `[PromptLoader] Missing prompt file: ${filePath}. prompts dir exists: ${promptsDirExists}, contents: ${dirContents.join(", ")}`
     );
 
     throw new Error(
@@ -53,19 +77,24 @@ export function loadPrompt(
     );
   }
 
-  const content =
-    fs.readFileSync(filePath, "utf8");
+  try {
+    const content =
+      fs.readFileSync(filePath, "utf8");
 
-  if (!content.trim()) {
+    if (!content.trim()) {
+      console.warn(`[PromptLoader] File is empty: ${filePath}`);
+      throw new Error(
+        `Empty prompt file: ${cacheKey}`
+      );
+    }
 
-    throw new Error(
-      `Empty prompt file: ${cacheKey}`
-    );
+    promptCache.set(cacheKey, content);
+    console.log(`[PromptLoader] Successfully loaded: ${cacheKey}`);
+    return content;
+  } catch (error: any) {
+    console.error(`[PromptLoader] Read error for ${filePath}:`, error.message);
+    throw error;
   }
-
-  promptCache.set(cacheKey, content);
-
-  return content;
 }
 
 function sanitizeVariable(value: any): string {

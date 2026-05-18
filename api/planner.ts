@@ -66,6 +66,12 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+  console.log("[Planner API] Request started", {
+    method: req.method,
+    url: req.url,
+    cwd: process.cwd()
+  });
+
   if (req.method !== "POST") {
     res.setHeader("Allow", ["POST"]);
     return res.status(405).json({
@@ -84,38 +90,43 @@ export default async function handler(
     } = req.body;
 
     if (!topic || !period || !channels?.length) {
+      console.warn("[Planner API] Missing required fields", { topic, period, channels });
       return res.status(400).json({
         error: "Missing required fields"
       });
     }
 
-    const { system, user } = getPlannerPrompts({
-      topic,
-      context,
-      period,
-      channels,
-      sharedMemory,
-      advanced
-    });
+    console.log("[Planner API] Loading prompts...");
+    let promptData;
+    try {
+      promptData = getPlannerPrompts({
+        topic,
+        context,
+        period,
+        channels,
+        sharedMemory,
+        advanced
+      });
+      console.log("[Planner API] Prompts loaded successfully");
+    } catch (promptError: any) {
+      console.error("[Planner API] Failed to load prompts:", promptError.message);
+      return res.status(500).json({
+        error: "Failed to load prompts archive",
+        details: promptError.message
+      });
+    }
 
-    console.log("[Planner Request]", {
-      topic,
-      channels,
-      period
-    });
+    const { system, user } = promptData;
 
+    console.log("[Planner API] Calling OpenAI...");
     const completion =
       await openai.chat.completions.create({
         model: "gpt-4o",
-
         temperature: 0.7,
-
         max_tokens: 4000,
-
         response_format: {
           type: "json_object"
         },
-
         messages: [
           {
             role: "system",
@@ -132,19 +143,17 @@ export default async function handler(
       completion.choices?.[0]?.message?.content;
 
     if (!raw) {
+      console.error("[Planner API] Empty AI response");
       throw new Error("Empty AI response");
     }
 
-    console.log("[Raw AI Response]", raw);
-
     const cleaned = cleanJsonResponse(raw);
-
     let parsed;
 
     try {
       parsed = JSON.parse(cleaned);
     } catch (jsonError) {
-      console.error("[JSON Parse Error]", jsonError);
+      console.error("[Planner API] JSON Parse Error", { jsonError, raw: cleaned });
 
       return res.status(500).json({
         error: "AI returned invalid JSON",
@@ -157,9 +166,12 @@ export default async function handler(
     const validated =
       PlannerResultSchema.parse(parsed);
 
+    console.log("[Planner API] Request completed successfully", {
+      itemCount: validated.items.length
+    });
+
     return res.status(200).json({
       ...validated,
-
       debug: {
         model: "gpt-4o",
         itemCount: validated.items.length,
@@ -168,16 +180,18 @@ export default async function handler(
     });
 
   } catch (error: any) {
-    console.error("[Planner Fatal Error]", error);
+    console.error("[Planner API] Fatal Error:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
 
     return res.status(500).json({
       error:
         error?.message ||
         "Planner synthesis failed",
-
-      details:
-        error?.errors ||
-        null
+      details: error?.errors || null,
+      debug_cwd: process.cwd()
     });
   }
 }
