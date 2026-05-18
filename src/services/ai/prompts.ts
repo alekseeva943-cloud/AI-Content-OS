@@ -12,11 +12,23 @@ CRITICAL RULES:
 4. Language: Russian (natural, modern).
 `;
 
-export function buildPlannerPrompt(req: PlannerRequest, context: string[]): string {
+export function buildPlannerPrompt(req: PlannerRequest, context: string[], advanced?: any): string {
+  const advancedSection = advanced ? `
+AI TONE & STYLE PARAMETERS (Strict adherence required):
+- Tone Preset: ${advanced.preset}
+- Goal: ${advanced.goal}
+- Target Audience: ${advanced.audience}
+- Preferred Tone: ${advanced.tone}
+- Formality Level: ${advanced.formality}% (0=informal, 100=strictly formal)
+- Emotional Intelligence: ${advanced.emotion}% (0=robotic, 100=highly emotional)
+- Text Length: ${advanced.length}
+- Complexity: ${advanced.complexity}
+` : '';
+
   return `Generate a professional, high-impact content plan for: "${req.topic}"
 Target Period: ${req.period}
 Channels: ${req.channels.join(', ')}
-
+${advancedSection}
 Business Context / Shared Memory:
 ${context.length > 0 ? context.map(c => `- ${c}`).join('\n') : "No additional context available."}
 

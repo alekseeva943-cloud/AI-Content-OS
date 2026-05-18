@@ -29,20 +29,20 @@ function getOpenAI() {
 // API Routes
 app.post("/api/ai/planner", async (req, res) => {
   try {
-    const { topic, context, period, channels, sharedMemory } = req.body;
+    const { topic, context, period, channels, sharedMemory, advanced } = req.body;
     
     if (!topic || !period || !channels) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
     const client = getOpenAI();
-    const prompt = buildPlannerPrompt({ topic, context, period, channels }, sharedMemory || []);
+    const prompt = buildPlannerPrompt({ topic, context, period, channels }, sharedMemory || [], advanced);
 
     console.log("[AI] Requesting completion for topic:", topic);
     const startTime = Date.now();
 
     const response = await client.chat.completions.create({
-      model: "gpt-4o", // Using a high-quality model as requested
+      model: "gpt-4o",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: prompt }
@@ -66,14 +66,15 @@ app.post("/api/ai/planner", async (req, res) => {
       ...validated, 
       debug: {
         duration,
-        tokens: response.usage
+        tokens: response.usage,
+        model: "gpt-4o"
       }
     });
   } catch (error: any) {
     console.error("[AI Error]", error);
     res.status(500).json({ 
       error: error.message || "AI Synthesis failed",
-      details: error.errors // For Zod validation errors
+      details: error.errors
     });
   }
 });
