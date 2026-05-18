@@ -27,9 +27,10 @@ import { toast } from 'sonner';
 interface PlannerResultProps {
   result: PlannerResult;
   onSelect?: (item: PlannerItem) => void;
+  sourceInfo?: { id?: string; module?: string; title?: string } | null;
 }
 
-export function PlannerResultDisplay({ result }: PlannerResultProps) {
+export function PlannerResultDisplay({ result, sourceInfo }: PlannerResultProps) {
   const { addFavorite } = useFavoritesStore();
 
   const handleSaveAll = () => {
@@ -40,7 +41,9 @@ export function PlannerResultDisplay({ result }: PlannerResultProps) {
       title: result.title,
       content: result,
       metadata: {
-        itemCount: result.items.length
+        itemCount: result.items.length,
+        sourceId: sourceInfo?.id,
+        sourceModule: sourceInfo?.module
       }
     });
     toast.success('Весь план сохранен в избранное');
@@ -103,7 +106,7 @@ export function PlannerResultDisplay({ result }: PlannerResultProps) {
 
              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 {itemsByDay[day].map((item, i) => (
-                  <PlanItemCard key={item.id || `${day}-${i}`} item={item} index={i} />
+                  <PlanItemCard key={item.id || `${day}-${i}`} item={item} index={i} sourceInfo={sourceInfo} />
                 ))}
              </div>
           </section>
@@ -131,7 +134,16 @@ export function PlannerResultDisplay({ result }: PlannerResultProps) {
   );
 }
 
-function PlanItemCard({ item, index }: { item: PlannerItem; index: number; key?: string }) {
+function PlanItemCard({ 
+  item, 
+  index, 
+  sourceInfo 
+}: { 
+  item: PlannerItem; 
+  index: number; 
+  key?: string; 
+  sourceInfo?: { id?: string; module?: string; title?: string } | null;
+}) {
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedText, setGeneratedText] = useState<string | null>(null);
@@ -154,7 +166,9 @@ function PlanItemCard({ item, index }: { item: PlannerItem; index: number; key?:
         metadata: {
           day: item.day,
           channel: item.channel,
-          time: item.time
+          time: item.time,
+          sourceId: sourceInfo?.id,
+          sourceModule: sourceInfo?.module
         }
       });
       toast.success('Сохранено в избранное');

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Play, 
@@ -14,7 +14,8 @@ import {
   Users,
   Target,
   BarChart3,
-  MessageSquare
+  MessageSquare,
+  History
 } from 'lucide-react';
 import { GlassCard, Button } from '@/src/shared/components/UI';
 import { EmptyResultState, GenerationLoader } from '@/src/shared/components/ResultPanel';
@@ -25,10 +26,17 @@ import { useMemoryStore } from '@/src/stores/memoryStore';
 import { useFavoritesStore } from '@/src/stores/favoritesStore';
 import { toast } from 'sonner';
 import { PlannerResultDisplay } from '@/src/features/planner/components/PlannerResult';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/src/lib/utils';
-
 import { AdvancedSettings, AdvancedSettingsState } from '@/src/features/planner/components/AdvancedSettings';
+
+const moduleLabels: Record<string, string> = {
+  planner: 'Планировщик',
+  newsletters: 'Рассылки',
+  podcasts: 'Подкасты',
+  avatars: 'AI-Аватары',
+  longreads: 'Лонгриды',
+};
 
 interface ModulePageProps {
   config: ModuleConfig;
@@ -41,7 +49,9 @@ export function ModulePage({ config }: ModulePageProps) {
   const [generationStep, setGenerationStep] = useState<string>('Инициализация...');
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sourceInfo, setSourceInfo] = useState<{ id?: string; module?: string; title?: string } | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [formValues, setFormValues] = useState<Record<string, any>>(() => {
     const initial: Record<string, any> = {};
@@ -59,6 +69,39 @@ export function ModulePage({ config }: ModulePageProps) {
     initial['adv_complexity'] = 'standard';
     return initial;
   });
+
+  // Handle pre-filling from repurposed items
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.sourceContent) {
+      const { sourceContent, sourceTitle, sourceModule, sourceId } = state;
+      setSourceInfo({ id: sourceId, module: sourceModule, title: sourceTitle });
+      
+      setFormValues(prev => {
+        const next = { ...prev };
+        // Map source content to appropriate fields
+        if (typeof sourceContent === 'string') {
+          if (next.topic !== undefined) next.topic = sourceTitle || sourceContent.slice(0, 50);
+          if (next.context !== undefined) next.context = sourceContent;
+        } else {
+          // If it's an object (like a PlannerItem or full result)
+          const topic = sourceContent.topic || sourceContent.title || sourceTitle;
+          const context = sourceContent.description || sourceContent.summary || sourceContent.content;
+          
+          if (next.topic !== undefined) next.topic = topic;
+          if (next.context !== undefined) next.context = context;
+          if (sourceContent.channel && next.channels !== undefined) {
+             next.channels = Array.isArray(next.channels) ? [sourceContent.channel] : sourceContent.channel;
+          }
+        }
+        return next;
+      });
+      
+      toast.info(`Использован контент из: ${sourceTitle || sourceModule}`);
+      // Clear location state to avoid re-triggering on navigate back
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, config.fields, navigate]);
 
   const addGeneration = useMemoryStore(state => state.addGeneration);
   const sharedMemory = useMemoryStore(state => state.sharedMemory);
@@ -251,6 +294,37 @@ export function ModulePage({ config }: ModulePageProps) {
                   </AIField>
                 ))}
 
+                {sourceInfo && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-5 rounded-[2rem] bg-[#10B981]/5 border border-[#10B981]/20 flex items-start gap-4 mb-6 shadow-sm"
+                    >
+                        <div className="w-12 h-12 rounded-2xl bg-white border border-[#10B981]/20 flex items-center justify-center text-[#10B981] shrink-0 shadow-sm">
+                            <History size={24} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] font-black text-[#10B981] uppercase tracking-[0.15em]">Контекстная связь</span>
+                                <button 
+                                    onClick={() => setSourceInfo(null)}
+                                    className="text-[10px] font-bold text-[#9CA3AF] hover:text-red-500 transition-colors uppercase tracking-widest"
+                                >
+                                    Удалить
+                                </button>
+                            </div>
+                            <h4 className="text-[14px] font-bold text-[#111827] truncate font-display">
+                                {sourceInfo.title || 'Предыдущий результат'}
+                            </h4>
+                            <p className="text-[11px] text-[#6B7280] font-medium mt-1 uppercase tracking-wider">
+                                {moduleLabels[sourceInfo.module || ''] || 'Источник'} 
+                                <span className="mx-1.5 opacity-30">•</span> 
+                                AI Repurpose
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
+
                 {/* Advanced Settings Section */}
                 <div className="pt-6 border-t border-[#F3F4F6]">
                    <button 
@@ -373,7 +447,7 @@ export function ModulePage({ config }: ModulePageProps) {
                     className="h-full flex-1"
                   >
                     {config.id === 'planner' ? (
-                       <PlannerResultDisplay result={result} />
+                       <PlannerResultDisplay result={result} sourceInfo={sourceInfo} />
                     ) : (
                        <div className="flex flex-col items-center justify-center h-full p-20 text-center bg-white border border-[#E5E7EB] rounded-[3.5rem] shadow-2xl">
                           <div className="w-24 h-24 rounded-[2.5rem] bg-[#F9FAFB] border border-[#E5E7EB] flex items-center justify-center text-[#10B981] mb-12 shadow-sm">
@@ -395,7 +469,9 @@ export function ModulePage({ config }: ModulePageProps) {
                                     title: `${config.title} Result`,
                                     content: result,
                                     metadata: {
-                                      generatedAt: new Date().toISOString()
+                                      generatedAt: new Date().toISOString(),
+                                      sourceId: sourceInfo?.id,
+                                      sourceModule: sourceInfo?.module
                                     }
                                   });
                                   toast.success('Сохранено в избранное');

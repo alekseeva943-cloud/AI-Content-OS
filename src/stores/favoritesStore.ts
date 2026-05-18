@@ -7,7 +7,17 @@ export interface FavoriteItem {
   type: string;
   title: string;
   content: any;
-  metadata: Record<string, any>;
+  metadata: {
+    day?: string;
+    channel?: string;
+    time?: string;
+    platform?: string;
+    goal?: string;
+    angle?: string;
+    sourceId?: string; // ID of the item this was created from
+    sourceModule?: string; // Module of the item this was created from
+    [key: string]: any;
+  };
   timestamp: number;
 }
 
