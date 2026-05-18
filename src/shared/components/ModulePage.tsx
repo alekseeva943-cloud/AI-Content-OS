@@ -37,10 +37,11 @@ export function ModulePage({ config }: ModulePageProps) {
   };
 
   const steps = [
-    'Анализирую контекст...',
-    'Формирую стратегию...',
-    'Синтезирую идеи...',
-    'Упаковываю результат...'
+    'Анализирую культурный код вашей ниши...',
+    'Проектирую смысловые слои кампании...',
+    'Синтезирую креативные концепции...',
+    'Подбираю оптимальное время публикаций...',
+    'Кристаллизую финальную стратегию...'
   ];
 
   const handleGenerate = async () => {
@@ -49,12 +50,14 @@ export function ModulePage({ config }: ModulePageProps) {
     setError(null);
     
     let stepIndex = 0;
+    setGenerationStep(steps[0]);
+    
     const stepInterval = setInterval(() => {
-        if (stepIndex < steps.length) {
-            setGenerationStep(steps[stepIndex]);
+        if (stepIndex < steps.length - 1) {
             stepIndex++;
+            setGenerationStep(steps[stepIndex]);
         }
-    }, 1500);
+    }, 2500);
 
     try {
       if (config.id === 'planner') {
