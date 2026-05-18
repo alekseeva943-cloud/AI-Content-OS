@@ -1,6 +1,21 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, RotateCcw, Save, Sparkles, Wand2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { 
+  Play, 
+  RotateCcw, 
+  Save, 
+  Sparkles, 
+  Wand2, 
+  AlertCircle, 
+  ArrowLeft, 
+  ChevronLeft, 
+  ChevronRight,
+  Settings2,
+  Users,
+  Target,
+  BarChart3,
+  MessageSquare
+} from 'lucide-react';
 import { GlassCard, Button } from '@/src/shared/components/UI';
 import { EmptyResultState, GenerationLoader } from '@/src/shared/components/ResultPanel';
 import { AIField, AIInput, AITextarea, AISelect, AIToggleGroup, AIPillSelector } from './forms/FormComponents';
@@ -9,7 +24,7 @@ import { generateContentPlan } from '@/src/services/ai/client';
 import { useMemoryStore } from '@/src/stores/memoryStore';
 import { PlannerResultDisplay } from '@/src/features/planner/components/PlannerResult';
 import { useNavigate } from 'react-router-dom';
-import { cn } from '@/src/shared/utils/cn';
+import { cn } from '@/src/lib/utils';
 
 interface ModulePageProps {
   config: ModuleConfig;
@@ -17,15 +32,26 @@ interface ModulePageProps {
 
 export function ModulePage({ config }: ModulePageProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [generationStep, setGenerationStep] = useState<string>('Инициализация...');
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  
   const [formValues, setFormValues] = useState<Record<string, any>>(() => {
     const initial: Record<string, any> = {};
     config.fields.forEach(f => {
       initial[f.id] = f.defaultValue || '';
     });
+    // Add advanced defaults
+    initial['advanced_audience'] = 'Широкая аудитория';
+    initial['advanced_tone'] = 'balanced';
+    initial['advanced_emotion'] = 'moderate';
+    initial['advanced_formality'] = 'neutral';
+    initial['advanced_length'] = 'optimal';
+    initial['advanced_complexity'] = 'simple';
+    initial['advanced_goal'] = 'engagement';
     return initial;
   });
 
@@ -66,7 +92,17 @@ export function ModulePage({ config }: ModulePageProps) {
             context: formValues.context,
             period: formValues.period,
             channels: Array.isArray(formValues.channels) ? formValues.channels : [formValues.channels],
-            sharedMemory
+            sharedMemory,
+            // Advanced parameters
+            advanced: showAdvanced ? {
+                audience: formValues.advanced_audience,
+                tone: formValues.advanced_tone,
+                emotion: formValues.advanced_emotion,
+                formality: formValues.advanced_formality,
+                length: formValues.advanced_length,
+                complexity: formValues.advanced_complexity,
+                goal: formValues.advanced_goal,
+            } : undefined
          };
          
          const data = await generateContentPlan(request as any);
@@ -99,8 +135,10 @@ export function ModulePage({ config }: ModulePageProps) {
     setIsGenerating(false);
   };
 
+  const toggleCollapse = () => setIsCollapsed(!isCollapsed);
+
   return (
-    <div className="flex flex-col gap-10 pb-24 max-w-7xl mx-auto">
+    <div className="flex flex-col gap-10 pb-24 mx-auto w-full max-w-[1600px]">
       {/* Workspace Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-[#E5E7EB]">
         <div className="space-y-4">
@@ -131,12 +169,23 @@ export function ModulePage({ config }: ModulePageProps) {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-        {/* Creation Controls */}
-        <div className="lg:col-span-4 space-y-8 lg:sticky lg:top-10">
-           <div className="flex items-center gap-3 mb-2">
-              <span className="w-7 h-7 rounded-full bg-[#111827] text-white flex items-center justify-center text-[12px] font-bold font-display">1</span>
-              <h3 className="text-[14px] font-bold text-[#374151] uppercase tracking-widest">Конфигурация</h3>
+      <div className="flex gap-10 items-start relative min-h-[800px]">
+        {/* Creation Controls (Collapsible) */}
+        <motion.div 
+            animate={{ 
+                width: isCollapsed ? 0 : '420px',
+                opacity: isCollapsed ? 0 : 1,
+                marginRight: isCollapsed ? -40 : 0,
+                pointerEvents: isCollapsed ? 'none' : 'auto'
+            }}
+            transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+            className="shrink-0 space-y-8 sticky top-10 overflow-hidden"
+        >
+           <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <span className="w-7 h-7 rounded-full bg-[#111827] text-white flex items-center justify-center text-[12px] font-bold font-display">1</span>
+                <h3 className="text-[14px] font-bold text-[#374151] uppercase tracking-widest">Конфигурация</h3>
+              </div>
            </div>
 
            <GlassCard className="p-8 bg-white border-[#E5E7EB] shadow-xl space-y-10">
@@ -179,6 +228,85 @@ export function ModulePage({ config }: ModulePageProps) {
                     )}
                   </AIField>
                 ))}
+
+                {/* Advanced Settings */}
+                <div className="pt-6 border-t border-[#F3F4F6]">
+                   <button 
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      className="flex items-center justify-between w-full p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] hover:border-[#10B981]/30 transition-all group"
+                   >
+                     <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-white border border-[#E5E7EB] flex items-center justify-center text-[#9CA3AF] group-hover:text-[#10B981] transition-colors">
+                           <Settings2 size={16} />
+                        </div>
+                        <span className="text-[13px] font-bold text-[#4B5563] group-hover:text-[#111827] transition-colors">Расширенные AI-настройки</span>
+                     </div>
+                     <motion.div
+                        animate={{ rotate: showAdvanced ? 180 : 0 }}
+                        className="text-[#9CA3AF]"
+                     >
+                        <ChevronLeft size={16} className="-rotate-90" />
+                     </motion.div>
+                   </button>
+
+                   <AnimatePresence>
+                     {showAdvanced && (
+                       <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                       >
+                         <div className="pt-8 space-y-8">
+                            <AIField label="Целевая аудитория" description="Для кого создаем контент?">
+                               <AIInput 
+                                  placeholder="Например: Фрилансеры-дизайнеры..." 
+                                  value={formValues.advanced_audience}
+                                  onChange={(e) => handleInputChange('advanced_audience', e.target.value)}
+                               />
+                            </AIField>
+
+                            <AIField label="Эмоциональность">
+                               <AIToggleGroup 
+                                  value={formValues.advanced_emotion}
+                                  onChange={(val) => handleInputChange('advanced_emotion', val)}
+                                  options={[
+                                    { value: 'calm', label: 'Сдержанный' },
+                                    { value: 'moderate', label: 'Умеренный' },
+                                    { value: 'active', label: 'Драйвовый' },
+                                  ]}
+                               />
+                            </AIField>
+
+                            <AIField label="Сложность терминов">
+                               <AIToggleGroup 
+                                  value={formValues.advanced_complexity}
+                                  onChange={(val) => handleInputChange('advanced_complexity', val)}
+                                  options={[
+                                    { value: 'simple', label: 'Просто' },
+                                    { value: 'balanced', label: 'Баланс' },
+                                    { value: 'pro', label: 'Профи' },
+                                  ]}
+                               />
+                            </AIField>
+
+                            <AIField label="Цель коммуникации">
+                               <AIPillSelector 
+                                  value={[formValues.advanced_goal]}
+                                  onChange={(val) => handleInputChange('advanced_goal', val[0])}
+                                  options={[
+                                    { value: 'engagement', label: 'Охваты' },
+                                    { value: 'sale', label: 'Конверсии' },
+                                    { value: 'trust', label: 'Лояльность' },
+                                    { value: 'viral', label: 'Хайп' },
+                                  ]}
+                               />
+                            </AIField>
+                         </div>
+                       </motion.div>
+                     )}
+                   </AnimatePresence>
+                </div>
               </div>
 
               {error && (
@@ -207,23 +335,25 @@ export function ModulePage({ config }: ModulePageProps) {
                     <RotateCcw size={14} />
                     Сбросить
                   </button>
-                  <span className="text-[11px] text-[#9CA3AF] font-bold uppercase tracking-tight">V4.2 Catalyst</span>
+                  <span className="text-[11px] text-[#9CA3AF] font-bold uppercase tracking-tight">Catalyst v4.4</span>
                 </div>
               </div>
            </GlassCard>
+        </motion.div>
 
-           <div className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] flex gap-5 items-start">
-             <div className="w-10 h-10 rounded-xl bg-white border border-[#E5E7EB] flex items-center justify-center shrink-0 shadow-sm">
-                <Sparkles size={20} className="text-[#10B981]" />
-             </div>
-             <p className="text-[14px] text-[#6B7280] leading-relaxed font-medium capitalize">
-               Используйте максимально точные параметры для достижения наилучшего творческого результата.
-             </p>
-           </div>
+        {/* Workspace Toggle Button (Sticky) */}
+        <div className="h-full flex items-center justify-center sticky top-1/2 z-30">
+           <button 
+              onClick={toggleCollapse}
+              className="w-10 h-10 rounded-full bg-white border border-[#E5E7EB] shadow-lg flex items-center justify-center text-[#9CA3AF] hover:text-[#10B981] hover:border-[#10B981]/30 transition-all group -ml-5 translate-x-2"
+              title={isCollapsed ? "Развернуть панель" : "Свернуть панель"}
+           >
+              {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+           </button>
         </div>
 
         {/* Results Workspace */}
-        <div className="lg:col-span-8 flex flex-col gap-8">
+        <div className="flex-1 flex flex-col gap-8 min-w-0">
            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                  <span className={cn(

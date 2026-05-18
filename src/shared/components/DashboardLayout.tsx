@@ -4,10 +4,12 @@ import { Sidebar } from './Sidebar';
 import { DebugPanel } from './DebugPanel';
 import { motion, AnimatePresence } from 'motion/react';
 import { NAVIGATION_CONFIG } from '@/src/config/navigation';
-import { Activity } from 'lucide-react';
+import { Activity, LayoutGrid } from 'lucide-react';
+import { useDebugStore } from '@/src/stores/useDebugStore';
 
 export function DashboardLayout() {
   const location = useLocation();
+  const toggleDebug = useDebugStore(state => state.toggleDebug);
   const currentNav = NAVIGATION_CONFIG.find(item => item.path === location.pathname);
   const pageTitle = currentNav ? currentNav.label : location.pathname === '/' ? 'Home' : 'Settings';
 
@@ -41,9 +43,12 @@ export function DashboardLayout() {
                      <span className="text-[13px] font-bold text-[#10B981] mt-1 tracking-tight">AX-720</span>
                   </div>
                </div>
-               <div className="w-10 h-10 rounded-full bg-[#F3F4F6] border border-[#E5E7EB] flex items-center justify-center text-[#6B7280] hover:text-[#10B981] transition-colors cursor-pointer">
+               <button 
+                  onClick={toggleDebug}
+                  className="w-10 h-10 rounded-full bg-[#F3F4F6] border border-[#E5E7EB] flex items-center justify-center text-[#6B7280] hover:text-[#10B981] transition-colors cursor-pointer"
+               >
                   <Activity size={18} />
-               </div>
+               </button>
             </div>
         </header>
 
