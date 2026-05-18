@@ -1,4 +1,3 @@
-```ts
 // File: src/services/ai/memory.ts
 
 import { AIConsolvedAsset } from "@/src/types/ai";
@@ -353,4 +352,4 @@ export class AIMemory {
 
 export const aiMemory =
   AIMemory.getInstance();
-```
+

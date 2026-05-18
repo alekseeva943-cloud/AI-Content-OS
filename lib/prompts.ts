@@ -1,4 +1,3 @@
-```ts
 // File: lib/prompts.ts
 
 import fs from "fs";
@@ -346,4 +345,4 @@ export function getPostPrompts(
     }
   };
 }
-```
+

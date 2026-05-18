@@ -1,4 +1,3 @@
-````ts
 // File: src/services/ai/parsers.ts
 
 import { z } from "zod";
@@ -142,7 +141,7 @@ export const PodcastSchema =
 ================================================== */
 
 export const GenericSchema =
-  z.record(z.any());
+  z.record(z.string(), z.any());
 
 /* ==================================================
    REGISTRY
@@ -235,4 +234,4 @@ export class ResponseParser {
     }
   }
 }
-````
+

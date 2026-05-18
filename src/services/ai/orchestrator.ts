@@ -65,7 +65,7 @@ export class AIOrchestrator {
       }
 
       // 4. Parse & Validate
-      const parsedData = ResponseParser.parse<T>(moduleId, response.data);
+      const parsedData = ResponseParser.parse<T>(moduleId as AIModule, response.data);
 
       // 5. Store in Memory if successful
       aiMemory.saveAsset({
