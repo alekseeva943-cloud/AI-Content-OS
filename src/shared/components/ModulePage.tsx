@@ -26,6 +26,8 @@ import { PlannerResultDisplay } from '@/src/features/planner/components/PlannerR
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/src/lib/utils';
 
+import { AdvancedSettings, AdvancedSettingsState } from '@/src/features/planner/components/AdvancedSettings';
+
 interface ModulePageProps {
   config: ModuleConfig;
 }
@@ -44,14 +46,15 @@ export function ModulePage({ config }: ModulePageProps) {
     config.fields.forEach(f => {
       initial[f.id] = f.defaultValue || '';
     });
-    // Add advanced defaults
-    initial['advanced_audience'] = 'Широкая аудитория';
-    initial['advanced_tone'] = 'balanced';
-    initial['advanced_emotion'] = 'moderate';
-    initial['advanced_formality'] = 'neutral';
-    initial['advanced_length'] = 'optimal';
-    initial['advanced_complexity'] = 'simple';
-    initial['advanced_goal'] = 'engagement';
+    // Add advanced defaults matching AdvancedSettingsState
+    initial['adv_preset'] = 'business';
+    initial['adv_goal'] = 'sell';
+    initial['adv_audience'] = 'newbie';
+    initial['adv_tone'] = 'friendly';
+    initial['adv_formality'] = 24;
+    initial['adv_emotion'] = 38;
+    initial['adv_length'] = 'balanced';
+    initial['adv_complexity'] = 'standard';
     return initial;
   });
 
@@ -60,6 +63,10 @@ export function ModulePage({ config }: ModulePageProps) {
 
   const handleInputChange = (id: string, value: any) => {
     setFormValues(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handleAdvancedChange = (key: keyof AdvancedSettingsState, value: any) => {
+    setFormValues(prev => ({ ...prev, [`adv_${key}`]: value }));
   };
 
   const steps = [
@@ -93,15 +100,16 @@ export function ModulePage({ config }: ModulePageProps) {
             period: formValues.period,
             channels: Array.isArray(formValues.channels) ? formValues.channels : [formValues.channels],
             sharedMemory,
-            // Advanced parameters
+            // Advanced parameters - ONLY applied if showAdvanced is true
             advanced: showAdvanced ? {
-                audience: formValues.advanced_audience,
-                tone: formValues.advanced_tone,
-                emotion: formValues.advanced_emotion,
-                formality: formValues.advanced_formality,
-                length: formValues.advanced_length,
-                complexity: formValues.advanced_complexity,
-                goal: formValues.advanced_goal,
+                preset: formValues.adv_preset,
+                goal: formValues.adv_goal,
+                audience: formValues.adv_audience,
+                tone: formValues.adv_tone,
+                formality: formValues.adv_formality,
+                emotion: formValues.adv_emotion,
+                length: formValues.adv_length,
+                complexity: formValues.adv_complexity,
             } : undefined
          };
          
@@ -136,6 +144,17 @@ export function ModulePage({ config }: ModulePageProps) {
   };
 
   const toggleCollapse = () => setIsCollapsed(!isCollapsed);
+
+  const advancedValues: AdvancedSettingsState = {
+    preset: formValues.adv_preset,
+    goal: formValues.adv_goal,
+    audience: formValues.adv_audience,
+    tone: formValues.adv_tone,
+    formality: formValues.adv_formality,
+    emotion: formValues.adv_emotion,
+    length: formValues.adv_length,
+    complexity: formValues.adv_complexity,
+  };
 
   return (
     <div className="flex flex-col gap-10 pb-24 mx-auto w-full max-w-[1600px]">
@@ -173,7 +192,7 @@ export function ModulePage({ config }: ModulePageProps) {
         {/* Creation Controls (Collapsible) */}
         <motion.div 
             animate={{ 
-                width: isCollapsed ? 0 : '420px',
+                width: isCollapsed ? 0 : '480px', // Wider panel for advanced settings
                 opacity: isCollapsed ? 0 : 1,
                 marginRight: isCollapsed ? -40 : 0,
                 pointerEvents: isCollapsed ? 'none' : 'auto'
@@ -229,17 +248,20 @@ export function ModulePage({ config }: ModulePageProps) {
                   </AIField>
                 ))}
 
-                {/* Advanced Settings */}
+                {/* Advanced Settings Section */}
                 <div className="pt-6 border-t border-[#F3F4F6]">
                    <button 
                       onClick={() => setShowAdvanced(!showAdvanced)}
                       className="flex items-center justify-between w-full p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] hover:border-[#10B981]/30 transition-all group"
                    >
                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-white border border-[#E5E7EB] flex items-center justify-center text-[#9CA3AF] group-hover:text-[#10B981] transition-colors">
-                           <Settings2 size={16} />
+                        <div className="w-10 h-10 rounded-xl bg-white border border-[#E5E7EB] flex items-center justify-center text-[#9CA3AF] group-hover:text-[#6366F1] group-hover:border-[#6366F1]/30 transition-all shadow-sm">
+                           <Settings2 size={18} />
                         </div>
-                        <span className="text-[13px] font-bold text-[#4B5563] group-hover:text-[#111827] transition-colors">Расширенные AI-настройки</span>
+                        <div className="flex flex-col items-start translate-y-0.5">
+                           <span className="text-[13px] font-black text-[#4B5563] group-hover:text-[#111827] transition-colors leading-none mb-1">Сложные AI-настройки</span>
+                           <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider leading-none">Тон и интонация</span>
+                        </div>
                      </div>
                      <motion.div
                         animate={{ rotate: showAdvanced ? 180 : 0 }}
@@ -257,52 +279,10 @@ export function ModulePage({ config }: ModulePageProps) {
                           exit={{ height: 0, opacity: 0 }}
                           className="overflow-hidden"
                        >
-                         <div className="pt-8 space-y-8">
-                            <AIField label="Целевая аудитория" description="Для кого создаем контент?">
-                               <AIInput 
-                                  placeholder="Например: Фрилансеры-дизайнеры..." 
-                                  value={formValues.advanced_audience}
-                                  onChange={(e) => handleInputChange('advanced_audience', e.target.value)}
-                               />
-                            </AIField>
-
-                            <AIField label="Эмоциональность">
-                               <AIToggleGroup 
-                                  value={formValues.advanced_emotion}
-                                  onChange={(val) => handleInputChange('advanced_emotion', val)}
-                                  options={[
-                                    { value: 'calm', label: 'Сдержанный' },
-                                    { value: 'moderate', label: 'Умеренный' },
-                                    { value: 'active', label: 'Драйвовый' },
-                                  ]}
-                               />
-                            </AIField>
-
-                            <AIField label="Сложность терминов">
-                               <AIToggleGroup 
-                                  value={formValues.advanced_complexity}
-                                  onChange={(val) => handleInputChange('advanced_complexity', val)}
-                                  options={[
-                                    { value: 'simple', label: 'Просто' },
-                                    { value: 'balanced', label: 'Баланс' },
-                                    { value: 'pro', label: 'Профи' },
-                                  ]}
-                               />
-                            </AIField>
-
-                            <AIField label="Цель коммуникации">
-                               <AIPillSelector 
-                                  value={[formValues.advanced_goal]}
-                                  onChange={(val) => handleInputChange('advanced_goal', val[0])}
-                                  options={[
-                                    { value: 'engagement', label: 'Охваты' },
-                                    { value: 'sale', label: 'Конверсии' },
-                                    { value: 'trust', label: 'Лояльность' },
-                                    { value: 'viral', label: 'Хайп' },
-                                  ]}
-                               />
-                            </AIField>
-                         </div>
+                         <AdvancedSettings 
+                           values={advancedValues} 
+                           onChange={handleAdvancedChange} 
+                         />
                        </motion.div>
                      )}
                    </AnimatePresence>
