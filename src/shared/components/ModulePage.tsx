@@ -15,7 +15,8 @@ import {
   Target,
   BarChart3,
   MessageSquare,
-  History
+  History,
+  Trash2
 } from 'lucide-react';
 import { GlassCard, Button } from '@/src/shared/components/UI';
 import { EmptyResultState, GenerationLoader } from '@/src/shared/components/ResultPanel';
@@ -24,6 +25,7 @@ import { ModuleConfig } from '@/src/config/modules';
 import { generateContentPlan } from '@/src/services/ai/client';
 import { useMemoryStore } from '@/src/stores/memoryStore';
 import { useFavoritesStore } from '@/src/stores/favoritesStore';
+import { useWorkspaceStore } from '@/src/stores/workspaceStore';
 import { toast } from 'sonner';
 import { PlannerResultDisplay } from '@/src/features/planner/components/PlannerResult';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -43,22 +45,35 @@ interface ModulePageProps {
 }
 
 export function ModulePage({ config }: ModulePageProps) {
+  const { modules, setModuleState, clearModule } = useWorkspaceStore();
+  const moduleState = modules[config.id] || {
+    formValues: {},
+    result: null,
+    showAdvanced: false,
+    sourceInfo: null,
+  };
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [generationStep, setGenerationStep] = useState<string>('Инициализация...');
-  const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sourceInfo, setSourceInfo] = useState<{ id?: string; module?: string; title?: string } | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const showAdvanced = moduleState.showAdvanced;
+  const setShowAdvanced = (val: boolean) => setModuleState(config.id, { showAdvanced: val });
   
-  const [formValues, setFormValues] = useState<Record<string, any>>(() => {
+  const result = moduleState.result;
+  const setResult = (val: any) => setModuleState(config.id, { result: val });
+
+  const sourceInfo = moduleState.sourceInfo;
+  const setSourceInfo = (val: { id?: string; module?: string; title?: string } | null) => setModuleState(config.id, { sourceInfo: val });
+
+  const formValues = React.useMemo(() => {
     const initial: Record<string, any> = {};
     config.fields.forEach(f => {
       initial[f.id] = f.defaultValue || '';
     });
-    // Add advanced defaults matching AdvancedSettingsState
     initial['adv_preset'] = 'business';
     initial['adv_goal'] = 'sell';
     initial['adv_audience'] = 'newbie';
@@ -67,8 +82,14 @@ export function ModulePage({ config }: ModulePageProps) {
     initial['adv_emotion'] = 38;
     initial['adv_length'] = 'balanced';
     initial['adv_complexity'] = 'standard';
-    return initial;
-  });
+
+    return { ...initial, ...moduleState.formValues };
+  }, [config.id, moduleState.formValues]);
+
+  const setFormValues = (updater: (prev: Record<string, any>) => Record<string, any>) => {
+    const nextValues = updater(formValues);
+    setModuleState(config.id, { formValues: nextValues });
+  };
 
   // Handle pre-filling from repurposed items
   useEffect(() => {
@@ -184,7 +205,20 @@ export function ModulePage({ config }: ModulePageProps) {
   };
 
   const handleReset = () => {
-    setResult(null);
+    const initial: Record<string, any> = {};
+    config.fields.forEach(f => {
+      initial[f.id] = f.defaultValue || '';
+    });
+    initial['adv_preset'] = 'business';
+    initial['adv_goal'] = 'sell';
+    initial['adv_audience'] = 'newbie';
+    initial['adv_tone'] = 'friendly';
+    initial['adv_formality'] = 24;
+    initial['adv_emotion'] = 38;
+    initial['adv_length'] = 'balanced';
+    initial['adv_complexity'] = 'standard';
+
+    clearModule(config.id, initial);
     setError(null);
     setIsGenerating(false);
   };
@@ -227,6 +261,18 @@ export function ModulePage({ config }: ModulePageProps) {
         </div>
 
         <div className="flex items-center gap-4">
+           <button 
+             onClick={() => {
+                if (confirm('Вы уверены, что хотите очистить ВСЕ рабочие пространства?')) {
+                  useWorkspaceStore.getState().resetAll();
+                  toast.success('Все рабочие пространства очищены');
+                }
+             }}
+             className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-[#E5E7EB] text-[#9CA3AF] hover:text-red-500 hover:border-red-200 transition-all shadow-sm text-[11px] font-bold uppercase tracking-wider"
+           >
+              <Trash2 size={14} />
+              <span>Reset All</span>
+           </button>
            <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white border border-[#E5E7EB] shadow-sm">
               <div className="w-2 h-2 rounded-full bg-[#10B981]" />
               <span className="text-[11px] font-bold text-[#374151] uppercase tracking-[0.1em]">Ready to Synth</span>
@@ -246,11 +292,19 @@ export function ModulePage({ config }: ModulePageProps) {
             transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
             className="shrink-0 h-full overflow-y-auto pr-4 no-scrollbar custom-scroll space-y-8"
         >
-           <div className="flex items-center justify-between mb-2">
+           <div className="flex items-center justify-between mb-2 group">
               <div className="flex items-center gap-3">
                 <span className="w-7 h-7 rounded-full bg-[#111827] text-white flex items-center justify-center text-[12px] font-bold font-display">1</span>
                 <h3 className="text-[14px] font-bold text-[#374151] uppercase tracking-widest">Конфигурация</h3>
               </div>
+              <button 
+                onClick={handleReset}
+                className="p-2 rounded-xl text-[#9CA3AF] hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 flex items-center gap-2"
+                title="Очистить рабочее пространство"
+              >
+                <span className="text-[10px] font-bold uppercase tracking-wider">Очистить</span>
+                <Trash2 size={16} />
+              </button>
            </div>
 
            <GlassCard className="p-8 bg-white border-[#E5E7EB] shadow-xl space-y-10">
