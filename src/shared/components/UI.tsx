@@ -9,7 +9,7 @@ export function GlassCard({ children, className, ...props }: GlassCardProps) {
   return (
     <div 
       className={cn(
-        "bg-[#15181E] border border-[#242933] rounded-[2.5rem] overflow-hidden self-start shadow-[0_8px_32px_rgba(0,0,0,0.3)] ring-1 ring-white/[0.02] transition-all duration-500",
+        "bg-white border border-[#E5E7EB] rounded-[2rem] overflow-hidden self-start shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-all duration-500",
         className
       )}
       {...props}
@@ -35,10 +35,10 @@ export function Button({
   ...props 
 }: ButtonProps) {
   const variants = {
-    primary: "bg-[#10B981] hover:bg-[#059669] text-[#0D0F12] font-bold shadow-[0_4px_16px_rgba(16,185,129,0.2)] hover:shadow-[0_8px_24px_rgba(16,185,129,0.3)] transition-all active:scale-[0.98]",
-    secondary: "bg-[#242933] hover:bg-[#2D333F] text-[#E2E4E9] border border-[#383E4C] hover:border-[#4B5262] shadow-md",
-    ghost: "bg-transparent hover:bg-white/[0.03] text-[#898E9E] hover:text-[#E2E4E9] transition-colors",
-    outline: "bg-transparent border border-[#383E4C] hover:border-[#10B981]/30 text-[#898E9E] hover:text-[#E2E4E9] hover:bg-[#10B981]/5 shadow-sm",
+    primary: "bg-[#10B981] hover:bg-[#059669] text-white font-bold shadow-[0_4px_12px_rgba(16,185,129,0.15)] hover:shadow-[0_8px_20px_rgba(16,185,129,0.25)] transition-all active:scale-[0.98]",
+    secondary: "bg-[#F3F4F6] hover:bg-[#E5E7EB] text-[#374151] border border-[#E5E7EB] hover:border-[#D1D5DB] shadow-sm",
+    ghost: "bg-transparent hover:bg-black/[0.03] text-[#6B7280] hover:text-[#111827] transition-colors",
+    outline: "bg-transparent border border-[#E5E7EB] hover:border-[#10B981]/40 text-[#4B5563] hover:text-[#111827] hover:bg-[#10B981]/5 shadow-sm",
   };
 
   const sizes = {

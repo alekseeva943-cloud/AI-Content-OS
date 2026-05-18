@@ -78,46 +78,46 @@ export function ModulePage({ config }: ModulePageProps) {
   };
 
   return (
-    <div className="flex flex-col gap-8 pb-20 max-w-6xl mx-auto">
-      {/* Studio Header */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-[#242933]">
+    <div className="flex flex-col gap-10 pb-24 max-w-7xl mx-auto">
+      {/* Workspace Header */}
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-[#E5E7EB]">
         <div className="space-y-4">
           <button 
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-[#4B5262] hover:text-[#10B981] transition-colors text-xs font-bold uppercase tracking-widest"
+            className="flex items-center gap-2 text-[#9CA3AF] hover:text-[#10B981] transition-colors text-[11px] font-bold uppercase tracking-[0.2em]"
           >
-            <ArrowLeft size={14} />
-            Назад в хаб
+            <ArrowLeft size={16} />
+            Вернуться в студию
           </button>
           
           <div className="flex items-center gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-[#10B981]/10 border border-[#10B981]/20 text-[#10B981] flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.1)]">
-              <config.icon size={28} />
+            <div className="w-16 h-16 rounded-3xl bg-[#F9FAFB] border border-[#E5E7EB] text-[#10B981] flex items-center justify-center shadow-sm">
+              <config.icon size={32} />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-[#F1F2F4] font-display tracking-tight">{config.title}</h1>
-              <p className="text-[#898E9E] mt-1 font-medium">{config.description}</p>
+              <h1 className="text-4xl font-bold text-[#111827] font-display tracking-tight">{config.title}</h1>
+              <p className="text-[#6B7280] mt-1.5 font-medium text-lg leading-relaxed">{config.description}</p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1C2028] border border-[#383E4C]">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-              <span className="text-[10px] font-bold text-[#A1A5B3] uppercase tracking-widest leading-none">Studio Ready</span>
+        <div className="flex items-center gap-4">
+           <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white border border-[#E5E7EB] shadow-sm">
+              <div className="w-2 h-2 rounded-full bg-[#10B981]" />
+              <span className="text-[11px] font-bold text-[#374151] uppercase tracking-[0.1em]">Ready to Synth</span>
            </div>
         </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-        {/* Step 1: Configuration */}
-        <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-8">
+        {/* Creation Controls */}
+        <div className="lg:col-span-4 space-y-8 lg:sticky lg:top-10">
            <div className="flex items-center gap-3 mb-2">
-              <div className="w-6 h-6 rounded-full bg-[#10B981] text-[#0D0F12] flex items-center justify-center text-[11px] font-bold">1</div>
-              <h3 className="text-[13px] font-bold text-[#E2E4E9] uppercase tracking-[0.1em]">Настройка синтеза</h3>
+              <span className="w-7 h-7 rounded-full bg-[#111827] text-white flex items-center justify-center text-[12px] font-bold font-display">1</span>
+              <h3 className="text-[14px] font-bold text-[#374151] uppercase tracking-widest">Конфигурация</h3>
            </div>
 
-           <GlassCard className="p-8 bg-[#15181E] border-[#242933] shadow-xl space-y-8">
+           <GlassCard className="p-8 bg-white border-[#E5E7EB] shadow-xl space-y-10">
               <div className="space-y-8">
                 {config.fields.map((field) => (
                   <AIField key={field.id} label={field.label} id={field.id}>
@@ -155,95 +155,95 @@ export function ModulePage({ config }: ModulePageProps) {
               </div>
 
               {error && (
-                <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/10 flex items-start gap-3 animate-in fade-in slide-in-from-top-1">
-                  <AlertCircle size={14} className="text-red-500 mt-0.5 shrink-0" />
-                  <p className="text-[12px] text-red-400/80 font-medium leading-relaxed">{error}</p>
+                <div className="p-4 rounded-xl bg-red-50 border border-red-100 flex items-start gap-4">
+                  <AlertCircle size={18} className="text-red-500 shrink-0" />
+                  <p className="text-[13px] text-red-600 font-medium leading-relaxed">{error}</p>
                 </div>
               )}
 
-              <div className="pt-8 border-t border-[#242933]">
+              <div className="pt-8 border-t border-[#F3F4F6]">
                 <Button 
                   onClick={handleGenerate}
                   isLoading={isGenerating}
-                  size="lg" 
-                  className="w-full gap-3 shadow-[0_12px_32px_rgba(16,185,129,0.2)] h-14 text-sm font-bold rounded-2xl"
+                  size="xl" 
+                  className="w-full gap-3 shadow-[0_12px_24px_rgba(16,185,129,0.2)] rounded-2xl h-14"
                 >
-                  <Wand2 size={20} />
+                  <Wand2 size={24} />
                   <span>{config.actionLabel}</span>
                 </Button>
                 
                 <div className="flex items-center justify-between mt-6 px-1">
                    <button 
                     onClick={handleReset}
-                    className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[#4B5262] hover:text-[#10B981] transition-colors"
+                    className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-[#9CA3AF] hover:text-[#10B981] transition-colors"
                   >
-                    <RotateCcw size={12} />
+                    <RotateCcw size={14} />
                     Сбросить
                   </button>
-                  <span className="text-[11px] text-[#4B5262] font-medium leading-none">Smart Mode v2</span>
+                  <span className="text-[11px] text-[#9CA3AF] font-bold uppercase tracking-tight">V4.2 Catalyst</span>
                 </div>
               </div>
            </GlassCard>
 
-           <div className="p-5 rounded-2xl bg-[#10B981]/5 border border-[#10B981]/10 flex gap-4 items-start">
-             <div className="w-8 h-8 rounded-lg bg-[#10B981]/10 flex items-center justify-center shrink-0 mt-0.5">
-                <Sparkles size={16} className="text-[#10B981]" />
+           <div className="p-6 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] flex gap-5 items-start">
+             <div className="w-10 h-10 rounded-xl bg-white border border-[#E5E7EB] flex items-center justify-center shrink-0 shadow-sm">
+                <Sparkles size={20} className="text-[#10B981]" />
              </div>
-             <p className="text-[13px] text-[#898E9E] leading-relaxed font-medium transition-all group-hover:text-[#E2E4E9]">
-               Нейросеть проанализирует контекст и создаст оптимальную структуру для ваших задач.
+             <p className="text-[14px] text-[#6B7280] leading-relaxed font-medium capitalize">
+               Используйте максимально точные параметры для достижения наилучшего творческого результата.
              </p>
            </div>
         </div>
 
-        {/* Step 2: Generation Workspace */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
-           <div className="flex items-center justify-between mb-2">
+        {/* Results Workspace */}
+        <div className="lg:col-span-8 flex flex-col gap-8">
+           <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                 <div className={cn(
-                    "w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold transition-all",
-                    result ? "bg-[#10B981] text-[#0D0F12]" : "bg-[#242933] text-[#4B5262]"
-                 )}>2</div>
-                 <h3 className="text-[13px] font-bold text-[#E2E4E9] uppercase tracking-[0.1em]">Результат синтеза</h3>
+                 <span className={cn(
+                    "w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold font-display transition-all",
+                    result ? "bg-[#10B981] text-white" : "bg-[#E5E7EB] text-[#9CA3AF]"
+                 )}>2</span>
+                 <h3 className="text-[14px] font-bold text-[#374151] uppercase tracking-widest">Просмотр результата</h3>
               </div>
-              <div className="flex items-center gap-8 text-[#4B5262] text-[11px] font-bold uppercase tracking-widest">
+              <div className="flex items-center gap-8 text-[#9CA3AF] text-[12px] font-bold uppercase tracking-widest">
+                 <button className="hover:text-[#10B981] transition-colors">Скачать PDF</button>
                  <button className="hover:text-[#10B981] transition-colors">Экспорт</button>
-                 <button className="hover:text-[#10B981] transition-colors">Копировать</button>
               </div>
            </div>
 
-           <div className="min-h-[500px] flex flex-col">
+           <div className="min-h-[600px] flex flex-col">
               <AnimatePresence mode="wait">
                 {isGenerating ? (
                   <motion.div 
                     key="loading"
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 1.02 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
                     className="h-full flex-1"
                   >
-                    <GlassCard className="h-full flex-1 flex items-center justify-center bg-[#0D0F12]/30 border-dashed border-[#242933] rounded-[3rem]">
-                       <GenerationLoader status="Синтезирую..." statusColor="#10B981" />
+                    <GlassCard className="h-full flex-1 flex items-center justify-center bg-[#F9FAFB]/50 border-dashed border-[#CBD5E1] rounded-[3rem]">
+                       <GenerationLoader status="Генерирую шедевр..." statusColor="#10B981" />
                     </GlassCard>
                   </motion.div>
                 ) : result ? (
                   <motion.div 
                     key="result"
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="h-full flex-1"
                   >
                     {config.id === 'planner' ? (
                        <PlannerResultDisplay result={result} />
                     ) : (
-                       <div className="flex flex-col items-center justify-center h-full p-20 text-center bg-[#15181E] border border-[#242933] rounded-[3rem] shadow-2xl">
-                          <div className="w-20 h-20 rounded-3xl bg-[#10B981]/5 border border-[#10B981]/20 flex items-center justify-center text-[#10B981] mb-10 shadow-[0_0_40px_rgba(16,185,129,0.1)]">
-                             <Sparkles size={40} />
+                       <div className="flex flex-col items-center justify-center h-full p-20 text-center bg-white border border-[#E5E7EB] rounded-[3.5rem] shadow-2xl">
+                          <div className="w-24 h-24 rounded-[2.5rem] bg-[#F9FAFB] border border-[#E5E7EB] flex items-center justify-center text-[#10B981] mb-12 shadow-sm">
+                             <Sparkles size={44} />
                           </div>
-                          <h2 className="text-3xl font-bold text-[#F1F2F4] mb-4 font-display">Синтез завершен</h2>
-                          <p className="text-[#898E9E] text-[16px] font-medium max-w-sm mb-12 leading-relaxed">Система успешно сформировала структуру на основе ваших параметров.</p>
-                          <div className="flex items-center gap-4">
-                             <Button variant="secondary" size="lg" className="rounded-xl px-10">Просмотреть проект</Button>
-                             <Button variant="outline" size="lg" className="rounded-xl border-[#383E4C] text-[#898E9E]">Сохранить</Button>
+                          <h2 className="text-4xl font-bold text-[#111827] mb-4 font-display tracking-tight">Синтез успешно завершен</h2>
+                          <p className="text-[#6B7280] text-[18px] font-medium max-w-md mb-14 leading-relaxed">Ваш проект готов к публикации или экспорту. Просмотрите детали ниже.</p>
+                          <div className="flex items-center gap-6">
+                             <Button size="xl" className="rounded-2xl px-12">Редактировать</Button>
+                             <Button variant="outline" size="xl" className="rounded-2xl border-[#E5E7EB]">Сохранить в облако</Button>
                           </div>
                        </div>
                     )}
@@ -251,14 +251,14 @@ export function ModulePage({ config }: ModulePageProps) {
                 ) : (
                   <motion.div 
                     key="empty"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
                     className="h-full flex-1"
                   >
-                    <GlassCard className="h-full flex-1 flex items-center justify-center bg-[#0D0F12]/30 border-dashed border-[#242933] hover:border-[#10B981]/20 transition-all duration-700 rounded-[3rem]">
+                    <GlassCard className="h-full flex-1 flex items-center justify-center bg-[#F9FAFB]/50 border-dashed border-[#CBD5E1] hover:border-[#10B981]/40 transition-all duration-1000 rounded-[3.5rem]">
                        <EmptyResultState 
-                        title="Готово к синтезу"
-                        description="Настройте параметры в левой панели, чтобы Ваш AI-ассистент сформировал идеальный сценарий или план."
+                        title="Ожидание параметров для синтеза"
+                        description="Заполните настройки в левой части экрана, чтобы Ваш AI-ассистент смог сформировать идеальный контент."
                        />
                     </GlassCard>
                   </motion.div>
@@ -270,5 +270,3 @@ export function ModulePage({ config }: ModulePageProps) {
     </div>
   );
 }
-
-

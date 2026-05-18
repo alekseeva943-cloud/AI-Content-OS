@@ -12,11 +12,11 @@ export function DashboardLayout() {
   const pageTitle = currentNav ? currentNav.label : location.pathname === '/' ? 'Home' : 'Settings';
 
   return (
-    <div className="flex h-screen w-full bg-[#0D0F12] text-[#E2E4E9] overflow-hidden selection:bg-[#10B981]/30 selection:text-white font-sans">
+    <div className="flex h-screen w-full bg-[#F9FAFB] text-[#1F2937] overflow-hidden selection:bg-[#10B981]/10 selection:text-[#059669] font-sans">
       <Sidebar />
       
       <main className="flex-1 flex flex-col min-w-0 relative z-10 overflow-hidden">
-        <header className="h-14 flex items-center justify-between px-10 border-b border-[#242933] bg-[#0D0F12] shrink-0">
+        <header className="h-16 flex items-center justify-between px-10 border-b border-[#E5E7EB] bg-white shrink-0">
             <AnimatePresence mode="wait">
               <motion.div 
                 key={pageTitle}
@@ -27,21 +27,21 @@ export function DashboardLayout() {
                 className="flex items-center gap-4"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-[#4B5262] text-[13px] font-bold uppercase tracking-[0.1em]">Workspace</span>
+                  <span className="text-[#9CA3AF] text-[13px] font-bold uppercase tracking-[0.1em]">Workspace</span>
                 </div>
-                <div className="w-[1px] h-3 bg-[#383E4C]" />
-                <h1 className="text-[#F1F2F4] text-[15px] font-bold tracking-tight font-display">{pageTitle}</h1>
+                <div className="w-[1px] h-3 bg-[#E5E7EB]" />
+                <h1 className="text-[#111827] text-[16px] font-bold tracking-tight font-display">{pageTitle}</h1>
               </motion.div>
             </AnimatePresence>
             
             <div className="flex items-center gap-8">
                <div className="flex items-center gap-6">
                   <div className="flex flex-col items-end">
-                     <span className="text-[10px] font-bold text-[#4B5262] uppercase tracking-widest leading-none">Neural ID</span>
-                     <span className="text-[12px] font-bold text-[#10B981] mt-1">AX-720</span>
+                     <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest leading-none">Neural ID</span>
+                     <span className="text-[13px] font-bold text-[#10B981] mt-1 tracking-tight">AX-720</span>
                   </div>
                </div>
-               <div className="w-10 h-10 rounded-full bg-[#1C2028] border border-[#383E4C] flex items-center justify-center text-[#898E9E] hover:text-[#10B981] transition-colors cursor-pointer">
+               <div className="w-10 h-10 rounded-full bg-[#F3F4F6] border border-[#E5E7EB] flex items-center justify-center text-[#6B7280] hover:text-[#10B981] transition-colors cursor-pointer">
                   <Activity size={18} />
                </div>
             </div>

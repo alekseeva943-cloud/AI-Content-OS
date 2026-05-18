@@ -32,25 +32,25 @@ export function PlannerResultDisplay({ result }: PlannerResultProps) {
 
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <header className="flex flex-col gap-3">
-        <h2 className="text-3xl font-bold text-[#F1F2F4] font-display tracking-tight">{result.title}</h2>
-        <p className="text-[#898E9E] text-[15px] leading-relaxed max-w-3xl font-medium">{result.summary}</p>
+      <header className="flex flex-col gap-4">
+        <h2 className="text-4xl font-bold text-[#111827] font-display tracking-tight">{result.title}</h2>
+        <p className="text-[#6B7280] text-[17px] leading-relaxed max-w-3xl font-medium">{result.summary}</p>
       </header>
 
-      <div className="space-y-16">
+      <div className="space-y-20">
         {days.map((day, idx) => (
-          <section key={day} className="space-y-6">
-             <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-full bg-[#10B981]/10 border border-[#10B981]/20 flex items-center justify-center text-[#10B981] font-bold text-xs">
+          <section key={day} className="space-y-8">
+             <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4">
+                   <div className="w-10 h-10 rounded-2xl bg-[#10B981] text-white flex items-center justify-center font-bold text-sm shadow-[0_4px_12px_rgba(16,185,129,0.2)]">
                      {idx + 1}
                    </div>
-                   <h3 className="text-lg font-bold text-[#F1F2F4] tracking-tight">{day}</h3>
+                   <h3 className="text-2xl font-bold text-[#111827] tracking-tight font-display">{day}</h3>
                 </div>
-                <div className="h-[1px] flex-1 bg-gradient-to-r from-[#242933] to-transparent" />
+                <div className="h-[1px] flex-1 bg-gradient-to-r from-[#E5E7EB] to-transparent" />
              </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {itemsByDay[day].map((item, i) => (
                   <PlanItemCard key={item.id || `${day}-${i}`} item={item} index={i} />
                 ))}
@@ -85,37 +85,37 @@ function PlanItemCard({ item, index }: { item: PlannerItem; index: number; key?:
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.05, duration: 0.4 }}
     >
-        <GlassCard className="p-6 bg-[#15181E] border-[#242933] group hover:border-[#10B981]/30 transition-all duration-300 shadow-lg">
-        <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#1C2028] border border-[#383E4C] text-[#898E9E] flex items-center justify-center transition-colors group-hover:text-[#10B981] group-hover:border-[#10B981]/20">
-                    <Icon size={18} />
+        <GlassCard className="p-8 bg-white border-[#E5E7EB] group hover:border-[#10B981]/40 transition-all duration-500 shadow-sm hover:shadow-xl">
+        <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] text-[#9CA3AF] flex items-center justify-center transition-all group-hover:text-[#10B981] group-hover:bg-[#10B981]/5 group-hover:border-[#10B981]/20">
+                    <Icon size={22} />
                 </div>
-                <div className="flex flex-col">
-                   <span className="text-[10px] font-bold text-[#4B5262] uppercase tracking-[0.15em] leading-none mb-1">{item.channel}</span>
-                   <div className="flex items-center gap-1.5 text-[#898E9E]">
-                      <Clock size={10} />
-                      <span className="text-[11px] font-bold leading-none">{item.time}</span>
+                <div className="flex flex-col gap-1">
+                   <span className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.2em] leading-none">{item.channel}</span>
+                   <div className="flex items-center gap-2 text-[#6B7280]">
+                      <Clock size={12} strokeWidth={2.5} />
+                      <span className="text-[13px] font-bold leading-none">{item.time}</span>
                    </div>
                 </div>
             </div>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-2">
                <button 
                   onClick={handleCopy}
-                  className="p-2 rounded-lg bg-[#0D0F12] border border-[#242933] text-[#4B5262] hover:text-[#10B981] transition-colors"
+                  className="p-2.5 rounded-xl bg-white border border-[#E5E7EB] text-[#9CA3AF] hover:text-[#10B981] hover:border-[#10B981]/30 transition-all shadow-sm"
                   title="Copy"
                >
-                  {copied ? <Check size={14} className="text-[#10B981]" /> : <Copy size={14} />}
+                  {copied ? <Check size={16} className="text-[#10B981]" /> : <Copy size={16} />}
                </button>
             </div>
         </div>
 
-        <h4 className="text-lg font-bold text-[#F1F2F4] mb-3 leading-snug group-hover:text-[#10B981] transition-colors">
+        <h4 className="text-xl font-bold text-[#111827] mb-4 leading-tight group-hover:text-[#10B981] transition-colors font-display">
             {item.topic}
         </h4>
         
         {item.description && (
-            <p className="text-[14px] text-[#898E9E] leading-relaxed mb-6 font-medium">
+            <p className="text-[15px] text-[#6B7280] leading-relaxed mb-8 font-medium">
                 {item.description}
             </p>
         )}
@@ -123,7 +123,7 @@ function PlanItemCard({ item, index }: { item: PlannerItem; index: number; key?:
         {item.hashtags && item.hashtags.length > 0 && (
             <div className="flex flex-wrap gap-2.5">
                 {item.hashtags.map(tag => (
-                   <span key={tag} className="text-[10px] font-bold text-[#10B981] bg-[#10B981]/5 px-2 py-0.5 rounded-md border border-[#10B981]/10">#{tag}</span>
+                   <span key={tag} className="text-[11px] font-bold text-[#059669] bg-[#10B981]/5 px-3 py-1.5 rounded-lg border border-[#10B981]/10">#{tag}</span>
                 ))}
             </div>
         )}

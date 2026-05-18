@@ -23,15 +23,15 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-[#242933] rounded-full hover:bg-[#383E4C] transition-colors;
+    @apply bg-[#E2E8F0] rounded-full hover:bg-[#CBD5E1] transition-colors;
   }
 
   body {
-    @apply bg-[#0D0F12] text-[#E2E4E9] antialiased selection:bg-[#10B981]/20 selection:text-[#10B981];
+    @apply bg-[#F9FAFB] text-[#1F2937] antialiased selection:bg-[#10B981]/10 selection:text-[#059669];
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display tracking-tight text-[#F1F2F4];
+    @apply font-display tracking-tight text-[#111827];
   }
 
   /* Custom scrollbar */
@@ -42,7 +42,7 @@
     @apply bg-transparent;
   }
   .custom-scroll::-webkit-scrollbar-thumb {
-    @apply bg-[#2A2F3A] rounded-full hover:bg-[#383E4C] transition-colors;
+    @apply bg-[#E2E8F0] rounded-full hover:bg-[#CBD5E1] transition-colors;
   }
 
   .no-scrollbar::-webkit-scrollbar {
