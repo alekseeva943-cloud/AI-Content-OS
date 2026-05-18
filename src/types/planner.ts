@@ -6,6 +6,20 @@ export type ContentChannel = z.infer<typeof ContentChannelSchema>;
 export const PlanningPeriodSchema = z.enum(['today', '3days', '5days', 'week']);
 export type PlanningPeriod = z.infer<typeof PlanningPeriodSchema>;
 
+export const PostSettingsSchema = z.object({
+  tone: z.string().optional(),
+  length: z.string().optional(),
+  hookIntensity: z.number().optional(),
+  ctaStrength: z.number().optional(),
+  emojiDensity: z.number().optional(),
+  formattingStyle: z.string().optional(),
+  aggressiveness: z.number().optional(),
+  storytelling: z.number().optional(),
+  educationalDepth: z.number().optional(),
+});
+
+export type PostSettings = z.infer<typeof PostSettingsSchema>;
+
 export const PlannerItemSchema = z.object({
   id: z.string(),
   day: z.string(), // e.g. "Day 1", "Monday"
@@ -19,6 +33,7 @@ export const PlannerItemSchema = z.object({
   angle: z.string().optional(), // The specific creative angle or hook
   rationale: z.string().optional(), // Why this post matters
   hashtags: z.array(z.string()).optional(),
+  aiSettings: PostSettingsSchema.optional(),
 });
 
 export type PlannerItem = z.infer<typeof PlannerItemSchema>;

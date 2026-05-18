@@ -338,8 +338,14 @@ export function getPostPrompts(
           "",
 
         tone:
+          data.item?.aiSettings?.tone ||
           data.advanced?.tone ||
-          "Естественный"
+          "Естественный",
+
+        aiSettings:
+          data.item?.aiSettings ||
+          data.advanced ||
+          {}
       }
     );
 

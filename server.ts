@@ -110,11 +110,13 @@ app.post("/api/regenerate-item", async (req, res) => {
         { 
           role: "system", 
           content: `You are an AI Content Strategist. Your task is to REGENERATE a specific content idea (PlannerItem).
-          KEEP the following EXACTLY: channel, topic, goal, type, time, day.
+          KEEP the following EXACTLY: id, channel, topic, goal, type, time, day.
           CHANGE the following to provide a FRESH perspective: angle, description, rationale, hook, emotional framing.
           
           The result must be a JSON object matching the PlannerItem schema.
           Current item: ${JSON.stringify(item)}
+          
+          If the item has "aiSettings", respect them (e.g. tone, intensity, storytelling depth) while crafting the new variation.
           
           Provide a creative, alternative interpretation that follows the same strategy but uses a different hook or perspective.
           Result must be ONLY the JSON object.` 

@@ -13,9 +13,19 @@ import {
   Star,
   RefreshCcw,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Settings,
+  ChevronDown,
+  ChevronUp,
+  Zap,
+  AlignLeft,
+  Smile,
+  Highlighter,
+  Feather,
+  BookOpen,
+  Type
 } from 'lucide-react';
-import { PlannerItem, PlannerResult } from '@/src/types/planner';
+import { PlannerItem, PlannerResult, PostSettings } from '@/src/types/planner';
 import { GlassCard, Button } from '@/src/shared/components/UI';
 import { cn } from '@/src/lib/utils';
 import { generatePostText, regeneratePlannerItem } from '@/src/services/ai/client';
@@ -146,8 +156,26 @@ function PlanItemCard({
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [showLocalSettings, setShowLocalSettings] = useState(false);
   const [generatedText, setGeneratedText] = useState<string | null>(null);
   const { addFavorite, removeFavorite, isFavorite } = useFavoritesStore();
+  
+  const [localSettings, setLocalSettings] = useState<PostSettings>(item.aiSettings || {
+    tone: 'friendly',
+    length: 'balanced',
+    hookIntensity: 50,
+    ctaStrength: 50,
+    emojiDensity: 50,
+    formattingStyle: 'standard',
+    aggressiveness: 30,
+    storytelling: 50,
+    educationalDepth: 40,
+  });
+
+  const updateLocalSetting = (key: keyof PostSettings, value: any) => {
+    setLocalSettings(prev => ({ ...prev, [key]: value }));
+  };
+
   const favoriteId = item.id || `${item.day}-${index}`;
   const activeFavorite = isFavorite(favoriteId);
 
@@ -161,7 +189,7 @@ function PlanItemCard({
         moduleId: 'planner',
         type: item.type || 'idea',
         title: item.topic,
-        content: item,
+        content: { ...item, aiSettings: localSettings },
         metadata: {
           day: item.day,
           channel: item.channel,
@@ -185,7 +213,8 @@ function PlanItemCard({
     if (isGenerating) return;
     setIsGenerating(true);
     try {
-      const text = await generatePostText(item);
+      const itemWithSettings = { ...item, aiSettings: localSettings };
+      const text = await generatePostText(itemWithSettings);
       setGeneratedText(text);
       toast.success('Пост сгенерирован');
     } catch (err) {
@@ -200,7 +229,8 @@ function PlanItemCard({
     if (isRegenerating) return;
     setIsRegenerating(true);
     try {
-      const newItem = await regeneratePlannerItem(item);
+      const itemWithSettings = { ...item, aiSettings: localSettings };
+      const newItem = await regeneratePlannerItem(itemWithSettings);
       setItem(newItem);
       setGeneratedText(null); // Clear old post as content changed
       toast.success('Идея пересобрана');
@@ -315,6 +345,133 @@ function PlanItemCard({
                   ))}
               </div>
           )}
+
+          {/* Local Settings Toggle Section */}
+          <div className="pt-2">
+            <button 
+              onClick={() => setShowLocalSettings(!showLocalSettings)}
+              className={cn(
+                "flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider transition-all",
+                showLocalSettings ? "text-[#10B981]" : "text-[#9CA3AF] hover:text-[#111827]"
+              )}
+            >
+              <Settings size={14} className={cn(showLocalSettings && "animate-spin-slow")} />
+              <span>Настройки генерации</span>
+              {showLocalSettings ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            
+            <AnimatePresence>
+              {showLocalSettings && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-4 p-5 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] space-y-5">
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Tone & Length Overrides */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-[#9CA3AF] uppercase tracking-widest flex items-center gap-1.5">
+                          <Smile size={10} /> Tone
+                        </label>
+                        <select 
+                          value={localSettings.tone}
+                          onChange={(e) => updateLocalSetting('tone', e.target.value)}
+                          className="w-full bg-white border border-[#E5E7EB] rounded-lg px-2 py-1.5 text-[12px] font-bold text-[#111827] outline-none focus:border-[#10B981]/50"
+                        >
+                          <option value="friendly">Дружелюбный</option>
+                          <option value="professional">Профессиональный</option>
+                          <option value="ironic">Ироничный</option>
+                          <option value="provocative">Провокационный</option>
+                          <option value="minimalist">Минималистичный</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-[#9CA3AF] uppercase tracking-widest flex items-center gap-1.5">
+                          <AlignLeft size={10} /> Length
+                        </label>
+                        <select 
+                          value={localSettings.length}
+                          onChange={(e) => updateLocalSetting('length', e.target.value)}
+                          className="w-full bg-white border border-[#E5E7EB] rounded-lg px-2 py-1.5 text-[12px] font-bold text-[#111827] outline-none focus:border-[#10B981]/50"
+                        >
+                          <option value="short">Короткий</option>
+                          <option value="balanced">Сбалансированный</option>
+                          <option value="long">Подробный</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Sliders for granular control */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                           <label className="text-[9px] font-black text-[#6B7280] uppercase tracking-wider flex items-center gap-1.5">
+                            <Zap size={10} className="text-[#EAB308]" /> Hook Intensity
+                           </label>
+                           <span className="text-[9px] font-bold text-[#10B981]">{localSettings.hookIntensity}%</span>
+                        </div>
+                        <input 
+                          type="range" min="0" max="100" 
+                          value={localSettings.hookIntensity}
+                          onChange={(e) => updateLocalSetting('hookIntensity', parseInt(e.target.value))}
+                          className="w-full h-1 bg-[#E5E7EB] rounded-lg appearance-none cursor-pointer accent-[#10B981]"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                           <label className="text-[9px] font-black text-[#6B7280] uppercase tracking-wider flex items-center gap-1.5">
+                            <Highlighter size={10} className="text-[#10B981]" /> Emoji Density
+                           </label>
+                           <span className="text-[9px] font-bold text-[#10B981]">{localSettings.emojiDensity}%</span>
+                        </div>
+                        <input 
+                          type="range" min="0" max="100" 
+                          value={localSettings.emojiDensity}
+                          onChange={(e) => updateLocalSetting('emojiDensity', parseInt(e.target.value))}
+                          className="w-full h-1 bg-[#E5E7EB] rounded-lg appearance-none cursor-pointer accent-[#10B981]"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                        <div className="space-y-2">
+                          <label className="text-[9px] font-black text-[#6B7280] uppercase tracking-wider flex items-center gap-1.5">
+                            <Feather size={10} /> Storytelling
+                          </label>
+                          <input 
+                            type="range" min="0" max="100" 
+                            value={localSettings.storytelling}
+                            onChange={(e) => updateLocalSetting('storytelling', parseInt(e.target.value))}
+                            className="w-full h-1 bg-[#E5E7EB] rounded-lg appearance-none cursor-pointer accent-[#111827]"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[9px] font-black text-[#6B7280] uppercase tracking-wider flex items-center gap-1.5">
+                            <BookOpen size={10} /> Education
+                          </label>
+                          <input 
+                            type="range" min="0" max="100" 
+                            value={localSettings.educationalDepth}
+                            onChange={(e) => updateLocalSetting('educationalDepth', parseInt(e.target.value))}
+                            className="w-full h-1 bg-[#E5E7EB] rounded-lg appearance-none cursor-pointer accent-[#111827]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-[#E5E7EB]">
+                       <div className="flex items-center gap-2 text-[9px] font-bold text-[#9CA3AF]">
+                          <Sparkles size={10} />
+                          <span>Настройки применятся только к этой карточке</span>
+                       </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
         <div className="mt-10 pt-8 border-t border-[#F3F4F6] flex items-center justify-between">
