@@ -13,6 +13,9 @@ export const PlannerItemSchema = z.object({
   channel: ContentChannelSchema,
   topic: z.string(),
   description: z.string().optional(),
+  type: z.string().optional(), // e.g. "Hook", "Educational", "Poll"
+  purpose: z.string().optional(), // Publishing purpose
+  goal: z.string().optional(), // Engagement goal
   angle: z.string().optional(), // The specific creative angle or hook
   rationale: z.string().optional(), // Why this post matters
   hashtags: z.array(z.string()).optional(),

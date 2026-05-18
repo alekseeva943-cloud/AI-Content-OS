@@ -3,18 +3,11 @@ import { openAIClient } from './openaiClient';
 import { ResponseParser } from './parsers';
 import { aiMemory } from './memory';
 import { useDebugStore } from '@/src/stores/useDebugStore';
-import { PlannerPromptBuilder } from '@/src/prompts/planner';
-import { NewsletterPromptBuilder } from '@/src/prompts/newsletter';
+import { getModulePrompts, getPlannerPrompts, getPostPrompts } from '@/lib/prompts';
 
 export class AIOrchestrator {
   private static instance: AIOrchestrator;
   
-  private builders = {
-    planner: new PlannerPromptBuilder(),
-    newsletters: new NewsletterPromptBuilder(),
-    // ... add more as they are implemented
-  };
-
   private constructor() {}
 
   static getInstance(): AIOrchestrator {
@@ -30,12 +23,7 @@ export class AIOrchestrator {
     config: AIRequestConfig = {}
   ): Promise<AIResponse<T>> {
     const debug = useDebugStore.getState();
-    const builder = (this.builders as any)[moduleId];
     
-    if (!builder) {
-      throw new Error(`No prompt builder found for module: ${moduleId}`);
-    }
-
     debug.addLog({
       module: moduleId,
       type: 'request',
@@ -47,9 +35,24 @@ export class AIOrchestrator {
       // 1. Prepare Context from AI Memory
       const context = aiMemory.getRelevantContext(JSON.stringify(data));
       
-      // 2. Build Prompts
-      const system = builder.buildSystemPrompt();
-      const user = builder.buildUserPrompt(data);
+      // 2. Build Prompts using unified library
+      let system = '';
+      let user = '';
+
+      if (moduleId === 'planner') {
+        const prompts = getPlannerPrompts(data);
+        system = prompts.system;
+        user = prompts.user;
+      } else if (moduleId === 'post') {
+        const prompts = getPostPrompts(data);
+        system = prompts.system;
+        user = prompts.user;
+      } else {
+        // Generic module routing
+        const prompts = getModulePrompts(moduleId, data);
+        system = prompts.system;
+        user = prompts.user;
+      }
 
       // 3. Execute with OpenAI
       const response = await openAIClient.generateStructured<T>(

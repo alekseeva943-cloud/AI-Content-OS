@@ -61,3 +61,25 @@ export async function generateContentPlan(req: PlannerRequest & { sharedMemory: 
     throw err;
   }
 }
+
+export async function generatePostText(item: any, context?: string, advanced?: any): Promise<string> {
+  const log = useDebugStore.getState().addLog;
+  log({ type: 'request', module: 'Post Generator', message: `Generating full post for: ${item.topic}` });
+
+  try {
+    const response = await fetch('/api/generate-post', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item, context, advanced }),
+    });
+
+    if (!response.ok) throw new Error('Failed to generate post text');
+    const { text } = await response.json();
+    
+    log({ type: 'response', module: 'Post Generator', message: 'Post generated successfully' });
+    return text;
+  } catch (err: any) {
+    log({ type: 'error', module: 'Post Generator', message: `Generation failed: ${err.message}` });
+    throw err;
+  }
+}

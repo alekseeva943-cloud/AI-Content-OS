@@ -1,107 +1,183 @@
+// File: api/planner.ts
+
 import { OpenAI } from "openai";
 import { z } from "zod";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { getPlannerPrompts } from "../lib/prompts";
 
-// Define Schema for validation (Matching project types in src/types/planner.ts)
 const PlannerItemSchema = z.object({
   id: z.string(),
   day: z.string(),
   time: z.string(),
-  channel: z.enum(['telegram', 'email', 'vk']),
+  channel: z.enum(["telegram", "email", "vk"]),
   topic: z.string(),
-  description: z.string().optional(),
-  angle: z.string().optional(),
-  rationale: z.string().optional(),
-  hashtags: z.array(z.string()).optional(),
+
+  description: z.string().optional().default(""),
+  type: z.string().optional().default("Пост"),
+  purpose: z.string().optional().default("Вовлечение"),
+  goal: z.string().optional().default("Активность"),
+  angle: z.string().optional().default(""),
+  rationale: z.string().optional().default(""),
+  hashtags: z.array(z.string()).optional().default([])
 });
 
 const PlannerResultSchema = z.object({
   title: z.string(),
-  items: z.array(PlannerItemSchema),
   summary: z.string(),
+  items: z.array(PlannerItemSchema)
 });
 
-const buildPlannerPrompt = (req: any, memory: string[], advanced: any) => {
-  return `Generate a comprehensive content plan for: ${req.topic}.
-Context: ${req.context || "No extra context"}.
-Period: ${req.period}.
-Channels: ${req.channels.join(", ")}.
-Advanced Settings: ${JSON.stringify(advanced)}.
-Shared Memory: ${memory.join("\n")}.
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
-Return ONLY a valid JSON object matching this structure:
-{
-  "title": "A compelling title for the plan",
-  "summary": "A brief overview of the strategy",
-  "items": [
-    {
-      "id": "item-1",
-      "day": "Day 1",
-      "time": "10:00",
-      "channel": "telegram",
-      "topic": "Post Title",
-      "description": "Post body or detail",
-      "angle": "Educational / Curated / Storytelling",
-      "rationale": "Why this works for the audience",
-      "hashtags": ["tag1", "tag2"]
-    }
-  ]
-}`;
-};
+function cleanJsonResponse(content: string): string {
+  return content
+    .replace(/```json/g, "")
+    .replace(/```/g, "")
+    .replace(/^Here.*?\n/gm, "")
+    .trim();
+}
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // 1. Only allow POST
+function normalizeItems(items: any[]) {
+  return items.map((item, index) => ({
+    id: item.id || `item-${index + 1}`,
+    day: item.day || "День 1",
+    time: item.time || "12:00",
+    channel: ["telegram", "vk", "email"].includes(item.channel)
+      ? item.channel
+      : "telegram",
+
+    topic: item.topic || "Без названия",
+
+    description: item.description || "",
+    type: item.type || "Пост",
+    purpose: item.purpose || "Вовлечение",
+    goal: item.goal || "Активность",
+    angle: item.angle || "",
+    rationale: item.rationale || "",
+    hashtags: Array.isArray(item.hashtags)
+      ? item.hashtags
+      : []
+  }));
+}
+
+export default async function handler(
+  req: VercelRequest,
+  res: VercelResponse
+) {
   if (req.method !== "POST") {
     res.setHeader("Allow", ["POST"]);
-    return res.status(405).json({ error: "Method Not Allowed" });
+    return res.status(405).json({
+      error: "Method Not Allowed"
+    });
   }
 
   try {
-    const { topic, context, period, channels, sharedMemory, advanced } = req.body;
+    const {
+      topic,
+      context,
+      period,
+      channels,
+      sharedMemory,
+      advanced
+    } = req.body;
 
-    if (!topic || !period || !channels) {
-      return res.status(400).json({ error: "Missing required fields" });
+    if (!topic || !period || !channels?.length) {
+      return res.status(400).json({
+        error: "Missing required fields"
+      });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: "OPENAI_API_KEY is not configured" });
-    }
-
-    const openai = new OpenAI({ apiKey });
-    const startTime = Date.now();
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { 
-          role: "system", 
-          content: "Вы — экспертный контент-стратег и креативный директор. Ваша задача — создавать высококлассные контент-планы исключительно на русском языке. Все заголовки, описания, рекомендации и призывы к действию должны быть на грамотном, современном и живом русском языке, подходящем для выбранных площадок." 
-        },
-        { 
-          role: "user", 
-          content: `${buildPlannerPrompt({ topic, context, period, channels }, sharedMemory || [], advanced)}\n\nВАЖНО: Весь ответ (заголовки, описания, задачи) должен быть строго на РУССКОМ языке. Не используйте английский.` 
-        }
-      ],
-      response_format: { type: "json_object" }
+    const { system, user } = getPlannerPrompts({
+      topic,
+      context,
+      period,
+      channels,
+      sharedMemory,
+      advanced
     });
 
-    const rawContent = response.choices[0].message.content;
-    if (!rawContent) throw new Error("Empty AI response");
+    console.log("[Planner Request]", {
+      topic,
+      channels,
+      period
+    });
 
-    const validated = PlannerResultSchema.parse(JSON.parse(rawContent));
-    const duration = Date.now() - startTime;
+    const completion =
+      await openai.chat.completions.create({
+        model: "gpt-4o",
 
-    return res.status(200).json({ 
-      ...validated, 
-      debug: { duration, model: "gpt-4o" } 
+        temperature: 0.7,
+
+        max_tokens: 4000,
+
+        response_format: {
+          type: "json_object"
+        },
+
+        messages: [
+          {
+            role: "system",
+            content: system
+          },
+          {
+            role: "user",
+            content: user
+          }
+        ]
+      });
+
+    const raw =
+      completion.choices?.[0]?.message?.content;
+
+    if (!raw) {
+      throw new Error("Empty AI response");
+    }
+
+    console.log("[Raw AI Response]", raw);
+
+    const cleaned = cleanJsonResponse(raw);
+
+    let parsed;
+
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch (jsonError) {
+      console.error("[JSON Parse Error]", jsonError);
+
+      return res.status(500).json({
+        error: "AI returned invalid JSON",
+        raw: cleaned
+      });
+    }
+
+    parsed.items = normalizeItems(parsed.items || []);
+
+    const validated =
+      PlannerResultSchema.parse(parsed);
+
+    return res.status(200).json({
+      ...validated,
+
+      debug: {
+        model: "gpt-4o",
+        itemCount: validated.items.length,
+        success: true
+      }
     });
 
   } catch (error: any) {
-    console.error("[API Error]", error);
-    return res.status(500).json({ 
-      error: error.message || "Synthesis failed",
-      details: error.errors
+    console.error("[Planner Fatal Error]", error);
+
+    return res.status(500).json({
+      error:
+        error?.message ||
+        "Planner synthesis failed",
+
+      details:
+        error?.errors ||
+        null
     });
   }
 }

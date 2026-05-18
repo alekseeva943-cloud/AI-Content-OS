@@ -4,7 +4,7 @@ import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import { OpenAI } from "openai";
 import dotenv from "dotenv";
-import { SYSTEM_PROMPT, buildPlannerPrompt } from "./src/services/ai/prompts.ts";
+import { getPlannerPrompts } from "./lib/prompts";
 import { PlannerResultSchema } from "./src/types/planner.ts";
 
 dotenv.config();
@@ -47,14 +47,16 @@ app.post("/api/planner", async (req, res) => {
     }
 
     const client = getOpenAI();
-    const prompt = buildPlannerPrompt({ topic, context, period, channels }, sharedMemory || [], advanced);
+    
+    // Using the unified prompt loader
+    const { system, user } = getPlannerPrompts({ topic, context, period, channels, sharedMemory, advanced });
 
     const startTime = Date.now();
     const response = await client.chat.completions.create({
       model: "gpt-4o",
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: prompt }
+        { role: "system", content: system },
+        { role: "user", content: user }
       ],
       response_format: { type: "json_object" }
     });
