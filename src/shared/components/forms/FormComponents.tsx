@@ -11,10 +11,10 @@ type AIFieldProps = {
 
 export function AIField({ label, children, id }: AIFieldProps) {
   return (
-    <div className="space-y-2.5 group">
+    <div className="space-y-2 group">
       <label 
         htmlFor={id}
-        className="text-[10px] font-bold font-mono text-white/40 uppercase tracking-[0.2em] group-focus-within:text-emerald-400 transition-colors ml-1"
+        className="text-[11px] font-bold font-mono text-white/50 uppercase tracking-[0.16em] group-focus-within:text-emerald-400 transition-colors ml-1"
       >
         {label}
       </label>
@@ -32,7 +32,7 @@ export function AIInput({
   return (
     <input
       className={cn(
-        "w-full bg-black/40 border border-white/[0.08] rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-emerald-500/40 font-sans transition-all placeholder:text-white/10 text-white/80 focus:text-white focus:bg-black/60 shadow-inner",
+        "w-full bg-white/[0.03] border border-white/[0.1] rounded-xl px-5 py-3.5 text-[13px] focus:outline-none focus:border-emerald-500/30 font-sans transition-all placeholder:text-white/20 text-white/90 focus:bg-white/[0.05] shadow-sm",
         className
       )}
       {...props}
@@ -47,7 +47,7 @@ export function AITextarea({
   return (
     <textarea
       className={cn(
-        "w-full bg-black/40 border border-white/[0.08] rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-emerald-500/40 font-sans resize-none transition-all placeholder:text-white/10 text-white/80 focus:text-white focus:bg-black/60 shadow-inner",
+        "w-full bg-white/[0.03] border border-white/[0.1] rounded-xl px-5 py-3.5 text-[13px] focus:outline-none focus:border-emerald-500/30 font-sans resize-none transition-all placeholder:text-white/20 text-white/90 focus:bg-white/[0.05] shadow-sm min-h-[120px]",
         className
       )}
       {...props}
@@ -64,19 +64,19 @@ export function AISelect({
     <div className="relative group">
       <select
         className={cn(
-          "w-full bg-black/40 border border-white/[0.08] rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-emerald-500/40 font-sans transition-all appearance-none text-white/60 focus:text-white focus:bg-black/60",
+          "w-full bg-white/[0.03] border border-white/[0.1] rounded-xl px-5 py-3.5 text-[13px] focus:outline-none focus:border-emerald-500/30 font-sans transition-all appearance-none text-white/70 focus:bg-white/[0.05] shadow-sm",
           className
         )}
         {...props}
       >
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value} className="bg-[#111827] text-white/80">
+          <option key={opt.value} value={opt.value} className="bg-[#1B2230] text-white/80">
             {opt.label}
           </option>
         ))}
       </select>
-      <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-white/20 group-focus-within:text-emerald-400 group-hover:text-white/40 transition-colors">
-        <svg width="14" height="14" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-white/30 group-focus-within:text-emerald-400 group-hover:text-white/50 transition-colors">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </div>

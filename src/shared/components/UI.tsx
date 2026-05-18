@@ -9,7 +9,7 @@ export function GlassCard({ children, className, ...props }: GlassCardProps) {
   return (
     <div 
       className={cn(
-        "bg-[#111827]/30 backdrop-blur-2xl border border-white/[0.08] rounded-2xl overflow-hidden self-start shadow-[0_8px_32px_rgba(0,0,0,0.3)] ring-1 ring-white/5",
+        "bg-[#161B26]/40 backdrop-blur-xl border border-white/[0.05] rounded-2xl overflow-hidden self-start shadow-[0_4px_24px_rgba(0,0,0,0.2)] ring-1 ring-white/[0.03]",
         className
       )}
       {...props}
@@ -35,16 +35,16 @@ export function Button({
   ...props 
 }: ButtonProps) {
   const variants = {
-    primary: "bg-emerald-500 hover:bg-emerald-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.15)] hover:shadow-[0_0_25px_rgba(16,185,129,0.25)]",
-    secondary: "bg-white/5 hover:bg-white/10 text-white border border-white/5 hover:border-white/10",
-    ghost: "bg-transparent hover:bg-white/5 text-white/50 hover:text-white",
-    outline: "bg-transparent border border-white/10 hover:border-emerald-500/30 text-white/80 hover:text-white",
+    primary: "bg-emerald-500 hover:bg-emerald-400 text-white shadow-sm hover:shadow-md transition-shadow",
+    secondary: "bg-white/[0.03] hover:bg-white/[0.06] text-white border border-white/[0.05] hover:border-white/[0.08]",
+    ghost: "bg-transparent hover:bg-white/[0.04] text-white/40 hover:text-white/80",
+    outline: "bg-transparent border border-white/[0.08] hover:border-emerald-500/20 text-white/70 hover:text-white hover:bg-emerald-500/[0.02]",
   };
 
   const sizes = {
-    sm: "px-4 py-2 text-[11px] font-bold uppercase tracking-wider",
-    md: "px-5 py-2.5 text-xs font-bold uppercase tracking-widest",
-    lg: "px-8 py-4 text-sm font-bold uppercase tracking-[0.14em]",
+    sm: "px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-wider",
+    md: "px-4.5 py-2.5 text-xs font-bold uppercase tracking-widest",
+    lg: "px-7 py-3.5 text-sm font-bold uppercase tracking-[0.12em]",
   };
 
   return (

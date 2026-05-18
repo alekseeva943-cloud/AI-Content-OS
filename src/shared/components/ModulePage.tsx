@@ -28,30 +28,30 @@ export function ModulePage({ config }: ModulePageProps) {
   };
 
   return (
-    <div className="grid grid-cols-12 gap-10 h-full min-h-[calc(100vh-180px)] pb-20">
+    <div className="grid grid-cols-12 gap-10 h-full min-h-[calc(100vh-160px)] pb-16">
       {/* Input Side */}
-      <div className="col-span-12 lg:col-span-5 flex flex-col gap-8">
-        <section className="flex flex-col gap-3">
-           <div className="flex items-center gap-4">
-             <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/[0.05] text-emerald-400 shadow-xl ring-1 ring-white/5">
-               <config.icon className="w-7 h-7" />
+      <div className="col-span-12 lg:col-span-5 flex flex-col gap-6">
+        <section className="flex flex-col gap-2">
+           <div className="flex items-center gap-3">
+             <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.05] text-emerald-400">
+               <config.icon size={22} />
              </div>
              <div className="flex flex-col">
-                <h1 className="text-3xl font-bold tracking-tight text-white leading-none mb-1.5">{config.title}</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-white/95 leading-none mb-1 font-display uppercase">{config.title}</h1>
                 <div className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                  <span className="text-[10px] font-mono text-white/30 uppercase tracking-widest">Модуль готов к работе</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
+                  <span className="text-[9px] font-bold font-mono text-white/20 uppercase tracking-[0.2em]">Система Готова</span>
                 </div>
              </div>
            </div>
-           <p className="text-white/40 text-[13px] leading-relaxed max-w-md ml-1.5 font-medium">
+           <p className="text-white/40 text-[13px] leading-relaxed max-w-md ml-0.5">
              {config.description}
            </p>
         </section>
 
         <div className="space-y-6 flex-1">
-          <GlassCard className="p-10 w-full bg-[#111827]/40 ring-1 ring-white/[0.03]">
-            <div className="space-y-8">
+          <GlassCard className="p-8 w-full bg-[#161B26]/30 border-white/[0.04]">
+            <div className="space-y-6">
                 {config.fields.map((field) => (
                   <AIField key={field.id} label={field.label} id={field.id}>
                     {field.type === 'text' && <AIInput placeholder={field.placeholder} />}
@@ -66,40 +66,40 @@ export function ModulePage({ config }: ModulePageProps) {
                 ))}
             </div>
 
-            <div className="mt-14 pt-10 border-t border-white/[0.03] flex items-center justify-between">
+            <div className="mt-10 pt-8 border-t border-white/[0.03] flex items-center justify-between">
               <button 
                 onClick={handleReset}
-                className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.2em] text-white/20 hover:text-white/50 transition-colors"
+                className="flex items-center gap-2 text-[10px] font-bold font-mono uppercase tracking-[0.2em] text-white/20 hover:text-white/50 transition-colors"
+                title="Очистить поля"
               >
-                <RotateCcw size={14} className="opacity-50" />
-                Сбросить
+                <RotateCcw size={12} className="opacity-50" />
+                Сброс
               </button>
               
-              <div className="flex items-center gap-4">
-                <Button variant="outline" size="md" className="gap-2.5 border-white/[0.05] bg-white/[0.02] text-xs uppercase tracking-widest font-bold">
-                  <Save size={16} className="opacity-60" />
+              <div className="flex items-center gap-3">
+                <Button variant="outline" size="md" className="gap-2 text-[10px] font-bold uppercase tracking-widest bg-white/[0.01]">
+                  <Save size={14} className="opacity-50" />
                   Черновик
                 </Button>
                 <Button 
                   onClick={handleGenerate}
                   isLoading={isGenerating}
-                  size="lg" 
-                  className="gap-3 px-8 shadow-emerald-500/10 group overflow-hidden relative"
+                  size="md" 
+                  className="gap-2.5 px-6 font-display"
                 >
-                  <Wand2 size={18} className="relative z-10 group-hover:rotate-12 transition-transform" />
-                  <span className="relative z-10 uppercase tracking-widest font-bold text-xs">{config.actionLabel}</span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-500 opacity-0 group-hover:opacity-20 transition-opacity" />
+                  <Wand2 size={16} className="group-hover:rotate-12 transition-transform" />
+                  <span className="uppercase tracking-widest font-bold text-[11px]">{config.actionLabel}</span>
                 </Button>
               </div>
             </div>
           </GlassCard>
 
           {/* Prompt Assist Tip */}
-          <div className="p-5 rounded-2xl border border-white/[0.03] bg-emerald-500/[0.02] flex gap-4 items-start translate-y-2">
-            <Sparkles className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+          <div className="p-4 rounded-xl border border-white/[0.03] bg-emerald-500/[0.01] flex gap-3 items-start">
+            <Sparkles size={14} className="text-emerald-400 mt-0.5 opacity-40 shrink-0" />
             <div className="space-y-1">
-               <p className="text-[11px] font-bold text-white/60 uppercase tracking-tight">Совет системы</p>
-               <p className="text-[11px] text-white/30 leading-relaxed font-medium">Будьте специфичны в описании «Нарратива» — чем больше контекста, тем точнее AI настроит тональность и аргументацию.</p>
+               <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Ассистент</p>
+               <p className="text-[11px] text-white/30 leading-relaxed font-medium">Контекст имеет значение. Детальное описание задачи значительно повышает качество первого черновика.</p>
             </div>
           </div>
         </div>
@@ -107,53 +107,55 @@ export function ModulePage({ config }: ModulePageProps) {
 
       {/* Result Side */}
       <div className="col-span-12 lg:col-span-7 flex flex-col gap-6">
-         <div className="flex items-center justify-between px-3 mt-4">
-            <div className="flex items-center gap-3">
-               <span className="text-[10px] font-mono uppercase tracking-[0.4em] text-white/20">Результаты работы</span>
-               <div className="h-px w-20 bg-white/[0.05]" />
+         <div className="flex items-center justify-between px-1 mt-2">
+            <div className="flex items-center gap-2.5">
+               <span className="text-[10px] font-bold font-mono uppercase tracking-[0.3em] text-white/20 leading-none">Результаты</span>
+               <div className="h-px w-10 bg-white/[0.04]" />
             </div>
-            <div className="flex items-center gap-6 text-white/20 text-[10px] font-mono uppercase tracking-widest">
-               <span className="hover:text-emerald-400 transition-colors cursor-pointer">Фильтр: ВСЕ</span>
-               <span className="hover:text-emerald-400 transition-colors cursor-pointer">Сортировка: НОВЫЕ</span>
+            <div className="flex items-center gap-5 text-white/20 text-[10px] font-mono uppercase tracking-widest font-bold">
+               <span className="hover:text-emerald-400 transition-colors cursor-pointer">Все типы</span>
+               <span className="hover:text-emerald-400 transition-colors cursor-pointer">Сначала новые</span>
             </div>
          </div>
 
-         <div className="flex-1 flex flex-col gap-6">
+         <div className="flex-1 flex flex-col">
              <AnimatePresence mode="wait">
                {isGenerating ? (
                  <motion.div 
-                   key="loading"
-                   initial={{ opacity: 0, scale: 0.98 }}
-                   animate={{ opacity: 1, scale: 1 }}
-                   exit={{ opacity: 0, scale: 1.02 }}
-                   className="h-full"
-                 >
-                   <GlassCard className="h-full flex items-center justify-center bg-black/20 border-dashed border-white/[0.05]">
-                      <GenerationLoader status="Интеллектуальный синтез..." />
-                   </GlassCard>
-                 </motion.div>
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="h-full"
+                  >
+                    <GlassCard className="h-full flex items-center justify-center bg-[#161B26]/10 border-dashed border-white/[0.05]">
+                       <GenerationLoader status="Генерация..." />
+                    </GlassCard>
+                  </motion.div>
                ) : hasResult ? (
-                  /* This is a placeholder for actual results rendering */
-                  <div className="space-y-6">
-                     {/* We could use ResultCard here once we have real data */}
-                     <div className="flex flex-col items-center justify-center p-20 text-center bg-black/20 border border-dashed border-white/[0.05] rounded-3xl">
-                        <p className="text-white/40 font-mono text-xs uppercase tracking-widest">Данные сгенерированы. Ожидание интеграции OpenAI.</p>
+                  <div className="space-y-6 h-full">
+                     <div className="flex flex-col items-center justify-center h-full p-20 text-center bg-[#161B26]/10 border border-dashed border-white/[0.05] rounded-3xl">
+                        <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 mb-6 border border-emerald-500/20">
+                            <Sparkles size={24} />
+                        </div>
+                        <h3 className="text-white/80 font-bold mb-2">Контент успешно синтезирован</h3>
+                        <p className="text-white/30 text-xs font-medium max-w-xs">Ожидание подключения к OpenAI API для получения реальных данных.</p>
                      </div>
                   </div>
                ) : (
                  <motion.div 
-                   key="empty"
-                   initial={{ opacity: 0 }}
-                   animate={{ opacity: 1 }}
-                   className="h-full"
-                 >
-                   <GlassCard className="h-full flex items-center justify-center bg-black/20 border-dashed border-white/[0.05] hover:border-emerald-500/10 transition-colors duration-1000">
-                      <EmptyResultState 
-                        title="Готов к инновациям"
-                        description={`Настройте параметры слева и нажмите «${config.actionLabel}», чтобы начать работу над вашим контентом.`}
-                      />
-                   </GlassCard>
-                 </motion.div>
+                    key="empty"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="h-full"
+                  >
+                    <GlassCard className="h-full flex items-center justify-center bg-[#161B26]/10 border-dashed border-white/[0.05] hover:border-emerald-500/10 transition-all duration-500">
+                       <EmptyResultState 
+                        title="Система Ожидания"
+                        description={`Укажите детали слева и нажмите «${config.actionLabel}» для запуска рабочего процесса.`}
+                       />
+                    </GlassCard>
+                  </motion.div>
                )}
              </AnimatePresence>
          </div>
