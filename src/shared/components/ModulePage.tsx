@@ -157,9 +157,9 @@ export function ModulePage({ config }: ModulePageProps) {
   };
 
   return (
-    <div className="flex flex-col gap-10 pb-24 mx-auto w-full max-w-[1600px]">
+    <div className="flex flex-col h-screen max-h-screen overflow-hidden pb-10 mx-auto w-full max-w-[1700px] px-8">
       {/* Workspace Header */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-[#E5E7EB]">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-8 border-b border-[#E5E7EB] shrink-0">
         <div className="space-y-4">
           <button 
             onClick={() => navigate('/')}
@@ -188,7 +188,7 @@ export function ModulePage({ config }: ModulePageProps) {
         </div>
       </header>
 
-      <div className="flex gap-10 items-start relative min-h-[800px]">
+      <div className="flex gap-10 items-start relative flex-1 overflow-hidden pt-10">
         {/* Creation Controls (Collapsible) */}
         <motion.div 
             animate={{ 
@@ -198,7 +198,7 @@ export function ModulePage({ config }: ModulePageProps) {
                 pointerEvents: isCollapsed ? 'none' : 'auto'
             }}
             transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-            className="shrink-0 space-y-8 sticky top-10 overflow-hidden"
+            className="shrink-0 h-full overflow-y-auto pr-4 no-scrollbar custom-scroll space-y-8"
         >
            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
@@ -333,7 +333,7 @@ export function ModulePage({ config }: ModulePageProps) {
         </div>
 
         {/* Results Workspace */}
-        <div className="flex-1 flex flex-col gap-8 min-w-0">
+        <div className="flex-1 h-full overflow-y-auto pr-4 no-scrollbar custom-scroll flex flex-col gap-8 min-w-0">
            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                  <span className={cn(

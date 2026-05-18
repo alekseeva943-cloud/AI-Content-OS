@@ -74,8 +74,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
-        { role: "system", content: "You are an expert content strategist." },
-        { role: "user", content: buildPlannerPrompt({ topic, context, period, channels }, sharedMemory || [], advanced) }
+        { 
+          role: "system", 
+          content: "Вы — экспертный контент-стратег и креативный директор. Ваша задача — создавать высококлассные контент-планы исключительно на русском языке. Все заголовки, описания, рекомендации и призывы к действию должны быть на грамотном, современном и живом русском языке, подходящем для выбранных площадок." 
+        },
+        { 
+          role: "user", 
+          content: `${buildPlannerPrompt({ topic, context, period, channels }, sharedMemory || [], advanced)}\n\nВАЖНО: Весь ответ (заголовки, описания, задачи) должен быть строго на РУССКОМ языке. Не используйте английский.` 
+        }
       ],
       response_format: { type: "json_object" }
     });

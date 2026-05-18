@@ -19,7 +19,7 @@ interface DebugState {
 
 export const useDebugStore = create<DebugState>((set) => ({
   logs: [],
-  isOpen: true,
+  isOpen: false,
   addLog: (entry) => set((state) => ({
     logs: [
       {
