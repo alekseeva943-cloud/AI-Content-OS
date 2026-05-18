@@ -27,14 +27,31 @@ interface PlannerResultProps {
 }
 
 export function PlannerResultDisplay({ result }: PlannerResultProps) {
-  // Group items by day
-  const itemsByDay = result.items.reduce((acc, item) => {
+  // Debug log to trace response shape
+  console.log('[PlannerResultDisplay] Rendering with result:', result);
+
+  // Group items by day with defensive check
+  const items = result?.items ?? [];
+  
+  const itemsByDay = items.reduce((acc, item) => {
+    if (!item || !item.day) return acc;
     if (!acc[item.day]) acc[item.day] = [];
     acc[item.day].push(item);
     return acc;
   }, {} as Record<string, PlannerItem[]>);
 
   const days = Object.keys(itemsByDay);
+
+  if (items.length === 0) {
+    return (
+      <div className="p-12 text-center bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
+        <p className="text-gray-500 font-medium">No items found in the generated plan. Please try again.</p>
+        <pre className="mt-4 p-4 bg-white rounded-xl text-left text-xs text-gray-400 overflow-auto max-w-full">
+          {JSON.stringify(result, null, 2)}
+        </pre>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -46,8 +63,8 @@ export function PlannerResultDisplay({ result }: PlannerResultProps) {
           <span className="text-[12px] font-bold text-[#10B981] uppercase tracking-[0.2em]">Creative Outcome</span>
         </div>
         <div className="space-y-4">
-          <h2 className="text-5xl font-bold text-[#111827] font-display tracking-tight leading-[1.1]">{result.title}</h2>
-          <p className="text-[#6B7280] text-[18px] leading-relaxed max-w-3xl font-medium">{result.summary}</p>
+          <h2 className="text-5xl font-bold text-[#111827] font-display tracking-tight leading-[1.1]">{result?.title ?? 'Untitled Plan'}</h2>
+          <p className="text-[#6B7280] text-[18px] leading-relaxed max-w-3xl font-medium">{result?.summary ?? 'No summary provided.'}</p>
         </div>
       </header>
 

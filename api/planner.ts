@@ -2,26 +2,27 @@ import { OpenAI } from "openai";
 import { z } from "zod";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-// Define Schema for validation (Matching project types)
+// Define Schema for validation (Matching project types in src/types/planner.ts)
+const PlannerItemSchema = z.object({
+  id: z.string(),
+  day: z.string(),
+  time: z.string(),
+  channel: z.enum(['telegram', 'email', 'vk']),
+  topic: z.string(),
+  description: z.string().optional(),
+  angle: z.string().optional(),
+  rationale: z.string().optional(),
+  hashtags: z.array(z.string()).optional(),
+});
+
 const PlannerResultSchema = z.object({
   title: z.string(),
+  items: z.array(PlannerItemSchema),
   summary: z.string(),
-  days: z.array(z.object({
-    day: z.number(),
-    focus: z.string(),
-    tasks: z.array(z.object({
-      id: z.string(),
-      title: z.string(),
-      description: z.string(),
-      channel: z.string(),
-      platform: z.string().optional()
-    }))
-  })),
-  recommendations: z.array(z.string())
 });
 
 const buildPlannerPrompt = (req: any, memory: string[], advanced: any) => {
-  return `Generate a content plan for: ${req.topic}.
+  return `Generate a comprehensive content plan for: ${req.topic}.
 Context: ${req.context || "No extra context"}.
 Period: ${req.period}.
 Channels: ${req.channels.join(", ")}.
@@ -30,10 +31,21 @@ Shared Memory: ${memory.join("\n")}.
 
 Return ONLY a valid JSON object matching this structure:
 {
-  "title": "...",
-  "summary": "...",
-  "days": [{"day": 1, "focus": "...", "tasks": [{"id": "unique-id", "title": "...", "description": "...", "channel": "...", "platform": "..."}]}],
-  "recommendations": ["..."]
+  "title": "A compelling title for the plan",
+  "summary": "A brief overview of the strategy",
+  "items": [
+    {
+      "id": "item-1",
+      "day": "Day 1",
+      "time": "10:00",
+      "channel": "telegram",
+      "topic": "Post Title",
+      "description": "Post body or detail",
+      "angle": "Educational / Curated / Storytelling",
+      "rationale": "Why this works for the audience",
+      "hashtags": ["tag1", "tag2"]
+    }
+  ]
 }`;
 };
 

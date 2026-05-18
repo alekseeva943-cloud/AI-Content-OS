@@ -42,6 +42,9 @@ export async function generateContentPlan(req: PlannerRequest & { sharedMemory: 
 
     const result = await response.json();
     
+    // Debug log the raw response before passing it to the UI
+    console.log('[AI Client] Global received raw data:', result);
+
     log({ 
       type: 'response', 
       module: 'Content Planner', 
