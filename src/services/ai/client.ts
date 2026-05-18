@@ -83,3 +83,25 @@ export async function generatePostText(item: any, context?: string, advanced?: a
     throw err;
   }
 }
+
+export async function regeneratePlannerItem(item: any): Promise<any> {
+  const log = useDebugStore.getState().addLog;
+  log({ type: 'request', module: 'Planner', message: `Regenerating variation for: ${item.topic}` });
+
+  try {
+    const response = await fetch('/api/regenerate-item', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item }),
+    });
+
+    if (!response.ok) throw new Error('Failed to regenerate item');
+    const newItem = await response.json();
+    
+    log({ type: 'response', module: 'Planner', message: 'Item regenerated successfully' });
+    return newItem;
+  } catch (err: any) {
+    log({ type: 'error', module: 'Planner', message: `Regeneration failed: ${err.message}` });
+    throw err;
+  }
+}

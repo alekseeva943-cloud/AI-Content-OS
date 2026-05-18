@@ -10,7 +10,6 @@ import {
   Copy, 
   Check,
   ChevronRight,
-  PlusCircle,
   Star,
   RefreshCcw,
   ArrowRight,
@@ -19,8 +18,7 @@ import {
 import { PlannerItem, PlannerResult } from '@/src/types/planner';
 import { GlassCard, Button } from '@/src/shared/components/UI';
 import { cn } from '@/src/lib/utils';
-import { useMemoryStore } from '@/src/stores/memoryStore';
-import { generatePostText } from '@/src/services/ai/client';
+import { generatePostText, regeneratePlannerItem } from '@/src/services/ai/client';
 import { useFavoritesStore } from '@/src/stores/favoritesStore';
 import { toast } from 'sonner';
 
@@ -135,7 +133,7 @@ export function PlannerResultDisplay({ result, sourceInfo }: PlannerResultProps)
 }
 
 function PlanItemCard({ 
-  item, 
+  item: initialItem, 
   index, 
   sourceInfo 
 }: { 
@@ -144,10 +142,11 @@ function PlanItemCard({
   key?: string; 
   sourceInfo?: { id?: string; module?: string; title?: string } | null;
 }) {
+  const [item, setItem] = useState(initialItem);
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [generatedText, setGeneratedText] = useState<string | null>(null);
-  const addToSharedMemory = useMemoryStore(state => state.addToSharedMemory);
   const { addFavorite, removeFavorite, isFavorite } = useFavoritesStore();
   const favoriteId = item.id || `${item.day}-${index}`;
   const activeFavorite = isFavorite(favoriteId);
@@ -188,15 +187,29 @@ function PlanItemCard({
     try {
       const text = await generatePostText(item);
       setGeneratedText(text);
+      toast.success('Пост сгенерирован');
     } catch (err) {
       console.error(err);
+      toast.error('Ошибка генерации поста');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleAddToMemory = () => {
-    addToSharedMemory(`Идея: ${item.topic}. Контекст: ${item.description || ''}`);
+  const handleRegenerate = async () => {
+    if (isRegenerating) return;
+    setIsRegenerating(true);
+    try {
+      const newItem = await regeneratePlannerItem(item);
+      setItem(newItem);
+      setGeneratedText(null); // Clear old post as content changed
+      toast.success('Идея пересобрана');
+    } catch (err) {
+      console.error(err);
+      toast.error('Ошибка регенерации идеи');
+    } finally {
+      setIsRegenerating(false);
+    }
   };
 
   const channelIcons = {
@@ -241,21 +254,6 @@ function PlanItemCard({
                       <span className="text-[13px] font-bold leading-none">{item.time}</span>
                    </div>
                 </div>
-            </div>
-            
-            <div className="flex items-center gap-2 self-end sm:self-start">
-               <ActionButton 
-                  isActive={activeFavorite}
-                  onClick={toggleFavorite}
-                  icon={Star}
-                  activeColor="#EAB308"
-                  activeBg="#FEF9C3"
-               />
-               <ActionButton 
-                  onClick={() => handleCopy()}
-                  icon={copied ? Check : Copy}
-                  activeColor={copied ? "#10B981" : undefined}
-               />
             </div>
         </div>
 
@@ -320,41 +318,42 @@ function PlanItemCard({
         </div>
 
         <div className="mt-10 pt-8 border-t border-[#F3F4F6] flex items-center justify-between">
-           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <ActionButton 
+                isActive={activeFavorite}
+                onClick={toggleFavorite}
+                icon={Star}
+                activeColor="#EAB308"
+                title="В избранное"
+              />
               <button 
-                onClick={handleAddToMemory}
-                className="flex items-center gap-2 text-[12px] font-bold text-[#9CA3AF] hover:text-[#10B981] transition-colors"
-                title="Сохранить в память для следующих генераций"
+                onClick={handleRegenerate}
+                disabled={isRegenerating}
+                className={cn(
+                  "p-3 rounded-2xl bg-white border border-[#E5E7EB] text-[#9CA3AF] hover:text-[#111827] hover:border-[#D1D5DB] transition-all shadow-sm active:scale-95",
+                  isRegenerating && "animate-pulse"
+                )}
+                title="Пересобрать"
               >
-                <PlusCircle size={14} />
-                <span>В память</span>
+                <RefreshCcw size={18} className={cn(isRegenerating && "animate-spin")} />
               </button>
-           </div>
-           
-           <div className="flex items-center gap-3">
-              {generatedText ? (
-                <button 
-                  onClick={() => setGeneratedText(null)}
-                  className="p-2.5 rounded-xl bg-white border border-[#E5E7EB] text-[#9CA3AF] hover:text-[#10B981] hover:border-[#10B981]/30 transition-all shadow-sm"
-                  title="Вернуться к тезисам"
-                >
-                  <RefreshCcw size={16} />
-                </button>
-              ) : (
-                <button 
-                  className="p-2.5 rounded-xl bg-white border border-[#E5E7EB] text-[#9CA3AF] hover:text-[#10B981] hover:border-[#10B981]/30 transition-all shadow-sm" 
-                  title="Пересобрать идею"
-                >
-                  <RefreshCcw size={16} />
-                </button>
-              )}
-              
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => handleCopy(generatedText || undefined)}
+                className="p-3 rounded-2xl bg-white border border-[#E5E7EB] text-[#9CA3AF] hover:text-[#111827] hover:border-[#D1D5DB] transition-all shadow-sm active:scale-95"
+                title="Скопировать"
+              >
+                {copied ? <Check size={18} className="text-[#10B981]" /> : <Copy size={18} />}
+              </button>
+
               <button 
                 onClick={handleGeneratePost}
                 disabled={isGenerating}
                 className={cn(
-                  "flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-[12px] font-bold transition-all shadow-md",
-                  isGenerating ? "bg-gray-400 cursor-not-allowed" : "bg-[#111827] hover:bg-[#10B981]"
+                  "flex items-center gap-2.5 px-6 py-3 rounded-2xl text-white text-[13px] font-bold transition-all shadow-lg active:scale-95",
+                  isGenerating ? "bg-gray-400 cursor-not-allowed" : "bg-[#111827] hover:bg-[#10B981] shadow-emerald-500/10"
                 )}
               >
                 {isGenerating ? (
@@ -364,7 +363,7 @@ function PlanItemCard({
                   </>
                 ) : (
                   <>
-                    <span>{generatedText ? 'Обновить текст' : 'Создать пост'}</span>
+                    <span>{generatedText ? 'Обновить' : 'Создать пост'}</span>
                     <Sparkles size={14} />
                   </>
                 )}
@@ -381,19 +380,20 @@ function ActionButton({
   onClick, 
   isActive = false, 
   activeColor = "#10B981", 
-  activeBg = "#10B9811A" 
+  title
 }: { 
   icon: any, 
   onClick: () => void, 
   isActive?: boolean,
   activeColor?: string,
-  activeBg?: string
+  title?: string
 }) {
   return (
     <button 
       onClick={onClick}
+      title={title}
       className={cn(
-        "p-3 rounded-2xl border transition-all duration-300 shadow-sm",
+        "p-3 rounded-2xl border transition-all duration-300 shadow-sm active:scale-95",
         isActive 
           ? "border-transparent text-white" 
           : "bg-white border-[#E5E7EB] text-[#9CA3AF] hover:text-[#111827] hover:border-[#D1D5DB]"

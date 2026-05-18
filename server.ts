@@ -4,8 +4,8 @@ import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import { OpenAI } from "openai";
 import dotenv from "dotenv";
-import { getPlannerPrompts } from "./lib/prompts";
-import { PlannerResultSchema } from "./src/types/planner.ts";
+import { getPlannerPrompts, getPostPrompts } from "./lib/prompts";
+import { PlannerResultSchema, PlannerItemSchema } from "./src/types/planner.ts";
 
 dotenv.config();
 
@@ -75,6 +75,61 @@ app.post("/api/planner", async (req, res) => {
       error: error.message || "Synthesis failed",
       details: error.errors
     });
+  }
+});
+
+app.post("/api/generate-post", async (req, res) => {
+  try {
+    const { item, context, advanced } = req.body;
+    const client = getOpenAI();
+    const { system, user } = getPostPrompts({ item, context, advanced });
+
+    const response = await client.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user }
+      ],
+      temperature: 0.85
+    });
+
+    res.json({ text: response.choices[0].message.content });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/regenerate-item", async (req, res) => {
+  try {
+    const { item } = req.body;
+    const client = getOpenAI();
+    
+    const response = await client.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { 
+          role: "system", 
+          content: `You are an AI Content Strategist. Your task is to REGENERATE a specific content idea (PlannerItem).
+          KEEP the following EXACTLY: channel, topic, goal, type, time, day.
+          CHANGE the following to provide a FRESH perspective: angle, description, rationale, hook, emotional framing.
+          
+          The result must be a JSON object matching the PlannerItem schema.
+          Current item: ${JSON.stringify(item)}
+          
+          Provide a creative, alternative interpretation that follows the same strategy but uses a different hook or perspective.
+          Result must be ONLY the JSON object.` 
+        }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    const content = response.choices[0].message.content;
+    if (!content) throw new Error("Empty response");
+    
+    const newItem = PlannerItemSchema.parse(JSON.parse(content));
+    res.json(newItem);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 
