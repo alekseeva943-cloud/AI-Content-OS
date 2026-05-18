@@ -14,8 +14,15 @@ export async function generateContentPlan(req: PlannerRequest & { sharedMemory: 
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to generate plan');
+      let errorMessage = 'Failed to generate plan';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        // If response is not JSON, use the status text
+        errorMessage = `Server Error (${response.status}): ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();

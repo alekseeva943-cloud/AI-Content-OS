@@ -19,7 +19,8 @@ function getOpenAI() {
   if (!openaiClient) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      throw new Error("OPENAI_API_KEY is missing");
+      console.error("[Config Error] OPENAI_API_KEY is missing in environment variables");
+      throw new Error("OPENAI_API_KEY is missing. Please provide it in the project settings.");
     }
     openaiClient = new OpenAI({ apiKey });
   }
