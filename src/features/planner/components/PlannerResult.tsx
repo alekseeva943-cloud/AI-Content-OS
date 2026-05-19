@@ -79,14 +79,20 @@ export function PlannerResultDisplay({ result, sourceInfo }: PlannerResultProps)
     return 0; // Keep order from AI if not dates
   });
 
-  const formatDate = (dateStr: string) => {
-    if (isNaN(Date.parse(dateStr))) return dateStr;
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('ru-RU', { 
-      weekday: 'short', 
-      day: 'numeric', 
-      month: 'long' 
-    }).replace(/^\w/, (c) => c.toUpperCase());
+  const formatDate = (dateValue: string) => {
+    // If it's a valid ISO date string
+    if (!isNaN(Date.parse(dateValue))) {
+      const date = new Date(dateValue);
+      return date.toLocaleDateString('ru-RU', { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'long',
+        year: 'numeric'
+      }).replace(/^\w/, (c) => c.toUpperCase());
+    }
+    
+    // Fallback if not a direct date (maybe it's already a day name or just "Day 1")
+    return dateValue;
   };
 
   if (items.length === 0) {
