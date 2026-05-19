@@ -39,8 +39,8 @@ function getOpenAI() {
 // 3. API Routes
 app.post("/api/planner", async (req, res) => {
   try {
-    const { topic, context, period, channels, sharedMemory, advanced } = req.body;
-    console.log(`[API] Processing planner request for topic: ${topic}`);
+    const { topic, context, period, channels, sharedMemory, advanced, startDate } = req.body;
+    console.log(`[API] Processing planner request for topic: ${topic}, startDate: ${startDate}`);
 
     if (!topic || !period || !channels) {
       return res.status(400).json({ error: "Missing required fields (topic, period, or channels)" });
@@ -49,7 +49,7 @@ app.post("/api/planner", async (req, res) => {
     const client = getOpenAI();
     
     // Using the unified prompt loader
-    const { system, user } = getPlannerPrompts({ topic, context, period, channels, sharedMemory, advanced });
+    const { system, user } = getPlannerPrompts({ topic, context, period, channels, sharedMemory, advanced, startDate });
 
     const startTime = Date.now();
     const response = await client.chat.completions.create({
