@@ -69,18 +69,18 @@ export function PlannerResultDisplay({ result, sourceInfo }: PlannerResultProps)
   
   const itemsByDay = items.reduce((acc, item) => {
     if (!item) return acc;
-    const groupKey = item.publishDate || item.day || 'Unknown';
+    // We strictly use publishDate for grouping now
+    const groupKey = item.publishDate || 'Unknown';
     if (!acc[groupKey]) acc[groupKey] = [];
     acc[groupKey].push(item);
     return acc;
   }, {} as Record<string, PlannerItem[]>);
 
   const days = Object.keys(itemsByDay).sort((a, b) => {
-    // If both are dates, sort chronologically
-    if (!isNaN(Date.parse(a)) && !isNaN(Date.parse(b))) {
-      return new Date(a).getTime() - new Date(b).getTime();
-    }
-    return 0; // Keep order from AI if not dates
+    // Sort by actual date
+    const timeA = !isNaN(Date.parse(a)) ? new Date(a).getTime() : 0;
+    const timeB = !isNaN(Date.parse(b)) ? new Date(b).getTime() : 0;
+    return timeA - timeB;
   });
 
   const formatDateFull = (dateValue: string) => {
@@ -92,7 +92,7 @@ export function PlannerResultDisplay({ result, sourceInfo }: PlannerResultProps)
         month: 'long',
       }).replace(/^\w/, (c) => c.toUpperCase());
     }
-    return dateValue;
+    return dateValue === 'Unknown' ? 'Дата не определена' : dateValue;
   };
 
   const formatDateShort = (dateValue: string) => {

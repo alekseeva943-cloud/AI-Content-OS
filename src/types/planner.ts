@@ -22,6 +22,7 @@ export type PostSettings = z.infer<typeof PostSettingsSchema>;
 
 export const PlannerItemSchema = z.object({
   id: z.string(),
+  dayIndex: z.number(), // 0, 1, 2...
   day: z.string(), // e.g. "Понедельник"
   publishDate: z.string(), // ISO date e.g. "2026-05-20"
   time: z.string(), // e.g. "10:00"

@@ -65,6 +65,19 @@ app.post("/api/planner", async (req, res) => {
     if (!rawContent) throw new Error("OpenAI returned an empty response");
 
     const validated = PlannerResultSchema.parse(JSON.parse(rawContent));
+    
+    // Deterministic date calculation based on startDate and dayIndex
+    const startObj = startDate ? new Date(startDate) : new Date();
+    
+    validated.items = validated.items.map(item => {
+      const itemDate = new Date(startObj);
+      itemDate.setDate(startObj.getDate() + (item.dayIndex || 0));
+      return {
+        ...item,
+        publishDate: itemDate.toISOString().split('T')[0]
+      };
+    });
+
     const duration = Date.now() - startTime;
 
     console.log(`[API] Success in ${duration}ms`);
@@ -110,7 +123,7 @@ app.post("/api/regenerate-item", async (req, res) => {
         { 
           role: "system", 
           content: `You are an AI Content Strategist. Your task is to REGENERATE a specific content idea (PlannerItem).
-          KEEP the following EXACTLY: id, channel, topic, goal, type, time, day, publishDate.
+          KEEP the following EXACTLY: id, channel, topic, goal, type, time, day, dayIndex, publishDate.
           CHANGE the following to provide a FRESH perspective: angle, description, rationale, hook, emotional framing.
           
           The result must be a JSON object matching the PlannerItem schema.
