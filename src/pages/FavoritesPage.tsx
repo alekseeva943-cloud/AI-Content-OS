@@ -232,6 +232,7 @@ export function FavoritesPage() {
                 </div>
             </div>
 
+{/* 
             <div className="mt-auto pt-6 border-t border-[#F3F4F6]">
                 <div className="p-5 rounded-[2rem] bg-gradient-to-br from-[#111827] to-[#1F2937] text-white overflow-hidden relative group">
                     <Sparkles className="absolute -top-4 -right-4 w-20 h-20 text-white/5 group-hover:scale-110 transition-transform duration-700" />
@@ -242,6 +243,7 @@ export function FavoritesPage() {
                     </button>
                 </div>
             </div>
+            */}
         </aside>
 
         <section className="flex-1 h-full overflow-y-auto pr-4 no-scrollbar custom-scroll space-y-10 scroll-smooth">
@@ -294,15 +296,15 @@ export function FavoritesPage() {
 
                             <AnimatePresence>
                                 {!isCollapsed && (
-                                    <motion.div 
-                                        initial={{ opacity: 0, height: 0 }}
-                                        animate={{ opacity: 1, height: 'auto' }}
-                                        exit={{ opacity: 0, height: 0 }}
-                                        className={cn(
-                                            "grid gap-6 transition-all duration-500",
-                                            isCompact ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                                        )}
-                                    >
+                                        <motion.div 
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            className={cn(
+                                                "grid gap-10 transition-all duration-500",
+                                                isCompact ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"
+                                            )}
+                                        >
                                         {moduleItems.map(item => (
                                             <FavoriteCard 
                                                 key={item.id} 
@@ -422,6 +424,8 @@ function FavoriteCard({
     );
   }
 
+  const Icon = item.metadata?.platform && moduleIcons[item.metadata.platform] ? moduleIcons[item.metadata.platform] : (item.moduleId && moduleIcons[item.moduleId] ? moduleIcons[item.moduleId] : FileText);
+
   return (
     <motion.div
         layout
@@ -430,40 +434,52 @@ function FavoriteCard({
         exit={{ opacity: 0, scale: 0.95 }}
         className="group/card h-full"
     >
-        <GlassCard className="p-6 bg-white border-[#E5E7EB] hover:border-[#10B981]/30 transition-all duration-500 shadow-sm hover:shadow-2xl rounded-3xl flex flex-col h-full relative overflow-hidden group-hover/card:-translate-y-1">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#10B981]/5 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-700" />
+        <GlassCard className="p-10 bg-white border-[#E5E7EB] hover:border-[#10B981]/50 transition-all duration-700 shadow-sm hover:shadow-2xl flex flex-col h-full rounded-[2.5rem] relative overflow-hidden group-hover/card:-translate-y-1">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#10B981]/5 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 -z-10" />
             
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-[#F9FAFB] border border-[#E5E7EB] flex items-center justify-center text-[#9CA3AF] group-hover/card:text-[#10B981] group-hover/card:border-[#10B981]/30 transition-all duration-500">
-                        <Clock size={14} />
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-10">
+                <div className="flex items-center gap-5 flex-wrap">
+                    <div className="w-14 h-14 shrink-0 rounded-[1.25rem] bg-[#F9FAFB] border border-[#E5E7EB] text-[#9CA3AF] flex items-center justify-center transition-all group-hover/card:text-[#10B981] group-hover/card:bg-[#10B981]/10 group-hover/card:border-[#10B981]/30 group-hover/card:scale-110 duration-500 shadow-sm">
+                        <Icon size={26} strokeWidth={2} />
                     </div>
-                    <span className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-[0.1em]">{date}</span>
+                    <div className="flex flex-col gap-2 min-w-0">
+                       <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[12px] font-black text-[#111827] uppercase tracking-[0.15em] leading-none shrink-0">{item.moduleId}</span>
+                            {item.type && (
+                                 <span className="text-[10px] font-black text-white bg-[#111827] px-2.5 py-1 rounded-md uppercase tracking-widest whitespace-nowrap">
+                                    {item.type}
+                                 </span>
+                            )}
+                       </div>
+                       <div className="flex items-center gap-2.5 text-[#6B7280]">
+                          <Clock size={14} strokeWidth={2.5} className="text-[#9CA3AF]" />
+                          <span className="text-[13px] font-bold leading-none">{date}</span>
+                       </div>
+                    </div>
                 </div>
-                {item.type && (
-                    <span className="text-[10px] font-black text-[#10B981] bg-[#10B981]/10 px-2.5 py-1 rounded-lg uppercase tracking-widest border border-[#10B981]/20">
-                        {item.type}
-                    </span>
-                )}
             </div>
 
-            <h4 className="text-xl font-bold text-[#111827] mb-4 leading-tight font-display line-clamp-2 group-hover/card:text-[#10B981] transition-colors duration-500">
-                {item.title}
-            </h4>
+            <div className="space-y-6 flex-1 flex flex-col">
+              <h4 className="text-2xl font-bold text-[#111827] leading-[1.2] group-hover/card:text-[#10B981] transition-colors font-display tracking-tight flex-1">
+                  {item.title}
+              </h4>
 
-            {item.metadata?.sourceId && (
-                <div className="flex items-center gap-2 mb-4 px-3 py-1.5 rounded-xl bg-muted/30 border border-muted-foreground/10 self-start">
-                    <History size={12} className="text-[#10B981]" />
-                    <span className="text-[10px] font-bold text-[#6B7280]">Основано на {moduleLabels[item.metadata.sourceModule || ''] || 'модуле'}</span>
-                </div>
-            )}
+              {item.metadata?.sourceId && (
+                  <div className="p-5 rounded-[1.5rem] bg-[#F9FAFB] border border-[#E5E7EB] border-l-4 border-l-[#10B981] shadow-sm">
+                      <div className="flex items-center gap-2 mb-2">
+                        <History size={14} className="text-[#10B981]" />
+                        <span className="text-[10px] font-black text-[#10B981] uppercase tracking-widest">Основано на {moduleLabels[item.metadata.sourceModule || ''] || 'другом модуле'}</span>
+                      </div>
+                  </div>
+              )}
 
-            <div className="text-[14px] text-[#6B7280] font-medium leading-relaxed flex-1 line-clamp-4 mb-8">
-                {typeof item.content === 'string' ? item.content : (item.content.summary || item.content.description || item.content.topic || 'Нет описания')}
+              <div className="text-[16px] text-[#6B7280] leading-relaxed font-medium flex-1 line-clamp-4">
+                  {typeof item.content === 'string' ? item.content : (item.content.summary || item.content.description || item.content.topic || 'Нет описания')}
+              </div>
             </div>
 
-            <div className="space-y-4">
-                <div className="flex flex-col gap-2">
+            <div className="mt-10 pt-8 border-t border-[#F3F4F6]">
+                <div className="flex flex-col gap-4">
                     <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-widest ml-1">Создать из этого:</span>
                     <div className="flex flex-wrap gap-2">
                         {repurposeActions.map(modId => {
@@ -483,10 +499,10 @@ function FavoriteCard({
                     </div>
                 </div>
 
-                <div className="pt-4 border-t border-[#F3F4F6] flex items-center justify-between">
+                <div className="pt-6 mt-6 border-t border-[#F3F4F6] flex items-center justify-between">
                     <button 
                         onClick={onDelete}
-                        className="p-2.5 rounded-xl text-[#9CA3AF] hover:text-red-500 hover:bg-red-50 transition-all"
+                        className="p-3 rounded-2xl bg-white border border-[#E5E7EB] text-[#9CA3AF] hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all shadow-sm active:scale-95"
                         title="Удалить"
                     >
                         <Trash2 size={18} />
@@ -494,7 +510,7 @@ function FavoriteCard({
                     <div className="flex items-center gap-3">
                         <button 
                             onClick={onOpen}
-                            className="flex items-center gap-2.5 px-5 py-2.5 rounded-2xl bg-[#111827] text-white hover:bg-black transition-all text-[12px] font-bold shadow-lg shadow-black/10 active:scale-95"
+                            className="flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-[#111827] text-white hover:bg-[#10B981] transition-all text-[13px] font-bold shadow-lg active:scale-95"
                         >
                             <span>Открыть</span>
                             <ExternalLink size={14} />
