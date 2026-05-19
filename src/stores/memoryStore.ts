@@ -44,6 +44,18 @@ export const useMemoryStore = create<MemoryStore>()(
     }),
     {
       name: 'ai-content-os-memory',
+      version: 1,
+      migrate: (persistedState: any, version: number) => {
+        if (version === 0) {
+          const state = persistedState as MemoryStore;
+          if (state) {
+            if (!Array.isArray(state.history)) state.history = [];
+            if (!Array.isArray(state.sharedMemory)) state.sharedMemory = [];
+          }
+          return state;
+        }
+        return persistedState;
+      }
     }
   )
 );

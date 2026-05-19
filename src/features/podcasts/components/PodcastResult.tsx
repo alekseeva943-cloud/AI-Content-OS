@@ -32,7 +32,8 @@ export function PodcastResultDisplay({ result, onRegenerate, sourceInfo }: Podca
   const addFavorite = useFavoritesStore(state => state.addFavorite);
 
   const handleCopy = () => {
-    const text = `Topic: ${result.topic}\n\nStructure:\n${result.structure.map(s => `- ${s.title} (${s.duration}): ${s.points.join(', ')}`).join('\n')}`;
+    const structure = result?.structure || [];
+    const text = `Topic: ${result?.topic || ''}\n\nStructure:\n${structure.map(s => `- ${s?.title || ''} (${s?.duration || ''}): ${(s?.points || []).join(', ')}`).join('\n')}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     toast.success('Структура скопирована');
@@ -108,7 +109,7 @@ export function PodcastResultDisplay({ result, onRegenerate, sourceInfo }: Podca
               </h3>
               
               <div className="space-y-4">
-                 {result.structure.map((segment, index) => (
+                 {(result?.structure || []).map((segment, index) => (
                     <motion.div 
                       key={segment.id}
                       initial={{ opacity: 0, x: -20 }}

@@ -59,13 +59,14 @@ export function ModulePage({ config }: ModulePageProps) {
   const brandVariables = useBrandStore(state => state.variables);
   const updateBrandVariable = useBrandStore(state => state.updateVariable);
 
-  const moduleState = modules[config.id] || {
-    formValues: {},
-    result: null,
-    showAdvanced: false,
-    sourceInfo: null,
-    builderStep: 'input',
-    requirements: [] as VariableRequirement[],
+  const rawState = modules[config.id];
+  const moduleState = {
+    formValues: rawState?.formValues || {},
+    result: rawState?.result || null,
+    showAdvanced: rawState?.showAdvanced || false,
+    sourceInfo: rawState?.sourceInfo || null,
+    builderStep: rawState?.builderStep || 'input',
+    requirements: (rawState?.requirements || []) as VariableRequirement[],
   };
 
   const [isGenerating, setIsGenerating] = useState(false);

@@ -52,6 +52,17 @@ export const useFavoritesStore = create<FavoritesState>()(
     }),
     {
       name: 'studio-ai-favorites',
+      version: 1,
+      migrate: (persistedState: any, version: number) => {
+        if (version === 0) {
+          const state = persistedState as FavoritesState;
+          if (state && !Array.isArray(state.favorites)) {
+             state.favorites = [];
+          }
+          return state;
+        }
+        return persistedState;
+      },
     }
   )
 );

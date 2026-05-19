@@ -41,16 +41,17 @@ export function CampaignResultDisplay({ result, onRegenerate, sourceInfo }: Camp
   
   const addFavorite = useFavoritesStore(state => state.addFavorite);
   
-  const activeChannel = result.channels.find(c => c.id === activeTab) || result.channels[0];
+  const channels = result?.channels || [];
+  const activeChannel = channels.find(c => c.id === activeTab) || channels[0];
 
   useEffect(() => {
     // Auto-generate images if prompts exist and no URL yet
-    result.channels.forEach(async (channel) => {
-        if (channel.content.imagePrompt && !imageUrls[channel.id]) {
+    channels.forEach(async (channel) => {
+        if (channel?.content?.imagePrompt && !imageUrls[channel.id]) {
             handleGenerateImage(channel.id, channel.content.imagePrompt);
         }
     });
-  }, [result.id]);
+  }, [result?.id]);
 
   const handleGenerateImage = async (channelId: string, prompt: string) => {
     setIsGeneratingImage(channelId);
@@ -89,13 +90,14 @@ export function CampaignResultDisplay({ result, onRegenerate, sourceInfo }: Camp
   };
 
   const exportAsTxt = () => {
-    const text = `CAMPAIGN: ${result.name}\n\n` + 
-      result.channels.map(c => `--- ${c.id.toUpperCase()} ---\n${c.content.body}\n`).join('\n');
+    const channels = result?.channels || [];
+    const text = `CAMPAIGN: ${result?.name || 'Untitled'}\n\n` + 
+      channels.map(c => `--- ${(c?.id || 'Unknown').toUpperCase()} ---\n${c?.content?.body || ''}\n`).join('\n');
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${result.name}.txt`;
+    a.download = `${result?.name || 'campaign'}.txt`;
     a.click();
   };
 

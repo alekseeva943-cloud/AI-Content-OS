@@ -52,6 +52,24 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     }),
     {
       name: 'ai-content-os-workspace',
+      version: 1,
+      migrate: (persistedState: any, version: number) => {
+        if (version === 0) {
+          // Migration from version 0 to 1
+          const state = persistedState as WorkspaceStore;
+          if (state && state.modules) {
+            Object.keys(state.modules).forEach(key => {
+              const module = state.modules[key];
+              if (module) {
+                if (module.builderStep === undefined) module.builderStep = 'input';
+                if (module.requirements === undefined) module.requirements = [];
+              }
+            });
+          }
+          return state;
+        }
+        return persistedState;
+      },
     }
   )
 );

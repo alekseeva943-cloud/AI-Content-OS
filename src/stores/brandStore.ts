@@ -38,6 +38,29 @@ export const useBrandStore = create<BrandStore>()(
         variables: { ...state.variables, ...variables }
       }))
     }),
-    { name: 'brand-variables' }
+    { 
+      name: 'brand-variables',
+      version: 1,
+      migrate: (persistedState: any, version: number) => {
+        if (version === 0) {
+          const state = persistedState as BrandStore;
+          const defaultVariables = {
+            companyName: '',
+            authorName: '',
+            website: '',
+            telegram: '',
+            brandVoice: 'Professional & Helpful',
+            targetAudience: 'Entrepreneurs and Digital Creators',
+            productName: '',
+            defaultCTA: 'Узнать больше'
+          };
+          if (state) {
+            state.variables = { ...defaultVariables, ...state.variables };
+          }
+          return state;
+        }
+        return persistedState;
+      }
+    }
   )
 );

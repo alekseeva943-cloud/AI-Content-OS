@@ -35,7 +35,8 @@ export function VideoAvatarResultDisplay({ result, onRegenerate, sourceInfo }: V
   const addFavorite = useFavoritesStore(state => state.addFavorite);
 
   const handleCopy = () => {
-    const text = `Hook: ${result.hook}\n\nScenes:\n${result.scenes.map(s => `${s.narration} (Gesture: ${s.gesture})`).join('\n')}`;
+    const scenes = result?.scenes || [];
+    const text = `Hook: ${result?.hook || ''}\n\nScenes:\n${scenes.map(s => `${s?.narration || ''} (Gesture: ${s?.gesture || ''})`).join('\n')}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     toast.success('Текст озвучки скопирован');
@@ -114,7 +115,7 @@ export function VideoAvatarResultDisplay({ result, onRegenerate, sourceInfo }: V
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 {result.scenes.map((scene, index) => (
+                 {(result?.scenes || []).map((scene, index) => (
                     <motion.div 
                       key={scene.id}
                       initial={{ opacity: 0, y: 20 }}
