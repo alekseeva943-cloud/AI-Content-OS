@@ -133,7 +133,7 @@ app.post("/api/campaign-detect", async (req, res) => {
 app.post("/api/newsletter", async (req, res) => {
   try {
     const { topic, context, variables, channels, advanced } = req.body;
-    const requestedChannels = channels || ['email', 'telegram', 'vk'];
+    const requestedChannels = (channels || ['email', 'telegram', 'vk']).map((c: string) => String(c).toLowerCase().trim());
     console.log("[Newsletter API] Request received:", { topic, channels: requestedChannels });
     
     const client = getOpenAI();
@@ -161,45 +161,65 @@ app.post("/api/newsletter", async (req, res) => {
     if (!content) throw new Error("OpenAI returned an empty response");
     
     const rawData = JSON.parse(content);
+    console.log("[Newsletter API] RAW AI DATA:", JSON.stringify(rawData, null, 2));
+
+    // Handle both array and object formats for channels
+    let rawChannels: any[] = [];
+    if (Array.isArray(rawData.channels)) {
+      rawChannels = rawData.channels;
+    } else if (typeof rawData.channels === 'object' && rawData.channels !== null) {
+      rawChannels = Object.entries(rawData.channels).map(([key, val]: [string, any]) => {
+        if (typeof val === 'object' && val !== null) return { id: key, ...val };
+        return { id: key, body: val };
+      });
+    }
+    
+    console.log("[Newsletter API] Normalized Raw Channels:", rawChannels.map((ch: any) => ch.id || ch.channel || ch.type));
     
     // Robust transformation: ensure ALL expected fields exist and handle AI naming variations
     const transformed = {
       id: rawData.id || `campaign-${Date.now()}`,
       name: rawData.name || topic || "Новая кампания",
       strategy: rawData.strategy || "",
-      channels: (rawData.channels || []).map((ch: any) => {
+      channels: rawChannels.map((ch: any) => {
+        // AI might return 'id' or 'channel' or 'type'
+        const channelId = String(ch.id || ch.channel || ch.type || "").toLowerCase().trim();
+        
         // Only include requested channels
-        if (!requestedChannels.includes(ch.id)) return null;
+        if (!requestedChannels.includes(channelId)) {
+          return null;
+        }
 
-          // AI might put content directly in ch, or in ch.content
-          const c = ch.content || ch;
-          
-          if (ch.id === 'telegram') console.log("[Newsletter API] RAW TELEGRAM:", JSON.stringify(ch, null, 2));
-          if (ch.id === 'vk') console.log("[Newsletter API] RAW VK:", JSON.stringify(ch, null, 2));
+        // AI might put content directly in ch, or in ch.content
+        const c = ch.content || ch;
+        
+        if (channelId === 'telegram') console.log("[Newsletter API] RAW TELEGRAM:", JSON.stringify(ch, null, 2));
+        if (channelId === 'vk') console.log("[Newsletter API] RAW VK:", JSON.stringify(ch, null, 2));
 
-          return {
-            id: ch.id as 'email' | 'telegram' | 'vk',
-            active: ch.active ?? true,
-            content: {
-              subject: c.subject || c.title || ch.subject || ch.title || "",
-              preheader: c.preheader || c.summary || c.preview || ch.preheader || ch.summary || "",
-              body: (c.body || c.text || c.message || c.content || c.description || c.copy || ch.body || ch.text || ch.description || ch.message || ch.copy || "").trim(),
-              cta: (function() {
-                const rawCta = c.cta || ch.cta || c.action || c.button || ch.action || ch.button || c.link || ch.link;
-                if (!rawCta) return { text: "Узнать больше", link: "#" };
-                if (typeof rawCta === 'string') return { text: rawCta, link: "#" };
-                return { 
-                  text: rawCta.text || rawCta.label || rawCta.buttonText || rawCta.title || rawCta.name || "Узнать больше", 
-                  link: rawCta.link || rawCta.url || rawCta.href || "#" 
-                };
-              })(),
-              imagePrompt: c.imagePrompt || c.visuals || c.image_prompt || c.image_preview || ch.imagePrompt || ch.visuals || ""
-            }
-          };
+        return {
+          id: channelId as 'email' | 'telegram' | 'vk',
+          active: ch.active ?? true,
+          content: {
+            subject: c.subject || c.title || ch.subject || ch.title || "",
+            preheader: c.preheader || c.summary || c.preview || ch.preheader || ch.summary || "",
+            body: (c.body || c.text || c.message || c.content || c.description || c.copy || ch.body || ch.text || ch.description || ch.message || ch.copy || "").trim(),
+            cta: (function() {
+              const rawCta = c.cta || ch.cta || c.action || c.button || ch.action || ch.button || c.link || ch.link;
+              if (!rawCta) return { text: "Узнать больше", link: "#" };
+              if (typeof rawCta === 'string') return { text: rawCta, link: "#" };
+              return { 
+                text: rawCta.text || rawCta.label || rawCta.buttonText || rawCta.title || rawCta.name || "Узнать больше", 
+                link: rawCta.link || rawCta.url || rawCta.href || "#" 
+              };
+            })(),
+            imagePrompt: c.imagePrompt || c.visuals || c.image_prompt || c.image_preview || ch.imagePrompt || ch.visuals || ""
+          }
+        };
       }).filter(Boolean),
       variables: rawData.variables || {}
     };
 
+    console.log("[Newsletter API] FINAL RESPONSE CHANNELS:", transformed.channels.map(c => c?.id));
     console.log("[Newsletter API] NORMALIZED CAMPAIGN:", JSON.stringify(transformed, null, 2));
 
     const validated = CampaignResultSchema.parse(transformed);

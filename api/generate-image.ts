@@ -9,15 +9,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { prompt } = req.body;
 
-    const response = await openai.images.generate({
-      model: "dall-e-3",
-      prompt: prompt,
-      n: 1,
-      size: "1024x1024",
-    });
+    try {
+      const response = await openai.images.generate({
+        model: "dall-e-3",
+        prompt: prompt,
+        n: 1,
+        size: "1024x1024",
+      });
 
-    const imageUrl = response.data[0].url;
-    return res.status(200).json({ url: imageUrl });
+      const imageUrl = response.data[0].url;
+      return res.status(200).json({ url: imageUrl });
+    } catch (d3Error: any) {
+      console.warn("[Image API] DALL-E-3 failed, trying DALL-E-2:", d3Error.message);
+      const response = await openai.images.generate({
+        model: "dall-e-2",
+        prompt: prompt,
+        n: 1,
+        size: "1024x1024",
+      });
+      const imageUrl = response.data[0].url;
+      return res.status(200).json({ url: imageUrl });
+    }
   } catch (error: any) {
     console.error("[Image API] Error:", error);
     return res.status(500).json({ error: error.message || "Image generation failed" });
