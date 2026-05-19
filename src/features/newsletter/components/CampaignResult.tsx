@@ -37,7 +37,7 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
   const [activeTab, setActiveTab] = useState<'email' | 'telegram' | 'vk'>('email');
   const [copied, setCopied] = useState<string | null>(null);
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
-  const [isGeneratingImage, setIsGeneratingImage] = useState<string | null>(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState<Record<string, boolean>>({});
 
   // Normalization layer for old/mismatched data
   const result = React.useMemo(() => {
@@ -85,13 +85,22 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
 
   useEffect(() => {
     if (!result) return;
-    console.log("[CampaignResult] Rendering:", result);
+    
     // Auto-generate images if prompts exist and no URL yet
-    channels.forEach(async (channel) => {
-        if (channel?.content?.imagePrompt && !imageUrls[channel.id]) {
-            handleGenerateImage(channel.id, channel.content.imagePrompt);
+    // We use a separate async function to avoid blocking and handle isolation
+    const triggerVisuals = async () => {
+        for (const channel of channels) {
+            const channelId = channel.id;
+            const prompt = channel?.content?.imagePrompt;
+            
+            if (prompt && !imageUrls[channelId] && !isGeneratingImage[channelId]) {
+                console.log(`[CampaignResult] Auto-triggering visual for ${channelId}`);
+                await handleGenerateImage(channelId, prompt);
+            }
         }
-    });
+    };
+
+    triggerVisuals();
   }, [result.id]);
 
   if (!activeChannel || !activeChannel.content) {
@@ -111,15 +120,22 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
   }
 
   const handleGenerateImage = async (channelId: string, prompt: string) => {
-    setIsGeneratingImage(channelId);
+    if (isGeneratingImage[channelId]) return;
+
+    setIsGeneratingImage(prev => ({ ...prev, [channelId]: true }));
     try {
+        console.log(`[CampaignResult] Designing custom asset for ${channelId}...`);
         const url = await generateCampaignImage(prompt);
-        setImageUrls(prev => ({ ...prev, [channelId]: url }));
-        toast.success('Visual artifact generated');
+        if (url) {
+            setImageUrls(prev => ({ ...prev, [channelId]: url }));
+            toast.success('Visual artifact ready');
+        }
     } catch (err: any) {
-        toast.error('Failed to generate visual');
+        console.error(`[CampaignResult] Visual generation failed for ${channelId}:`, err);
+        // We don't toast error here to avoid annoying the user if it's an auto-trigger
+        // but we log it. If it was manual, maybe we should.
     } finally {
-        setIsGeneratingImage(null);
+        setIsGeneratingImage(prev => ({ ...prev, [channelId]: false }));
     }
   };
 
@@ -288,10 +304,10 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
                         <h4 className="text-[11px] font-black text-[#9CA3AF] uppercase tracking-widest">Визуальное сопровождение</h4>
                         <button 
                             onClick={() => activeChannel.content.imagePrompt && handleGenerateImage(activeChannel.id, activeChannel.content.imagePrompt)}
-                            disabled={isGeneratingImage === activeChannel.id}
+                            disabled={isGeneratingImage[activeChannel.id]}
                             className="p-2 rounded-lg bg-white border border-[#E5E7EB] text-[#9CA3AF] hover:text-[#10B981] transition-all disabled:opacity-50"
                         >
-                            <RefreshCw size={14} className={cn(isGeneratingImage === activeChannel.id && "animate-spin")} />
+                            <RefreshCw size={14} className={cn(isGeneratingImage[activeChannel.id] && "animate-spin")} />
                         </button>
                     </div>
 
@@ -312,7 +328,7 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
                             </>
                         ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center gap-4">
-                                {isGeneratingImage === activeChannel.id ? (
+                                {isGeneratingImage[activeChannel.id] ? (
                                     <>
                                         <div className="w-12 h-12 rounded-full border-2 border-[#10B981]/20 border-t-[#10B981] animate-spin" />
                                         <p className="text-[11px] font-bold text-[#6B7280] uppercase tracking-widest">Создаю визуальный образ...</p>

@@ -208,8 +208,19 @@ app.post("/api/newsletter", async (req, res) => {
     const validated = CampaignResultSchema.parse(transformed);
     res.json(validated);
   } catch (error: any) {
-    console.error("[Newsletter API] Generation Error:", error);
-    res.status(500).json({ error: error.message || "Newsletter synthesis failed" });
+    console.error("[Newsletter API] CRITICAL ERROR:", error);
+    console.error("[Newsletter API] Stack Trace:", error.stack);
+    
+    // In dev mode provide more details
+    const message = error.message || "Newsletter synthesis failed";
+    res.status(500).json({ 
+      error: message,
+      details: process.env.NODE_ENV !== 'production' ? {
+        stack: error.stack,
+        name: error.name,
+        rawData: error.rawData // help debug if we attached it
+      } : undefined
+    });
   }
 });
 
