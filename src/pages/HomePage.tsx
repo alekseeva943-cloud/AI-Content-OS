@@ -73,15 +73,15 @@ export function HomePage() {
         {/* Recent Works */}
         <GlassCard className="p-10 bg-white border-[#E5E7EB] shadow-[0_4px_16px_rgba(0,0,0,0.02)]">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-bold text-[#111827] font-display">Недавние проекты</h2>
-            <button className="text-[13px] font-bold text-[#9CA3AF] hover:text-[#10B981] transition-colors">Смотреть все</button>
+            <h2 className="text-2xl font-bold text-[#111827] font-display">Творческий архив</h2>
+            <button className="text-[13px] font-bold text-[#9CA3AF] hover:text-[#10B981] transition-colors">Архив</button>
           </div>
           
           <div className="space-y-4">
              {[
-               { title: 'Стратегия запуска SaaS (Q3)', module: 'Планировщик', date: '2 часа назад' },
-               { title: 'Сценарий для AI-ведущего', module: 'Ведущий', date: 'Вчера' },
-               { title: 'Статья про AI-тренды 2024', module: 'Статьи', date: '2 дня назад' }
+               { title: 'Стратегия запуска SaaS (Q3)', module: 'План', date: '2 часа назад' },
+               { title: 'Сценарий для AI-ведущего', module: 'Аватар', date: 'Вчера' },
+               { title: 'Статья про AI-тренды 2024', module: 'Статья', date: '2 дня назад' }
              ].map((job, idx) => (
                <div key={idx} className="flex items-center justify-between p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] hover:border-[#D1D5DB] hover:bg-white transition-all cursor-pointer group/item shadow-sm">
                   <div className="flex items-center gap-4">
@@ -108,17 +108,17 @@ export function HomePage() {
           <div className="relative z-10 space-y-8">
              <div className="space-y-2">
                 <span className="text-[#10B981] font-bold text-[11px] uppercase tracking-[0.2em]">Статистика студии</span>
-                <h3 className="text-3xl font-bold text-[#111827] font-display">Ваша продуктивность</h3>
+                <h3 className="text-3xl font-bold text-[#111827] font-display">Творческий ритм</h3>
              </div>
              
              <div className="grid grid-cols-2 gap-8">
                 <div className="space-y-1">
                    <div className="text-4xl font-bold text-[#10B981] font-display">1.2k</div>
-                   <div className="text-[14px] text-[#6B7280] font-medium leading-tight">Слов синтезировано за неделю</div>
+                   <div className="text-[14px] text-[#6B7280] font-medium leading-tight">Слов синтезировано на этой неделе</div>
                 </div>
                 <div className="space-y-1">
                    <div className="text-4xl font-bold text-[#10B981] font-display">18</div>
-                   <div className="text-[14px] text-[#6B7280] font-medium leading-tight">Проектов завершено успешно</div>
+                   <div className="text-[14px] text-[#6B7280] font-medium leading-tight">Проектов кристаллизовано</div>
                 </div>
              </div>
              
@@ -132,8 +132,8 @@ export function HomePage() {
                    />
                 </div>
                 <div className="mt-3 flex justify-between items-center text-[11px] font-bold text-[#9CA3AF] uppercase tracking-widest">
-                   <span>Оптимизация нейросети</span>
-                   <span className="text-[#10B981]">82.4%</span>
+                   <span>Статус системы</span>
+                   <span className="text-[#10B981]">Активен</span>
                 </div>
              </div>
           </div>

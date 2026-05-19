@@ -98,9 +98,21 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
       {
         id: 'topic',
         label: 'Тема кампании',
-        description: 'Например: запуск нового продукта или вебинар',
-        placeholder: 'Введите тему...',
+        description: 'О чем будем рассказывать аудитории?',
+        placeholder: 'Например: запуск нового продукта или вебинар',
         type: 'text',
+      },
+      {
+        id: 'channels',
+        label: 'Выберите каналы',
+        description: 'Где будем публиковать контент?',
+        type: 'select',
+        defaultValue: ['email', 'telegram', 'vk'],
+        options: [
+          { value: 'email', label: 'Email' },
+          { value: 'telegram', label: 'Telegram' },
+          { value: 'vk', label: 'VK' },
+        ],
       },
       {
         id: 'context',

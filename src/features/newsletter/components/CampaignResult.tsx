@@ -58,7 +58,7 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
     return {
       id: legacy.id || `legacy-${Date.now()}`,
       name: name,
-      strategy: legacy.strategy || "Legacy content restoration",
+      strategy: legacy.strategy || "Восстановление контента из архива",
       channels: [
         {
           id: 'email' as const,
@@ -67,7 +67,7 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
             subject: legacy.subject || name,
             preheader: legacy.preheader || "",
             body: body,
-            cta: legacy.cta ? (typeof legacy.cta === 'string' ? { text: legacy.cta, link: "#" } : legacy.cta) : { text: "Learn More", link: "#" },
+            cta: legacy.cta ? (typeof legacy.cta === 'string' ? { text: legacy.cta, link: "#" } : legacy.cta) : { text: "Узнать больше", link: "#" },
             imagePrompt: legacy.imagePrompt || legacy.image || ""
           }
         }
@@ -100,11 +100,11 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
         <div className="w-20 h-20 rounded-3xl bg-red-50 flex items-center justify-center text-red-500 mx-auto mb-6">
             <Info size={40} />
         </div>
-        <h3 className="text-xl font-bold text-[#111827] mb-2 font-display">Data Inconsistency</h3>
-        <p className="text-[#6B7280] max-w-sm mx-auto">This campaign data format is unsupported or corrupted. Try generating a new campaign.</p>
+        <h3 className="text-xl font-bold text-[#111827] mb-2 font-display">Ошибка данных</h3>
+        <p className="text-[#6B7280] max-w-sm mx-auto">Формат данных этой кампании не поддерживается или поврежден. Попробуйте создать новую.</p>
         <Button onClick={onRegenerate} variant="outline" className="mt-8 rounded-xl border-[#E5E7EB]">
             <RefreshCw size={16} className="mr-2" />
-            Try Regenerating
+            Попробовать снова
         </Button>
       </div>
     );
@@ -173,7 +173,7 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
             </div>
             <div>
                 <div className="flex items-center gap-3 mb-2">
-                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em]">Synthesized Strategy</span>
+                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em]">Стратегия кампании</span>
                     <span className="w-1 h-1 rounded-full bg-white/20" />
                     <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{result.id}</span>
                 </div>
@@ -220,7 +220,7 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
             <div className="flex items-center gap-4 pb-8">
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#F9FAFB] border border-[#E5E7EB]">
                     <div className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
-                    <span className="text-[10px] font-black text-[#6B7280] uppercase tracking-widest">Optimized for Conversion</span>
+                    <span className="text-[10px] font-black text-[#6B7280] uppercase tracking-widest">Оптимизировано для конверсии</span>
                 </div>
             </div>
         </div>
@@ -264,12 +264,12 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
                                                 <ExternalLink size={24} />
                                             </div>
                                             <div>
-                                                <span className="text-[10px] font-black text-[#10B981] uppercase tracking-widest mb-1 block">Contextual CTA</span>
-                                                <h4 className="text-[15px] font-bold text-[#111827]">{activeChannel.content.cta?.text || "Click Here"}</h4>
+                                                <span className="text-[10px] font-black text-[#10B981] uppercase tracking-widest mb-1 block">Целевое действие</span>
+                                                <h4 className="text-[15px] font-bold text-[#111827]">{activeChannel.content.cta?.text || "Узнать больше"}</h4>
                                             </div>
                                         </div>
                                         <Button className="rounded-xl px-8 shadow-lg shadow-emerald-500/20">
-                                            <span>Test Link</span>
+                                            <span>Перейти</span>
                                             <ArrowRight size={18} className="ml-2" />
                                         </Button>
                                     </div>
@@ -285,7 +285,7 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
                 {/* Visual Artifact */}
                 <div className="space-y-4">
                     <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-[11px] font-black text-[#9CA3AF] uppercase tracking-widest">Campaign Artwork</h4>
+                        <h4 className="text-[11px] font-black text-[#9CA3AF] uppercase tracking-widest">Визуальное сопровождение</h4>
                         <button 
                             onClick={() => activeChannel.content.imagePrompt && handleGenerateImage(activeChannel.id, activeChannel.content.imagePrompt)}
                             disabled={isGeneratingImage === activeChannel.id}
@@ -315,7 +315,7 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
                                 {isGeneratingImage === activeChannel.id ? (
                                     <>
                                         <div className="w-12 h-12 rounded-full border-2 border-[#10B981]/20 border-t-[#10B981] animate-spin" />
-                                        <p className="text-[11px] font-bold text-[#6B7280] uppercase tracking-widest">Designing Visual...</p>
+                                        <p className="text-[11px] font-bold text-[#6B7280] uppercase tracking-widest">Создаю визуальный образ...</p>
                                     </>
                                 ) : (
                                     <>
@@ -365,7 +365,7 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
                         onClick={() => handleCopy(activeChannel.content.body, activeTab)}
                     >
                         {copied === activeTab ? <Check size={20} className="mr-2" /> : <Copy size={20} className="mr-2" />}
-                        <span>{copied === activeTab ? 'Copied' : 'Copy All Content'}</span>
+                        <span>{copied === activeTab ? 'Скопировано' : 'Копировать контент'}</span>
                     </Button>
                     <div className="grid grid-cols-2 gap-3">
                         <Button variant="outline" className="rounded-xl h-12 text-[#6B7280]" onClick={exportAsTxt}>

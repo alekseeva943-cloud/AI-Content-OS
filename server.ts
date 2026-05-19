@@ -4,7 +4,7 @@ import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import { OpenAI } from "openai";
 import dotenv from "dotenv";
-import { getPlannerPrompts, getPostPrompts, getModulePrompts } from "./lib/prompts";
+import { getPlannerPrompts, getPostPrompts, getModulePrompts, renderPrompt } from "./lib/prompts";
 import { PlannerResultSchema, PlannerItemSchema } from "./src/types/planner.ts";
 import { CampaignResultSchema } from "./src/types/newsletter.ts";
 
@@ -97,15 +97,46 @@ app.post("/api/planner", async (req, res) => {
   }
 });
 
+app.post("/api/campaign-detect", async (req, res) => {
+  try {
+    const { topic, context } = req.body;
+    const client = getOpenAI();
+    
+    const { system, user } = getModulePrompts("newsletter", { topic, context });
+    
+    // Replace user with detect prompt
+    const detectPrompt = renderPrompt("newsletter", "detect.txt", { topic, context });
+
+    const response = await client.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: detectPrompt }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    const content = response.choices[0].message.content;
+    if (!content) throw new Error("Empty response from AI");
+    
+    res.json(JSON.parse(content));
+  } catch (error: any) {
+    console.error("[Campaign Detect API Error]", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post("/api/newsletter", async (req, res) => {
   try {
-    const { subject, insights, advanced } = req.body;
+    const { topic, context, variables, channels, advanced } = req.body;
     const client = getOpenAI();
     
     const { system, user } = getModulePrompts("newsletter", { 
-      topic: subject, 
-      context: insights, 
-      tone: advanced?.tone || "conversational" 
+      topic, 
+      context, 
+      variables: JSON.stringify(variables || {}),
+      channels: (channels || ['email', 'telegram', 'vk']).join(", "),
+      tone: advanced?.tone || "natural" 
     });
 
     const response = await client.chat.completions.create({
@@ -130,7 +161,7 @@ app.post("/api/newsletter", async (req, res) => {
     if (Array.isArray(rawData.channels)) {
       transformed = {
         id: rawData.id || `campaign-${Date.now()}`,
-        name: rawData.name || subject,
+        name: rawData.name || topic,
         strategy: rawData.strategy || "",
         channels: rawData.channels.map((ch: any) => ({
           id: ch.id,
@@ -151,14 +182,14 @@ app.post("/api/newsletter", async (req, res) => {
       // Legacy AI output format fallback
       transformed = {
         id: `campaign-${Date.now()}`,
-        name: rawData.name || rawData.newsletter?.title || subject,
+        name: rawData.name || rawData.newsletter?.title || topic,
         strategy: rawData.strategy || "Generated from legacy prompt structure",
         channels: [
           {
             id: 'email',
             active: true,
             content: {
-              subject: (Array.isArray(rawData.subject_lines) ? rawData.subject_lines[0] : null) || rawData.subject || rawData.newsletter?.title || subject,
+              subject: (Array.isArray(rawData.subject_lines) ? rawData.subject_lines[0] : null) || rawData.subject || rawData.newsletter?.title || topic,
               preheader: rawData.preview_text || rawData.preheader || rawData.summary || "",
               body: rawData.newsletter?.body || rawData.body || rawData.content || "",
               cta: typeof (rawData.newsletter?.cta || rawData.cta) === 'string' 

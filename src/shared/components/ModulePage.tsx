@@ -58,6 +58,7 @@ export function ModulePage({ config }: ModulePageProps) {
   const { modules, setModuleState, clearModule } = useWorkspaceStore();
   const brandVariables = useBrandStore(state => state.variables);
   const updateBrandVariable = useBrandStore(state => state.updateVariable);
+  const history = useMemoryStore(state => state.history);
 
   const rawState = modules[config.id];
   const moduleState = {
@@ -166,12 +167,18 @@ export function ModulePage({ config }: ModulePageProps) {
     setIsDiscovering(true);
     setError(null);
     try {
-        const { requirements } = await detectCampaignVariables({
+        const { requirements, suggestedChannels } = await detectCampaignVariables({
             topic: formValues.topic,
             context: formValues.context
         });
+        
+        // Auto-select suggested channels if none selected or just to help
+        if (suggestedChannels?.length > 0) {
+            handleInputChange('channels', suggestedChannels);
+        }
+
         setModuleState(config.id, { requirements, builderStep: 'variables' });
-        toast.info('AI обнаружил недостающие переменные для точности');
+        toast.info('AI проанализировал запрос и обнаружил важные переменные');
     } catch (err: any) {
         setError(err.message);
     } finally {
@@ -415,7 +422,10 @@ export function ModulePage({ config }: ModulePageProps) {
                                 <AIInput 
                                     placeholder={req.importance === 'critical' ? 'Обязательно для заполнения...' : 'Опционально...'}
                                     value={formValues.variables?.[req.id] || ''}
-                                    onChange={(e) => handleInputChange('variables', { ...formValues.variables, [req.id]: e.target.value })}
+                                    onChange={(e) => {
+                                        const nextVars = { ...(formValues.variables || {}), [req.id]: e.target.value };
+                                        handleInputChange('variables', nextVars);
+                                    }}
                                 />
                             </AIField>
                         ))}
@@ -428,7 +438,38 @@ export function ModulePage({ config }: ModulePageProps) {
                         </button>
                     </motion.div>
                 ) : (
-                    config.fields.map((field) => (
+                    <div className="space-y-8">
+                        {config.id === 'newsletters' && (
+                            <AIField 
+                                label="Выберите тему из планировщика" 
+                                description="Или оставьте пустым, чтобы ввести вручную"
+                            >
+                                <AISelect 
+                                    options={[
+                                        { value: '', label: 'Введите тему вручную...' },
+                                        ...history
+                                            .filter(h => h.type === 'planner')
+                                            .map(h => ({ 
+                                                value: h.metadata?.topic || h.id, 
+                                                label: h.metadata?.topic || 'План от ' + new Date(h.timestamp).toLocaleDateString() 
+                                            }))
+                                    ]}
+                                    value={history.find(h => h.metadata?.topic === formValues.topic)?.metadata?.topic || ''}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val) {
+                                            const item = history.find(h => h.metadata?.topic === val);
+                                            setFormValues(prev => ({
+                                                ...prev,
+                                                topic: val,
+                                                context: item?.metadata?.topic || prev.context
+                                            }));
+                                        }
+                                    }}
+                                />
+                            </AIField>
+                        )}
+                        {config.fields.map((field) => (
                       <AIField 
                         key={field.id} 
                         label={field.label} 
@@ -471,7 +512,8 @@ export function ModulePage({ config }: ModulePageProps) {
                           )
                         )}
                       </AIField>
-                    ))
+                    ))}
+                  </div>
                 )}
               </div>
 
@@ -563,8 +605,8 @@ export function ModulePage({ config }: ModulePageProps) {
                    <Wand2 size={24} />
                    <span>
                     {config.id === 'newsletters' && moduleState.builderStep === 'input' 
-                      ? 'Analyze Campaign' 
-                      : (config.id === 'newsletters' && moduleState.builderStep === 'variables' ? 'Generate Synthesis' : config.actionLabel)}
+                      ? 'Спланировать кампанию' 
+                      : (config.id === 'newsletters' && moduleState.builderStep === 'variables' ? 'Запустить генерацию' : config.actionLabel)}
                    </span>
                  </Button>
                  
