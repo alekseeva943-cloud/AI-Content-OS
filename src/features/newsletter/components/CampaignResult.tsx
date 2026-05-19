@@ -128,7 +128,7 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
         const url = await generateCampaignImage(prompt);
         if (url) {
             setImageUrls(prev => ({ ...prev, [channelId]: url }));
-            toast.success('Visual artifact ready');
+            toast.success('Визуальный артефакт готов');
         }
     } catch (err: any) {
         console.error(`[CampaignResult] Visual generation failed for ${channelId}:`, err);
@@ -142,7 +142,7 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
   const handleCopy = (content: string, type: string) => {
     navigator.clipboard.writeText(content);
     setCopied(type);
-    toast.success('Content copied to clipboard');
+    toast.success('Контент скопирован в буфер обмена');
     setTimeout(() => setCopied(null), 2000);
   };
 
@@ -159,7 +159,7 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
         sourceId: sourceInfo?.id
       }
     });
-    toast.success('Campaign saved to workspace');
+    toast.success('Кампания сохранена в Workspace');
   };
 
   const exportAsTxt = () => {
@@ -258,18 +258,18 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
                             {activeTab === 'email' && (
                                 <div className="p-8 rounded-[2rem] bg-[#F9FAFB] border border-[#E5E7EB] space-y-4">
                                     <div className="flex items-center gap-6 text-[13px]">
-                                        <span className="w-20 font-bold text-[#9CA3AF] uppercase tracking-widest">Subject:</span>
-                                        <span className="font-bold text-[#111827]">{activeChannel.content?.subject || "No Subject Created"}</span>
+                                        <span className="w-20 font-bold text-[#9CA3AF] uppercase tracking-widest">Тема:</span>
+                                        <span className="font-bold text-[#111827]">{activeChannel.content?.subject || "Тема не создана"}</span>
                                     </div>
                                     <div className="flex items-center gap-6 text-[13px]">
-                                        <span className="w-20 font-bold text-[#9CA3AF] uppercase tracking-widest">Preview:</span>
-                                        <span className="font-medium text-[#6B7280] italic">{activeChannel.content?.preheader || "No Preview Text"}</span>
+                                        <span className="w-20 font-bold text-[#9CA3AF] uppercase tracking-widest">Превью:</span>
+                                        <span className="font-medium text-[#6B7280] italic">{activeChannel.content?.preheader || "Текст превью отсутствует"}</span>
                                     </div>
                                 </div>
                             )}
 
                             <div className="markdown-body prose prose-slate prose-lg max-w-none">
-                                <ReactMarkdown>{activeChannel.content?.body || "Content body is missing"}</ReactMarkdown>
+                                <ReactMarkdown>{activeChannel.content?.body || "Контент отсутствует"}</ReactMarkdown>
                             </div>
 
                             {activeChannel.content?.cta && (

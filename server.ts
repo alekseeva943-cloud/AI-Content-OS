@@ -129,15 +129,16 @@ app.post("/api/campaign-detect", async (req, res) => {
 app.post("/api/newsletter", async (req, res) => {
   try {
     const { topic, context, variables, channels, advanced } = req.body;
-    console.log("[Newsletter API] Request received:", { topic, channels });
+    const requestedChannels = channels || ['email', 'telegram', 'vk'];
+    console.log("[Newsletter API] Request received:", { topic, channels: requestedChannels });
     
     const client = getOpenAI();
     
     const { system, user } = getModulePrompts("newsletter", { 
-      topic, 
-      context, 
+      topic: topic || "Без темы", 
+      context: context || "Нет дополнительного контекста", 
       variables: JSON.stringify(variables || {}),
-      channels: (channels || ['email', 'telegram', 'vk']).join(", "),
+      channels: requestedChannels.join(", "),
       tone: advanced?.tone || "natural" 
     });
 
@@ -361,22 +362,20 @@ app.post("/api/regenerate-item", async (req, res) => {
     const { item } = req.body;
     const client = getOpenAI();
     
+    const userPrompt = renderPrompt("planner", "regenerate.txt", { 
+      item: JSON.stringify(item) 
+    });
+
     const response = await client.chat.completions.create({
       model: "gpt-4o",
       messages: [
         { 
           role: "system", 
-          content: `You are an AI Content Strategist. Your task is to REGENERATE a specific content idea (PlannerItem).
-          KEEP the following EXACTLY: id, channel, topic, goal, type, time, day, dayIndex, publishDate.
-          CHANGE the following to provide a FRESH perspective: angle, description, rationale, hook, emotional framing.
-          
-          The result must be a JSON object matching the PlannerItem schema.
-          Current item: ${JSON.stringify(item)}
-          
-          If the item has "aiSettings", respect them (e.g. tone, intensity, storytelling depth) while crafting the new variation.
-          
-          Provide a creative, alternative interpretation that follows the same strategy but uses a different hook or perspective.
-          Result must be ONLY the JSON object.` 
+          content: "You are an AI Content Strategist. Result must be ONLY a valid JSON object matching the PlannerItem schema."
+        },
+        {
+          role: "user",
+          content: userPrompt
         }
       ],
       response_format: { type: "json_object" }
@@ -389,6 +388,35 @@ app.post("/api/regenerate-item", async (req, res) => {
     res.json(newItem);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/generate-image", async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    if (!prompt) return res.status(400).json({ error: "Prompt is required" });
+
+    console.log("[Visual Studio] Generating image for prompt:", prompt);
+    const client = getOpenAI();
+    
+    const response = await client.images.generate({
+      model: "dall-e-3",
+      prompt: prompt,
+      n: 1,
+      size: "1024x1024",
+      quality: "standard",
+    });
+
+    const url = response.data[0].url;
+    console.log("[Visual Studio] Image generated:", url);
+    res.json({ url });
+  } catch (error: any) {
+    console.error("[Visual Studio] DALL-E error:", error.message);
+    // Return a generic placeholder or error message instead of crashing
+    res.status(500).json({ 
+      error: "Failed to generate image",
+      message: error.message 
+    });
   }
 });
 

@@ -228,7 +228,7 @@ export function ModulePage({ config }: ModulePageProps) {
             topic: formValues.topic,
             context: formValues.context,
             variables: { ...brandVariables, ...formValues.variables },
-            channels: ['email', 'telegram', 'vk'],
+            channels: Array.isArray(formValues.channels) ? formValues.channels : ['email', 'telegram', 'vk'],
             advanced: showAdvanced ? {
                 tone: formValues.adv_tone,
                 emotion: formValues.adv_emotion,
@@ -344,11 +344,11 @@ export function ModulePage({ config }: ModulePageProps) {
              className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-[#E5E7EB] text-[#9CA3AF] hover:text-red-500 hover:border-red-200 transition-all shadow-sm text-[11px] font-bold uppercase tracking-wider"
            >
               <Trash2 size={14} />
-              <span>Reset All</span>
+              <span>Сбросить всё</span>
            </button>
            <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white border border-[#E5E7EB] shadow-sm">
               <div className="w-2 h-2 rounded-full bg-[#10B981]" />
-              <span className="text-[11px] font-bold text-[#374151] uppercase tracking-[0.1em]">Ready to Synth</span>
+              <span className="text-[11px] font-bold text-[#374151] uppercase tracking-[0.1em]">Готов к запуску</span>
            </div>
         </div>
       </header>
