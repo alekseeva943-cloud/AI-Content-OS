@@ -255,6 +255,8 @@ export function getModulePrompts(
 export function getPlannerPrompts(
   data: PromptVariables
 ) {
+  const startDate = data.startDate || new Date().toISOString().split('T')[0];
+  const today = new Date().toLocaleDateString('ru-RU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   return getModulePrompts(
     "planner",
@@ -268,6 +270,9 @@ export function getPlannerPrompts(
       period:
         data.period ||
         data.duration,
+
+      startDate,
+      today,
 
       channels:
         Array.isArray(data.channels)

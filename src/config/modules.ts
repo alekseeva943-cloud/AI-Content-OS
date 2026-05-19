@@ -1,6 +1,6 @@
 import { LayoutGrid, Mail, Mic2, Video, FileText } from 'lucide-react';
 
-export type FieldType = 'text' | 'textarea' | 'select' | 'toggle';
+export type FieldType = 'text' | 'textarea' | 'select' | 'toggle' | 'date';
 
 export interface ModuleField {
   id: string;
@@ -44,6 +44,13 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
         description: 'Например: помочь людям начать инвестировать без страха',
         placeholder: 'Опишите главную мысль, которую должен считать зритель...',
         type: 'textarea',
+      },
+      {
+        id: 'startDate',
+        label: 'Дата старта публикаций',
+        description: 'Когда начнем выкладывать контент?',
+        type: 'date',
+        defaultValue: new Date().toISOString().split('T')[0],
       },
       {
         id: 'period',

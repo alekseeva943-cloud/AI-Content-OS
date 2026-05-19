@@ -23,6 +23,7 @@ export type PostSettings = z.infer<typeof PostSettingsSchema>;
 export const PlannerItemSchema = z.object({
   id: z.string(),
   day: z.string(), // e.g. "Day 1", "Monday"
+  publishDate: z.string().optional(), // ISO date e.g. "2026-05-20"
   time: z.string(), // e.g. "10:00"
   channel: ContentChannelSchema,
   topic: z.string(),
@@ -51,5 +52,6 @@ export interface PlannerRequest {
   context?: string;
   period: PlanningPeriod;
   channels: ContentChannel[];
+  startDate?: string;
   advanced?: any;
 }

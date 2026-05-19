@@ -64,13 +64,30 @@ export function PlannerResultDisplay({ result, sourceInfo }: PlannerResultProps)
   const items = result?.items ?? [];
   
   const itemsByDay = items.reduce((acc, item) => {
-    if (!item || !item.day) return acc;
-    if (!acc[item.day]) acc[item.day] = [];
-    acc[item.day].push(item);
+    if (!item) return acc;
+    const groupKey = item.publishDate || item.day || 'Unknown';
+    if (!acc[groupKey]) acc[groupKey] = [];
+    acc[groupKey].push(item);
     return acc;
   }, {} as Record<string, PlannerItem[]>);
 
-  const days = Object.keys(itemsByDay);
+  const days = Object.keys(itemsByDay).sort((a, b) => {
+    // If both are dates, sort chronologically
+    if (!isNaN(Date.parse(a)) && !isNaN(Date.parse(b))) {
+      return new Date(a).getTime() - new Date(b).getTime();
+    }
+    return 0; // Keep order from AI if not dates
+  });
+
+  const formatDate = (dateStr: string) => {
+    if (isNaN(Date.parse(dateStr))) return dateStr;
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('ru-RU', { 
+      weekday: 'short', 
+      day: 'numeric', 
+      month: 'long' 
+    }).replace(/^\w/, (c) => c.toUpperCase());
+  };
 
   if (items.length === 0) {
     return (
@@ -106,7 +123,9 @@ export function PlannerResultDisplay({ result, sourceInfo }: PlannerResultProps)
                    <div className="w-12 h-12 rounded-[1.25rem] bg-[#111827] text-white flex items-center justify-center font-bold text-base shadow-[0_8px_20px_rgba(17,24,39,0.15)] group-hover/section:scale-110 transition-transform duration-500">
                      {idx + 1}
                    </div>
-                   <h3 className="text-3xl font-bold text-[#111827] tracking-tighter font-display">{day}</h3>
+                   <h3 className="text-3xl font-bold text-[#111827] tracking-tighter font-display">
+                     {formatDate(day)}
+                   </h3>
                 </div>
                 <div className="h-[1px] flex-1 bg-gradient-to-r from-[#E5E7EB] via-[#F3F4F6] to-transparent" />
                 <div className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-widest">{itemsByDay[day].length} Публикаций</div>

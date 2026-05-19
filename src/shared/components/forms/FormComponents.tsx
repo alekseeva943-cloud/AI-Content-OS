@@ -128,6 +128,24 @@ export function AIInput({
   );
 }
 
+export function AIDateInput({ 
+  className, 
+  ...props 
+}: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <div className="relative group">
+      <input
+        type="date"
+        className={cn(
+          "w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-3.5 text-[14px] leading-relaxed focus:outline-none focus:border-[#10B981] focus:ring-4 focus:ring-[#10B981]/5 font-sans transition-all text-[#111827] shadow-sm cursor-pointer",
+          className
+        )}
+        {...props}
+      />
+    </div>
+  );
+}
+
 export function AITextarea({ 
   className, 
   ...props 

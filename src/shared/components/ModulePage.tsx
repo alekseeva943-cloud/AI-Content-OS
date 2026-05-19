@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { GlassCard, Button } from '@/src/shared/components/UI';
 import { EmptyResultState, GenerationLoader } from '@/src/shared/components/ResultPanel';
-import { AIField, AIInput, AITextarea, AISelect, AIToggleGroup, AIPillSelector } from './forms/FormComponents';
+import { AIField, AIInput, AITextarea, AISelect, AIToggleGroup, AIPillSelector, AIDateInput } from './forms/FormComponents';
 import { ModuleConfig } from '@/src/config/modules';
 import { generateContentPlan } from '@/src/services/ai/client';
 import { useMemoryStore } from '@/src/stores/memoryStore';
@@ -172,6 +172,7 @@ export function ModulePage({ config }: ModulePageProps) {
             context: formValues.context,
             period: formValues.period,
             channels: Array.isArray(formValues.channels) ? formValues.channels : [formValues.channels],
+            startDate: formValues.startDate,
             sharedMemory,
             // Advanced parameters - ONLY applied if showAdvanced is true
             advanced: showAdvanced ? {
@@ -333,6 +334,12 @@ export function ModulePage({ config }: ModulePageProps) {
                         <AITextarea 
                             placeholder={field.placeholder} 
                             value={formValues[field.id]}
+                            onChange={(e) => handleInputChange(field.id, e.target.value)}
+                        />
+                    )}
+                    {field.type === 'date' && (
+                        <AIDateInput 
+                            value={formValues[field.id]} 
                             onChange={(e) => handleInputChange(field.id, e.target.value)}
                         />
                     )}
