@@ -16,7 +16,11 @@ import {
   BarChart3,
   MessageSquare,
   History,
-  Trash2
+  Trash2,
+  Plus,
+  Minus,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react';
 import { GlassCard, Button } from '@/src/shared/components/UI';
 import { EmptyResultState, GenerationLoader } from '@/src/shared/components/ResultPanel';
@@ -55,6 +59,7 @@ export function ModulePage({ config }: ModulePageProps) {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [zoom, setZoom] = useState(1);
   const [generationStep, setGenerationStep] = useState<string>('Инициализация...');
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -148,6 +153,7 @@ export function ModulePage({ config }: ModulePageProps) {
     setIsGenerating(true);
     setResult(null);
     setError(null);
+    setIsCollapsed(true);
     
     let stepIndex = 0;
     setGenerationStep(steps[0]);
@@ -473,13 +479,36 @@ export function ModulePage({ config }: ModulePageProps) {
                  )}>2</span>
                  <h3 className="text-[14px] font-bold text-[#374151] uppercase tracking-widest">Просмотр результата</h3>
               </div>
-              <div className="flex items-center gap-8 text-[#9CA3AF] text-[12px] font-bold uppercase tracking-widest">
+              <div className="flex items-center gap-6 text-[#9CA3AF] text-[12px] font-bold uppercase tracking-widest">
+                 <div className="flex items-center gap-2 mr-4 px-3 py-1.5 rounded-xl bg-white border border-[#E5E7EB] shadow-sm">
+                    <button 
+                      onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}
+                      className="p-1 hover:text-[#10B981] transition-colors"
+                      title="Уменьшить масштаб"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <span className="w-12 text-center text-[10px] text-[#374151] font-black">{Math.round(zoom * 100)}%</span>
+                    <button 
+                      onClick={() => setZoom(Math.min(1.5, zoom + 0.1))}
+                      className="p-1 hover:text-[#10B981] transition-colors"
+                      title="Увеличить масштаб"
+                    >
+                      <Plus size={14} />
+                    </button>
+                 </div>
                  <button className="hover:text-[#10B981] transition-colors">Скачать PDF</button>
                  <button className="hover:text-[#10B981] transition-colors">Экспорт</button>
               </div>
            </div>
 
-           <div className="min-h-[600px] flex flex-col">
+           <div 
+             className="min-h-[600px] flex flex-col origin-top transition-all duration-300"
+             style={{ 
+               transform: `scale(${zoom})`, 
+               width: zoom < 1 ? `${100 / zoom}%` : '100%' 
+             }}
+           >
               <AnimatePresence mode="wait">
                 {isGenerating ? (
                   <motion.div 
