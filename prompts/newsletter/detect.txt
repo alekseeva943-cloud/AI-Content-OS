@@ -40,6 +40,7 @@ JSON СТРУКТУРА
       "id": "variable_id",
       "label": "Человекочитаемое название (на русском)",
       "description": "Зачем это нужно и пример (на русском)",
+      "type": "text" | "url" | "date" | "number",
       "importance": "critical" | "optional"
     }
   ],

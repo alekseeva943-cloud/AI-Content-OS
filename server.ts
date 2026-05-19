@@ -102,15 +102,18 @@ app.post("/api/campaign-detect", async (req, res) => {
     const { topic, context } = req.body;
     const client = getOpenAI();
     
-    const { system, user } = getModulePrompts("newsletter", { topic, context });
+    const { system } = getModulePrompts("newsletter", { topic, context });
     
-    // Replace user with detect prompt
-    const detectPrompt = renderPrompt("newsletter", "detect.txt", { topic, context });
+    // Replace user with detect prompt and reinforce language
+    const detectPrompt = renderPrompt("newsletter", "detect.txt", { 
+      topic: topic || "Без темы", 
+      context: context || "Нет контекста" 
+    }) + "\n\nОТВЕТЬ СТРОГО НА РУССКОМ ЯЗЫКЕ.";
 
     const response = await client.chat.completions.create({
       model: "gpt-4o",
       messages: [
-        { role: "system", content: system },
+        { role: "system", content: system + "\n\nIMPORTANT: Use Russian language (RU) for all labels and descriptions." },
         { role: "user", content: detectPrompt }
       ],
       response_format: { type: "json_object" }
@@ -119,6 +122,7 @@ app.post("/api/campaign-detect", async (req, res) => {
     const content = response.choices[0].message.content;
     if (!content) throw new Error("Empty response from AI");
     
+    console.log("[Campaign Detect] AI Output:", content);
     res.json(JSON.parse(content));
   } catch (error: any) {
     console.error("[Campaign Detect API Error]", error);
@@ -145,88 +149,61 @@ app.post("/api/newsletter", async (req, res) => {
     const response = await client.chat.completions.create({
       model: "gpt-4o",
       messages: [
-        { role: "system", content: system },
-        { role: "user", content: user }
+        { role: "system", content: system + "\n\nОБЯЗАТЕЛЬНО: Весь контент должен быть на РУССКОМ языке. Используй живой, современный стиль." },
+        { role: "user", content: user + "\n\nВАЖНО: Создай контент ТОЛЬКО для выбранных каналов: " + requestedChannels.join(", ") + ". Пиши СТРОГО на русском языке." }
       ],
       response_format: { type: "json_object" }
     });
 
     const content = response.choices[0].message.content;
-    console.log("RAW AI RESPONSE:", content);
+    console.log("[Newsletter API] RAW AI RESPONSE:", content);
     
     if (!content) throw new Error("OpenAI returned an empty response");
     
     const rawData = JSON.parse(content);
     
-    // Robust transformation: check if already in new format, otherwise convert
-    let transformed: any;
-    
-    if (Array.isArray(rawData.channels)) {
-      transformed = {
-        id: rawData.id || `campaign-${Date.now()}`,
-        name: rawData.name || topic,
-        strategy: rawData.strategy || "",
-        channels: rawData.channels.map((ch: any) => {
-          console.log(`[Newsletter API] RAW CHANNEL (${ch.id}):`, JSON.stringify(ch, null, 2));
-          return {
-            id: ch.id,
-            active: ch.active ?? true,
-            content: {
-              subject: ch.content?.subject || ch.content?.title || ch.subject || ch.title || "",
-              preheader: ch.content?.preheader || ch.content?.summary || ch.preheader || ch.summary || "",
-              body: ch.content?.body || ch.content?.text || ch.content?.message || ch.content?.description || ch.body || ch.text || ch.description || ch.message || "",
-              cta: (function() {
-                const rawCta = ch.content?.cta || ch.cta;
-                if (!rawCta) return { text: "Узнать больше", link: "#" };
-                if (typeof rawCta === 'string') return { text: rawCta, link: "#" };
-                return { 
-                  text: rawCta.text || rawCta.label || rawCta.buttonText || "Узнать больше", 
-                  link: rawCta.link || rawCta.url || rawCta.href || "#" 
-                };
-              })(),
-              imagePrompt: ch.content?.imagePrompt || ch.content?.visuals || ch.imagePrompt || ch.visuals || ""
-            }
-          };
-        }),
-        variables: rawData.variables || {}
-      };
-    } else {
-      // Legacy AI output format fallback
-      transformed = {
-        id: `campaign-${Date.now()}`,
-        name: rawData.name || rawData.newsletter?.title || topic,
-        strategy: rawData.strategy || "Generated from legacy prompt structure",
-        channels: [
-          {
-            id: 'email',
-            active: true,
-            content: {
-              subject: (Array.isArray(rawData.subject_lines) ? rawData.subject_lines[0] : null) || rawData.subject || rawData.newsletter?.title || topic,
-              preheader: rawData.preview_text || rawData.preheader || rawData.summary || "",
-              body: rawData.newsletter?.body || rawData.body || rawData.content || "",
-              cta: typeof (rawData.newsletter?.cta || rawData.cta) === 'string' 
-                ? { text: (rawData.newsletter?.cta || rawData.cta), link: "#" } 
-                : (rawData.newsletter?.cta || rawData.cta || { text: "Узнать больше", link: "#" }),
-              imagePrompt: rawData.imagePrompt || ""
-            }
-          }
-        ],
-        variables: rawData.variables || {}
-      };
-    }
+    // Robust transformation: ensure ALL expected fields exist and handle AI naming variations
+    const transformed = {
+      id: rawData.id || `campaign-${Date.now()}`,
+      name: rawData.name || topic || "Новая кампания",
+      strategy: rawData.strategy || "",
+      channels: (rawData.channels || []).map((ch: any) => {
+        // Only include requested channels
+        if (!requestedChannels.includes(ch.id)) return null;
 
-    console.log("NORMALIZED CAMPAIGN:", JSON.stringify(transformed, null, 2));
+        const c = ch.content || {};
+        return {
+          id: ch.id as 'email' | 'telegram' | 'vk',
+          active: ch.active ?? true,
+          content: {
+            subject: c.subject || c.title || ch.subject || ch.title || "",
+            preheader: c.preheader || c.summary || c.preview || ch.preheader || ch.summary || "",
+            body: c.body || c.text || c.message || c.description || c.content || ch.body || ch.text || ch.description || ch.message || "",
+            cta: (function() {
+              const rawCta = c.cta || ch.cta;
+              if (!rawCta) return { text: "Узнать больше", link: "#" };
+              if (typeof rawCta === 'string') return { text: rawCta, link: "#" };
+              return { 
+                text: rawCta.text || rawCta.label || rawCta.buttonText || "Узнать больше", 
+                link: rawCta.link || rawCta.url || rawCta.href || "#" 
+              };
+            })(),
+            imagePrompt: c.imagePrompt || c.visuals || c.image_prompt || ch.imagePrompt || ch.visuals || ""
+          }
+        };
+      }).filter(Boolean),
+      variables: rawData.variables || {}
+    };
+
+    console.log("[Newsletter API] NORMALIZED CAMPAIGN:", JSON.stringify(transformed, null, 2));
 
     const validated = CampaignResultSchema.parse(transformed);
     res.json(validated);
   } catch (error: any) {
     console.error("CAMPAIGN ERROR:", error);
-    
-    const message = error.message || "Newsletter synthesis failed";
     res.status(500).json({ 
-      error: message,
-      stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined,
-      details: error.errors // for zod errors
+      error: error.message || "Newsletter synthesis failed",
+      details: error.errors
     });
   }
 });
@@ -408,20 +385,34 @@ app.post("/api/generate-image", async (req, res) => {
     console.log("[Visual Studio] Generating image for prompt:", prompt);
     const client = getOpenAI();
     
-    const response = await client.images.generate({
-      model: "dall-e-3",
-      prompt: prompt,
-      n: 1,
-      size: "1024x1024",
-      quality: "standard",
-    });
+    try {
+      const response = await client.images.generate({
+        model: "dall-e-3",
+        prompt: prompt,
+        n: 1,
+        size: "1024x1024",
+        quality: "standard",
+      });
 
-    const url = response.data[0].url;
-    console.log("[Visual Studio] Image generated:", url);
-    res.json({ url });
+      const url = response.data[0].url;
+      console.log("[Visual Studio] Image generated:", url);
+      return res.json({ url });
+    } catch (dalle3Error: any) {
+      console.warn("[Visual Studio] dall-e-3 failed, trying dall-e-2 as fallback...", dalle3Error.message);
+      
+      const response = await client.images.generate({
+        model: "dall-e-2",
+        prompt: prompt,
+        n: 1,
+        size: "1024x1024",
+      });
+
+      const url = response.data[0].url;
+      console.log("[Visual Studio] Image generated (dall-e-2):", url);
+      return res.json({ url });
+    }
   } catch (error: any) {
-    console.error("[Visual Studio] DALL-E error:", error.message);
-    // Return a generic placeholder or error message instead of crashing
+    console.error("[Visual Studio] Image generation failed:", error.message);
     res.status(500).json({ 
       error: "Failed to generate image",
       message: error.message 

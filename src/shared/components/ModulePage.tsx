@@ -399,14 +399,25 @@ export function ModulePage({ config }: ModulePageProps) {
                                 description={req.description}
                                 id={req.id}
                             >
-                                <AIInput 
-                                    placeholder={req.importance === 'critical' ? 'Обязательно для заполнения...' : 'Опционально...'}
-                                    value={formValues.variables?.[req.id] || ''}
-                                    onChange={(e) => {
-                                        const nextVars = { ...(formValues.variables || {}), [req.id]: e.target.value };
-                                        handleInputChange('variables', nextVars);
-                                    }}
-                                />
+                                {req.type === 'date' ? (
+                                    <AIDateInput 
+                                        value={formValues.variables?.[req.id] || ''}
+                                        onChange={(e) => {
+                                            const nextVars = { ...(formValues.variables || {}), [req.id]: e.target.value };
+                                            handleInputChange('variables', nextVars);
+                                        }}
+                                    />
+                                ) : (
+                                    <AIInput 
+                                        type={req.type === 'number' ? 'number' : (req.type === 'url' ? 'url' : 'text')}
+                                        placeholder={req.importance === 'critical' ? 'Обязательно для заполнения...' : 'Опционально...'}
+                                        value={formValues.variables?.[req.id] || ''}
+                                        onChange={(e) => {
+                                            const nextVars = { ...(formValues.variables || {}), [req.id]: e.target.value };
+                                            handleInputChange('variables', nextVars);
+                                        }}
+                                    />
+                                )}
                             </AIField>
                         ))}
                         <button 
