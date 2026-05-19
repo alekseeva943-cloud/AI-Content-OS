@@ -78,6 +78,30 @@ JSON ФОРМАТ
         },
         "imagePrompt": "Детальный промпт для генерации обложки письма"
       }
+    },
+    {
+      "id": "telegram",
+      "active": true,
+      "content": {
+        "body": "Текст поста для Telegram с эмодзи",
+        "cta": {
+          "text": "Текст ссылки",
+          "link": "#"
+        },
+        "imagePrompt": "Промпт для изображения к посту"
+      }
+    },
+    {
+      "id": "vk",
+      "active": true,
+      "content": {
+        "body": "Текст поста для VK",
+        "cta": {
+          "text": "Узнать подробнее",
+          "link": "#"
+        },
+        "imagePrompt": "Промпт для изображения к посту"
+      }
     }
   ],
   "variables": {}

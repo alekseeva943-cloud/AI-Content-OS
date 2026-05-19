@@ -166,19 +166,28 @@ app.post("/api/newsletter", async (req, res) => {
         id: rawData.id || `campaign-${Date.now()}`,
         name: rawData.name || topic,
         strategy: rawData.strategy || "",
-        channels: rawData.channels.map((ch: any) => ({
-          id: ch.id,
-          active: ch.active ?? true,
-          content: {
-            subject: ch.content?.subject || "",
-            preheader: ch.content?.preheader || "",
-            body: ch.content?.body || "",
-            cta: typeof (ch.content?.cta) === 'string' 
-              ? { text: ch.content.cta, link: "#" }
-              : (ch.content?.cta || { text: "Узнать больше", link: "#" }),
-            imagePrompt: ch.content?.imagePrompt || ""
-          }
-        })),
+        channels: rawData.channels.map((ch: any) => {
+          console.log(`[Newsletter API] RAW CHANNEL (${ch.id}):`, JSON.stringify(ch, null, 2));
+          return {
+            id: ch.id,
+            active: ch.active ?? true,
+            content: {
+              subject: ch.content?.subject || ch.content?.title || ch.subject || ch.title || "",
+              preheader: ch.content?.preheader || ch.content?.summary || ch.preheader || ch.summary || "",
+              body: ch.content?.body || ch.content?.text || ch.content?.message || ch.content?.description || ch.body || ch.text || ch.description || ch.message || "",
+              cta: (function() {
+                const rawCta = ch.content?.cta || ch.cta;
+                if (!rawCta) return { text: "Узнать больше", link: "#" };
+                if (typeof rawCta === 'string') return { text: rawCta, link: "#" };
+                return { 
+                  text: rawCta.text || rawCta.label || rawCta.buttonText || "Узнать больше", 
+                  link: rawCta.link || rawCta.url || rawCta.href || "#" 
+                };
+              })(),
+              imagePrompt: ch.content?.imagePrompt || ch.content?.visuals || ch.imagePrompt || ch.visuals || ""
+            }
+          };
+        }),
         variables: rawData.variables || {}
       };
     } else {
