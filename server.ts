@@ -129,6 +129,8 @@ app.post("/api/campaign-detect", async (req, res) => {
 app.post("/api/newsletter", async (req, res) => {
   try {
     const { topic, context, variables, channels, advanced } = req.body;
+    console.log("[Newsletter API] Request received:", { topic, channels });
+    
     const client = getOpenAI();
     
     const { system, user } = getModulePrompts("newsletter", { 
@@ -149,9 +151,9 @@ app.post("/api/newsletter", async (req, res) => {
     });
 
     const content = response.choices[0].message.content;
-    console.log("[Newsletter API] RAW AI OUTPUT:", content);
+    console.log("RAW AI RESPONSE:", content);
     
-    if (!content) throw new Error("Empty response");
+    if (!content) throw new Error("OpenAI returned an empty response");
     
     const rawData = JSON.parse(content);
     
@@ -170,9 +172,9 @@ app.post("/api/newsletter", async (req, res) => {
             subject: ch.content?.subject || "",
             preheader: ch.content?.preheader || "",
             body: ch.content?.body || "",
-            cta: typeof ch.content?.cta === 'string' 
+            cta: typeof (ch.content?.cta) === 'string' 
               ? { text: ch.content.cta, link: "#" }
-              : (ch.content?.cta || { text: "Learn More", link: "#" }),
+              : (ch.content?.cta || { text: "Узнать больше", link: "#" }),
             imagePrompt: ch.content?.imagePrompt || ""
           }
         })),
@@ -203,23 +205,18 @@ app.post("/api/newsletter", async (req, res) => {
       };
     }
 
-    console.log("[Newsletter API] Normalized Data:", JSON.stringify(transformed, null, 2));
+    console.log("NORMALIZED CAMPAIGN:", JSON.stringify(transformed, null, 2));
 
     const validated = CampaignResultSchema.parse(transformed);
     res.json(validated);
   } catch (error: any) {
-    console.error("[Newsletter API] CRITICAL ERROR:", error);
-    console.error("[Newsletter API] Stack Trace:", error.stack);
+    console.error("CAMPAIGN ERROR:", error);
     
-    // In dev mode provide more details
     const message = error.message || "Newsletter synthesis failed";
     res.status(500).json({ 
       error: message,
-      details: process.env.NODE_ENV !== 'production' ? {
-        stack: error.stack,
-        name: error.name,
-        rawData: error.rawData // help debug if we attached it
-      } : undefined
+      stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined,
+      details: error.errors // for zod errors
     });
   }
 });

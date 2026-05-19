@@ -74,15 +74,28 @@ export async function generateCampaign(req: CampaignRequest): Promise<CampaignRe
   log({ type: 'request', module: 'Campaign Builder', message: `Launching synthesis for: ${req.topic}` });
 
   try {
-    const response = await fetch('/api/newsletter', { // Keeping endpoint as /api/newsletter to avoid re-routing if possible, or link to /api/campaign
+    const response = await fetch('/api/newsletter', { 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req),
     });
 
-    if (!response.ok) throw new Error('Failed to generate campaign');
-    const result = await response.json();
+    if (!response.ok) {
+      const text = await response.text();
+      let message = 'Failed to generate campaign';
+      try {
+        const data = JSON.parse(text);
+        message = data.error || data.message || message;
+        if (data.stack) {
+           console.error("[Campaign API Stack]:", data.stack);
+        }
+      } catch (e) {
+        message = `Server error: ${response.status} ${response.statusText}`;
+      }
+      throw new Error(message);
+    }
     
+    const result = await response.json();
     log({ type: 'response', module: 'Campaign Builder', message: 'Campaign ready to push' });
     return result;
   } catch (err: any) {
@@ -95,15 +108,24 @@ export async function generateCampaignImage(prompt: string): Promise<string> {
   const log = useDebugStore.getState().addLog;
   log({ type: 'request', module: 'Visual Studio', message: 'Designing custom asset' });
 
-  const response = await fetch('/api/generate-image', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt }),
-  });
+  try {
+    const response = await fetch('/api/generate-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
 
-  if (!response.ok) throw new Error('Failed to generate image');
-  const { url } = await response.json();
-  return url;
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Visual Studio failure: ${text.substring(0, 50)}`);
+    }
+    
+    const data = await response.json();
+    return data.url;
+  } catch (err: any) {
+    log({ type: 'error', module: 'Visual Studio', message: `Asset design failed: ${err.message}` });
+    throw err;
+  }
 }
 
 export async function generateLongread(req: { topic: string, context: string, advanced?: any }): Promise<any> {

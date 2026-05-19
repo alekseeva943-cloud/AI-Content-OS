@@ -70,7 +70,7 @@ export function ModulePage({ config }: ModulePageProps) {
     requirements: (rawState?.requirements || []) as VariableRequirement[],
   };
 
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isCampaignLoading, setIsCampaignLoading] = useState(false);
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [zoom, setZoom] = useState(1);
@@ -119,12 +119,10 @@ export function ModulePage({ config }: ModulePageProps) {
       
       setFormValues(prev => {
         const next = { ...prev };
-        // Map source content to appropriate fields
         if (typeof sourceContent === 'string') {
           if (next.topic !== undefined) next.topic = sourceTitle || sourceContent.slice(0, 50);
           if (next.context !== undefined) next.context = sourceContent;
         } else {
-          // If it's an object (like a PlannerItem or full result)
           const topic = sourceContent.topic || sourceContent.title || sourceTitle;
           const context = sourceContent.description || sourceContent.summary || sourceContent.content;
           
@@ -138,7 +136,6 @@ export function ModulePage({ config }: ModulePageProps) {
       });
       
       toast.info(`Использован контент из: ${sourceTitle || sourceModule}`);
-      // Clear location state to avoid re-triggering on navigate back
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location, config.fields, navigate]);
@@ -172,7 +169,6 @@ export function ModulePage({ config }: ModulePageProps) {
             context: formValues.context
         });
         
-        // Auto-select suggested channels if none selected or just to help
         if (suggestedChannels?.length > 0) {
             handleInputChange('channels', suggestedChannels);
         }
@@ -187,7 +183,7 @@ export function ModulePage({ config }: ModulePageProps) {
   };
 
   const handleGenerate = async () => {
-    setIsGenerating(true);
+    setIsCampaignLoading(true);
     setResult(null);
     setError(null);
     setIsCollapsed(true);
@@ -203,6 +199,7 @@ export function ModulePage({ config }: ModulePageProps) {
     }, 2500);
 
     try {
+      console.log(`[ModulePage] Starting generation for ${config.id}`);
       if (config.id === 'planner') {
          const request = {
             topic: formValues.topic,
@@ -211,7 +208,6 @@ export function ModulePage({ config }: ModulePageProps) {
             channels: Array.isArray(formValues.channels) ? formValues.channels : [formValues.channels],
             startDate: formValues.startDate,
             sharedMemory,
-            // Advanced parameters - ONLY applied if showAdvanced is true
             advanced: showAdvanced ? {
                 preset: formValues.adv_preset,
                 goal: formValues.adv_goal,
@@ -226,22 +222,13 @@ export function ModulePage({ config }: ModulePageProps) {
          
          const data = await generateContentPlan(request as any);
          setResult(data);
-         
-         addGeneration({
-            type: 'planner',
-            data,
-            metadata: {
-                topic: request.topic,
-                period: request.period,
-                channels: request.channels
-            }
-         });
+         addGeneration({ type: 'planner', data, metadata: { topic: request.topic, period: request.period, channels: request.channels } });
       } else if (config.id === 'newsletters') {
          const request = {
             topic: formValues.topic,
             context: formValues.context,
             variables: { ...brandVariables, ...formValues.variables },
-            channels: ['email', 'telegram', 'vk'], // Dynamic selection can be added later
+            channels: ['email', 'telegram', 'vk'],
             advanced: showAdvanced ? {
                 tone: formValues.adv_tone,
                 emotion: formValues.adv_emotion,
@@ -249,16 +236,10 @@ export function ModulePage({ config }: ModulePageProps) {
          };
          
          const data = await generateCampaign(request as any);
+         console.log("[ModulePage] Campaign generated successfully");
          setResult(data);
          setModuleState(config.id, { builderStep: 'result' });
-         
-         addGeneration({
-            type: 'newsletter',
-            data,
-            metadata: {
-                topic: request.topic,
-            }
-         });
+         addGeneration({ type: 'newsletter', data, metadata: { topic: request.topic } });
       } else if (config.id === 'longreads') {
          const request = {
             topic: formValues.title || formValues.topic,
@@ -289,10 +270,11 @@ export function ModulePage({ config }: ModulePageProps) {
         setResult({ mock: true });
       }
     } catch (err: any) {
-      setError(err.message || 'Generation failed');
+      console.error("[ModulePage] Generation failed:", err);
+      setError(err.message || 'Синтез не удался. Проверьте параметры и попробуйте снова.');
     } finally {
       clearInterval(stepInterval);
-      setIsGenerating(false);
+      setIsCampaignLoading(false);
     }
   };
 
@@ -312,7 +294,7 @@ export function ModulePage({ config }: ModulePageProps) {
 
     clearModule(config.id, initial);
     setError(null);
-    setIsGenerating(false);
+    setIsCampaignLoading(false);
   };
 
   const toggleCollapse = () => setIsCollapsed(!isCollapsed);
@@ -330,7 +312,6 @@ export function ModulePage({ config }: ModulePageProps) {
 
   return (
     <div className="flex flex-col h-screen max-h-screen overflow-hidden pb-10 mx-auto w-full max-w-[1700px] px-8">
-      {/* Workspace Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-8 border-b border-[#E5E7EB] shrink-0">
         <div className="space-y-4">
           <button 
@@ -373,10 +354,9 @@ export function ModulePage({ config }: ModulePageProps) {
       </header>
 
       <div className="flex gap-10 items-start relative flex-1 overflow-hidden pt-10">
-        {/* Creation Controls (Collapsible) */}
         <motion.div 
             animate={{ 
-                width: isCollapsed ? 0 : '480px', // Wider panel for advanced settings
+                width: isCollapsed ? 0 : '480px',
                 opacity: isCollapsed ? 0 : 1,
                 marginRight: isCollapsed ? -40 : 0,
                 pointerEvents: isCollapsed ? 'none' : 'auto'
@@ -499,15 +479,15 @@ export function ModulePage({ config }: ModulePageProps) {
                         {field.type === 'select' && (
                           Array.isArray(field.defaultValue) ? (
                             <AIPillSelector 
-                              value={Array.isArray(formValues[field.id]) ? formValues[field.id] : [formValues[field.id]]}
-                              options={field.options || []}
-                              onChange={(val) => handleInputChange(field.id, val)}
+                               value={Array.isArray(formValues[field.id]) ? formValues[field.id] : [formValues[field.id]]}
+                               options={field.options || []}
+                               onChange={(val) => handleInputChange(field.id, val)}
                             />
                           ) : (
                             <AIToggleGroup 
-                              value={formValues[field.id]}
-                              options={field.options || []}
-                              onChange={(val) => handleInputChange(field.id, val)}
+                               value={formValues[field.id]}
+                               options={field.options || []}
+                               onChange={(val) => handleInputChange(field.id, val)}
                             />
                           )
                         )}
@@ -548,7 +528,6 @@ export function ModulePage({ config }: ModulePageProps) {
                     </motion.div>
                 )}
 
-                {/* Advanced Settings Section */}
                 <div className="pt-6 border-t border-[#F3F4F6]">
                    <button 
                       onClick={() => setShowAdvanced(!showAdvanced)}
@@ -591,14 +570,17 @@ export function ModulePage({ config }: ModulePageProps) {
                {error && (
                  <div className="p-4 rounded-xl bg-red-50 border border-red-100 flex items-start gap-4">
                    <AlertCircle size={18} className="text-red-500 shrink-0" />
-                   <p className="text-[13px] text-red-600 font-medium leading-relaxed">{error}</p>
+                   <div className="flex-1 min-w-0">
+                       <p className="text-[13px] text-red-600 font-bold leading-relaxed mb-1 uppercase tracking-tight">Ошибка синтеза</p>
+                       <p className="text-[12px] text-red-500 font-medium leading-relaxed break-words">{error}</p>
+                   </div>
                  </div>
                )}
 
                <div className="pt-8 border-t border-[#F3F4F6]">
                  <Button 
                    onClick={config.id === 'newsletters' && moduleState.builderStep === 'input' ? handleCampaignDiscovery : handleGenerate}
-                   isLoading={isGenerating || isDiscovering}
+                   isLoading={isCampaignLoading || isDiscovering}
                    size="xl" 
                    className="w-full gap-3 shadow-[0_12px_24px_rgba(16,185,129,0.2)] rounded-2xl h-14"
                  >
@@ -624,7 +606,6 @@ export function ModulePage({ config }: ModulePageProps) {
             </GlassCard>
          </motion.div>
 
-         {/* Workspace Toggle Button (Sticky) */}
          <div className="h-full flex items-center justify-center sticky top-1/2 z-30">
             <button 
                onClick={toggleCollapse}
@@ -635,7 +616,6 @@ export function ModulePage({ config }: ModulePageProps) {
             </button>
          </div>
 
-         {/* Results Workspace */}
          <div className="flex-1 h-full overflow-y-auto pr-4 no-scrollbar custom-scroll flex flex-col gap-8 min-w-0">
             <div className="flex items-center justify-between">
                <div className="flex items-center gap-3">
@@ -676,7 +656,7 @@ export function ModulePage({ config }: ModulePageProps) {
               }}
             >
                <AnimatePresence mode="wait">
-                 {isGenerating ? (
+                 {isCampaignLoading ? (
                    <motion.div 
                      key="loading"
                      initial={{ opacity: 0 }}
