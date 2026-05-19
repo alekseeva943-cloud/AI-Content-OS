@@ -23,7 +23,11 @@ import {
   Highlighter,
   Feather,
   BookOpen,
-  Type
+  Type,
+  Youtube,
+  Linkedin,
+  Video,
+  Globe
 } from 'lucide-react';
 import { PlannerItem, PlannerResult, PostSettings } from '@/src/types/planner';
 import { GlassCard, Button } from '@/src/shared/components/UI';
@@ -79,19 +83,27 @@ export function PlannerResultDisplay({ result, sourceInfo }: PlannerResultProps)
     return 0; // Keep order from AI if not dates
   });
 
-  const formatDate = (dateValue: string) => {
-    // If it's a valid ISO date string
+  const formatDateFull = (dateValue: string) => {
     if (!isNaN(Date.parse(dateValue))) {
       const date = new Date(dateValue);
       return date.toLocaleDateString('ru-RU', { 
         weekday: 'long', 
         day: 'numeric', 
         month: 'long',
-        year: 'numeric'
       }).replace(/^\w/, (c) => c.toUpperCase());
     }
-    
-    // Fallback if not a direct date (maybe it's already a day name or just "Day 1")
+    return dateValue;
+  };
+
+  const formatDateShort = (dateValue: string) => {
+    if (!isNaN(Date.parse(dateValue))) {
+      const date = new Date(dateValue);
+      return date.toLocaleDateString('ru-RU', { 
+        weekday: 'short', 
+        day: 'numeric', 
+        month: 'short' 
+      }).replace(/^\w/, (c) => c.toUpperCase());
+    }
     return dateValue;
   };
 
@@ -130,7 +142,7 @@ export function PlannerResultDisplay({ result, sourceInfo }: PlannerResultProps)
                      {idx + 1}
                    </div>
                    <h3 className="text-3xl font-bold text-[#111827] tracking-tighter font-display">
-                     {formatDate(day)}
+                     {formatDateFull(day)}
                    </h3>
                 </div>
                 <div className="h-[1px] flex-1 bg-gradient-to-r from-[#E5E7EB] via-[#F3F4F6] to-transparent" />
@@ -267,13 +279,73 @@ function PlanItemCard({
     }
   };
 
-  const channelIcons = {
-    telegram: Send,
-    email: Mail,
-    vk: MapPin, 
+  const channelConfig = {
+    telegram: { 
+        icon: Send, 
+        label: 'Telegram', 
+        color: '#3B82F6', 
+        bg: 'bg-blue-50', 
+        border: 'border-blue-100', 
+        text: 'text-blue-600',
+        accentBg: 'bg-blue-500',
+        lightBg: 'bg-blue-500/10'
+    },
+    vk: { 
+        icon: Globe, 
+        label: 'VKontakte', 
+        color: '#4C75A3', 
+        bg: 'bg-sky-50', 
+        border: 'border-sky-100', 
+        text: 'text-sky-700',
+        accentBg: 'bg-sky-600',
+        lightBg: 'bg-sky-600/10'
+    },
+    email: { 
+        icon: Mail, 
+        label: 'Email', 
+        color: '#EA4335', 
+        bg: 'bg-red-50', 
+        border: 'border-red-100', 
+        text: 'text-red-600',
+        accentBg: 'bg-red-500',
+        lightBg: 'bg-red-500/10'
+    },
+    youtube: { 
+        icon: Youtube, 
+        label: 'YouTube', 
+        color: '#FF0000', 
+        bg: 'bg-rose-50', 
+        border: 'border-rose-100', 
+        text: 'text-rose-600',
+        accentBg: 'bg-rose-600',
+        lightBg: 'bg-rose-600/10'
+    },
+    linkedin: { 
+        icon: Linkedin, 
+        label: 'LinkedIn', 
+        color: '#0077B5', 
+        bg: 'bg-indigo-50', 
+        border: 'border-indigo-100', 
+        text: 'text-indigo-600',
+        accentBg: 'bg-indigo-600',
+        lightBg: 'bg-indigo-600/10'
+    }
   };
 
-  const Icon = channelIcons[item.channel] || Send;
+  const config = channelConfig[item.channel as keyof typeof channelConfig] || channelConfig.telegram;
+  const Icon = config.icon;
+
+  const formatDateShort = (dateValue: string) => {
+    if (!isNaN(Date.parse(dateValue))) {
+      const date = new Date(dateValue);
+      return date.toLocaleDateString('ru-RU', { 
+        weekday: 'short', 
+        day: 'numeric', 
+        month: 'short' 
+      }).replace(/^\w/, (c) => c.toUpperCase());
+    }
+    return dateValue;
+  };
 
   return (
     <motion.div
@@ -282,29 +354,53 @@ function PlanItemCard({
         transition={{ delay: index * 0.1, duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
         className="group/card h-full"
     >
-        <GlassCard className="p-10 bg-white border-[#E5E7EB] hover:border-[#10B981]/50 transition-all duration-700 shadow-sm hover:shadow-2xl flex flex-col h-full rounded-[2.5rem] relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#10B981]/5 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 -z-10" />
+        <GlassCard className={cn(
+            "p-10 bg-white border-[#E5E7EB] transition-all duration-700 shadow-sm hover:shadow-2xl flex flex-col h-full rounded-[2.5rem] relative overflow-hidden",
+            `hover:border-[${config.color}]/50`
+        )}>
+        <div 
+          className={cn(
+            "absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 -z-10",
+            `from-[${config.color}]/5`
+          )} 
+        />
 
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-10">
             <div className="flex items-center gap-5 flex-wrap">
-                <div className="w-14 h-14 shrink-0 rounded-[1.25rem] bg-[#F9FAFB] border border-[#E5E7EB] text-[#9CA3AF] flex items-center justify-center transition-all group-hover/card:text-[#10B981] group-hover/card:bg-[#10B981]/10 group-hover/card:border-[#10B981]/30 group-hover/card:scale-110 duration-500 shadow-sm">
+                <div className={cn(
+                    "w-14 h-14 shrink-0 rounded-[1.25rem] border flex items-center justify-center transition-all duration-500 shadow-sm",
+                    "bg-[#F9FAFB] border-[#E5E7EB] text-[#9CA3AF]",
+                    `group-hover/card:${config.text} group-hover/card:${config.lightBg} group-hover/card:${config.border} group-hover/card:scale-110`
+                )}>
                     <Icon size={26} strokeWidth={2} />
                 </div>
                 <div className="flex flex-col gap-2 min-w-0">
                    <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[12px] font-black text-[#111827] uppercase tracking-[0.15em] leading-none shrink-0">{item.channel}</span>
+                        <span className={cn(
+                            "text-[12px] font-black uppercase tracking-[0.15em] leading-none shrink-0",
+                            `group-hover/card:${config.text} transition-colors duration-500`
+                        )}>{config.label}</span>
                         {item.type && (
-                             <span className="text-[10px] font-black text-white bg-[#111827] px-2.5 py-1 rounded-md uppercase tracking-widest whitespace-nowrap">
+                             <span className={cn(
+                                "text-[10px] font-black text-white px-2.5 py-1 rounded-md uppercase tracking-widest whitespace-nowrap",
+                                config.accentBg
+                             )}>
                                 {item.type}
                              </span>
                         )}
                         {item.angle && (
-                             <span className="text-[9px] font-black text-[#10B981] bg-[#10B981]/10 px-2.5 py-1 rounded-md uppercase tracking-widest border border-[#10B981]/20 whitespace-nowrap">
+                             <span className={cn(
+                                "text-[9px] font-black px-2.5 py-1 rounded-md uppercase tracking-widest border whitespace-nowrap",
+                                config.text, config.lightBg, config.border
+                             )}>
                                 {item.angle}
                              </span>
                         )}
                    </div>
                    <div className="flex items-center gap-2.5 text-[#6B7280]">
+                      <Calendar size={14} strokeWidth={2.5} className="text-[#9CA3AF]" />
+                      <span className="text-[13px] font-bold leading-none">{formatDateShort(item.publishDate)}</span>
+                      <div className="w-[3px] h-[3px] rounded-full bg-[#D1D5DB]" />
                       <Clock size={14} strokeWidth={2.5} className="text-[#9CA3AF]" />
                       <span className="text-[13px] font-bold leading-none">{item.time}</span>
                    </div>
@@ -314,7 +410,10 @@ function PlanItemCard({
 
         <div className="space-y-6 flex-1 flex flex-col">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-            <h4 className="text-2xl font-bold text-[#111827] leading-[1.2] group-hover/card:text-[#10B981] transition-colors font-display tracking-tight flex-1">
+            <h4 className={cn(
+                "text-2xl font-bold text-[#111827] leading-[1.2] transition-colors font-display tracking-tight flex-1",
+                `group-hover/card:${config.text}`
+            )}>
                 {item.topic}
             </h4>
             {item.goal && (
@@ -352,10 +451,13 @@ function PlanItemCard({
           </AnimatePresence>
 
           {item.rationale && !generatedText && (
-              <div className="p-5 rounded-[1.5rem] bg-[#F9FAFB] border border-[#E5E7EB] border-l-4 border-l-[#10B981] shadow-sm">
+              <div className={cn(
+                  "p-5 rounded-[1.5rem] bg-[#F9FAFB] border border-[#E5E7EB] border-l-4 shadow-sm transition-all duration-500",
+                  `group-hover/card:${config.border.replace('border-', 'border-l-')}`
+              )}>
                   <div className="flex items-center gap-2 mb-2">
-                    <Sparkles size={14} className="text-[#10B981]" />
-                    <span className="text-[10px] font-black text-[#10B981] uppercase tracking-widest">Почему это важно</span>
+                    <Sparkles size={14} className={cn(config.text)} />
+                    <span className={cn("text-[10px] font-black uppercase tracking-widest", config.text)}>Почему это важно</span>
                   </div>
                   <p className="text-[13px] text-[#4B5563] italic font-medium leading-relaxed">
                       {item.rationale}
@@ -377,7 +479,7 @@ function PlanItemCard({
               onClick={() => setShowLocalSettings(!showLocalSettings)}
               className={cn(
                 "flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider transition-all",
-                showLocalSettings ? "text-[#10B981]" : "text-[#9CA3AF] hover:text-[#111827]"
+                showLocalSettings ? config.text : "text-[#9CA3AF] hover:text-[#111827]"
               )}
             >
               <Settings size={14} className={cn(showLocalSettings && "animate-spin-slow")} />
@@ -441,22 +543,28 @@ function PlanItemCard({
                           type="range" min="0" max="100" 
                           value={localSettings.hookIntensity}
                           onChange={(e) => updateLocalSetting('hookIntensity', parseInt(e.target.value))}
-                          className="w-full h-1 bg-[#E5E7EB] rounded-lg appearance-none cursor-pointer accent-[#10B981]"
+                          className={cn(
+                              "w-full h-1 bg-[#E5E7EB] rounded-lg appearance-none cursor-pointer",
+                              `accent-[${config.color}]`
+                          )}
                         />
                       </div>
-
+ 
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                            <label className="text-[9px] font-black text-[#6B7280] uppercase tracking-wider flex items-center gap-1.5">
-                            <Highlighter size={10} className="text-[#10B981]" /> Эмодзи
+                            <Highlighter size={10} className={config.text} /> Эмодзи
                            </label>
-                           <span className="text-[9px] font-bold text-[#10B981]">{localSettings.emojiDensity}%</span>
+                           <span className={cn("text-[9px] font-bold", config.text)}>{localSettings.emojiDensity}%</span>
                         </div>
                         <input 
                           type="range" min="0" max="100" 
                           value={localSettings.emojiDensity}
                           onChange={(e) => updateLocalSetting('emojiDensity', parseInt(e.target.value))}
-                          className="w-full h-1 bg-[#E5E7EB] rounded-lg appearance-none cursor-pointer accent-[#10B981]"
+                          className={cn(
+                            "w-full h-1 bg-[#E5E7EB] rounded-lg appearance-none cursor-pointer",
+                            `accent-[${config.color}]`
+                          )}
                         />
                       </div>
 
@@ -535,7 +643,7 @@ function PlanItemCard({
                 disabled={isGenerating}
                 className={cn(
                   "flex items-center gap-2.5 px-6 py-3 rounded-2xl text-white text-[13px] font-bold transition-all shadow-lg active:scale-95",
-                  isGenerating ? "bg-gray-400 cursor-not-allowed" : "bg-[#111827] hover:bg-[#10B981] shadow-emerald-500/10"
+                  isGenerating ? "bg-gray-400 cursor-not-allowed" : cn("bg-[#111827] transition-all", `hover:bg-[${config.color}]`)
                 )}
               >
                 {isGenerating ? (

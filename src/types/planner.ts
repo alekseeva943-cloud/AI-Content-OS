@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const ContentChannelSchema = z.enum(['telegram', 'email', 'vk']);
+export const ContentChannelSchema = z.enum(['telegram', 'email', 'vk', 'youtube', 'linkedin']);
 export type ContentChannel = z.infer<typeof ContentChannelSchema>;
 
 export const PlanningPeriodSchema = z.enum(['today', '3days', '5days', 'week']);
@@ -22,8 +22,8 @@ export type PostSettings = z.infer<typeof PostSettingsSchema>;
 
 export const PlannerItemSchema = z.object({
   id: z.string(),
-  day: z.string(), // e.g. "Day 1", "Monday"
-  publishDate: z.string().optional(), // ISO date e.g. "2026-05-20"
+  day: z.string(), // e.g. "Понедельник"
+  publishDate: z.string(), // ISO date e.g. "2026-05-20"
   time: z.string(), // e.g. "10:00"
   channel: ContentChannelSchema,
   topic: z.string(),

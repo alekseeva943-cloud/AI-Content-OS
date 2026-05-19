@@ -12,6 +12,7 @@ import {
   Video, 
   FileText,
   Clock,
+  Calendar,
   Send,
   Sparkles,
   Filter,
@@ -21,7 +22,10 @@ import {
   History,
   Grid,
   List as ListIcon,
-  Tag
+  Tag,
+  Youtube,
+  Linkedin,
+  Globe
 } from 'lucide-react';
 import { useFavoritesStore, FavoriteItem } from '@/src/stores/favoritesStore';
 import { GlassCard, Button } from '@/src/shared/components/UI';
@@ -35,6 +39,14 @@ const moduleIcons: Record<string, any> = {
   podcasts: Mic2,
   avatars: Video,
   longreads: FileText,
+};
+
+const channelConfig: Record<string, any> = {
+    telegram: { icon: Send, label: 'Telegram', color: '#3B82F6', text: 'text-blue-600', lightBg: 'bg-blue-50', border: 'border-blue-100', accentBg: 'bg-blue-500' },
+    vk: { icon: Globe, label: 'VKontakte', color: '#4C75A3', text: 'text-sky-700', lightBg: 'bg-sky-50', border: 'border-sky-100', accentBg: 'bg-sky-600' },
+    email: { icon: Mail, label: 'Email', color: '#EA4335', text: 'text-red-600', lightBg: 'bg-red-50', border: 'border-red-100', accentBg: 'bg-red-500' },
+    youtube: { icon: Youtube, label: 'YouTube', color: '#FF0000', text: 'text-rose-600', lightBg: 'bg-rose-50', border: 'border-rose-100', accentBg: 'bg-rose-600' },
+    linkedin: { icon: Linkedin, label: 'LinkedIn', color: '#0077B5', text: 'text-indigo-600', lightBg: 'bg-indigo-50', border: 'border-indigo-100', accentBg: 'bg-indigo-600' },
 };
 
 const moduleLabels: Record<string, string> = {
@@ -363,14 +375,19 @@ function FavoriteCard({
   const repurposeActions = Object.keys(moduleIcons).filter(m => m !== item.moduleId);
 
   if (isCompact) {
+    const channel = item.metadata?.channel || item.metadata?.platform || (item.moduleId === 'planner' ? (item.content as any).channel : null);
+    const config = channelConfig[channel] || null;
+    const CompactIcon = config ? config.icon : (moduleIcons[item.moduleId] || FileText);
+
     return (
         <motion.div layout className="group/item py-2">
             <div className="flex items-center gap-6 p-4 bg-white border border-[#E5E7EB] rounded-2xl hover:border-[#10B981]/50 hover:shadow-xl hover:shadow-black/[0.02] transition-all duration-300">
                 <div className={cn(
-                    "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
-                    "bg-[#F9FAFB] text-[#9CA3AF] group-hover/item:bg-[#10B981]/10 group-hover/item:text-[#10B981] transition-all"
+                    "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-all",
+                    config ? `${config.lightBg} ${config.text}` : "bg-[#F9FAFB] text-[#9CA3AF]",
+                    config ? `group-hover/item:${config.accentBg} group-hover/item:text-white` : "group-hover/item:bg-[#10B981]/10 group-hover/item:text-[#10B981]"
                 )}>
-                    {item.metadata?.platform === 'telegram' ? <Send size={20} /> : <FileText size={20} />}
+                    <CompactIcon size={20} />
                 </div>
                 
                 <div className="flex-1 min-w-0">
@@ -424,7 +441,9 @@ function FavoriteCard({
     );
   }
 
-  const Icon = item.metadata?.platform && moduleIcons[item.metadata.platform] ? moduleIcons[item.metadata.platform] : (item.moduleId && moduleIcons[item.moduleId] ? moduleIcons[item.moduleId] : FileText);
+  const channel = item.metadata?.channel || item.metadata?.platform || (item.moduleId === 'planner' ? (item.content as any).channel : null);
+  const config = channelConfig[channel] || null;
+  const Icon = config ? config.icon : (moduleIcons[item.moduleId] || FileText);
 
   return (
     <motion.div
@@ -434,19 +453,35 @@ function FavoriteCard({
         exit={{ opacity: 0, scale: 0.95 }}
         className="group/card h-full"
     >
-        <GlassCard className="p-10 bg-white border-[#E5E7EB] hover:border-[#10B981]/50 transition-all duration-700 shadow-sm hover:shadow-2xl flex flex-col h-full rounded-[2.5rem] relative overflow-hidden group-hover/card:-translate-y-1">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#10B981]/5 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 -z-10" />
+        <GlassCard className={cn(
+            "p-10 bg-white border-[#E5E7EB] transition-all duration-700 shadow-sm hover:shadow-2xl flex flex-col h-full rounded-[2.5rem] relative overflow-hidden group-hover/card:-translate-y-1",
+            config ? `hover:border-[${config.color}]/50` : "hover:border-[#10B981]/50"
+        )}>
+            <div className={cn(
+                "absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 -z-10",
+                config ? `from-[${config.color}]/5` : "from-[#10B981]/5"
+            )} />
             
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-10">
                 <div className="flex items-center gap-5 flex-wrap">
-                    <div className="w-14 h-14 shrink-0 rounded-[1.25rem] bg-[#F9FAFB] border border-[#E5E7EB] text-[#9CA3AF] flex items-center justify-center transition-all group-hover/card:text-[#10B981] group-hover/card:bg-[#10B981]/10 group-hover/card:border-[#10B981]/30 group-hover/card:scale-110 duration-500 shadow-sm">
+                    <div className={cn(
+                        "w-14 h-14 shrink-0 rounded-[1.25rem] border flex items-center justify-center transition-all duration-500 shadow-sm",
+                        "bg-[#F9FAFB] border-[#E5E7EB] text-[#9CA3AF]",
+                        config ? `group-hover/card:${config.text} group-hover/card:${config.lightBg} group-hover/card:${config.border} group-hover/card:scale-110` : "group-hover/card:text-[#10B981] group-hover/card:bg-[#10B981]/10 group-hover/card:border-[#10B981]/30 group-hover/card:scale-110"
+                    )}>
                         <Icon size={26} strokeWidth={2} />
                     </div>
                     <div className="flex flex-col gap-2 min-w-0">
                        <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[12px] font-black text-[#111827] uppercase tracking-[0.15em] leading-none shrink-0">{item.moduleId}</span>
+                            <span className={cn(
+                                "text-[12px] font-black uppercase tracking-[0.15em] leading-none shrink-0",
+                                config ? `group-hover/card:${config.text} transition-colors duration-500` : "text-[#111827]"
+                            )}>{config ? config.label : moduleLabels[item.moduleId]}</span>
                             {item.type && (
-                                 <span className="text-[10px] font-black text-white bg-[#111827] px-2.5 py-1 rounded-md uppercase tracking-widest whitespace-nowrap">
+                                 <span className={cn(
+                                    "text-[10px] font-black text-white px-2.5 py-1 rounded-md uppercase tracking-widest whitespace-nowrap",
+                                    config ? config.accentBg : "bg-[#111827]"
+                                 )}>
                                     {item.type}
                                  </span>
                             )}
@@ -454,21 +489,36 @@ function FavoriteCard({
                        <div className="flex items-center gap-2.5 text-[#6B7280]">
                           <Clock size={14} strokeWidth={2.5} className="text-[#9CA3AF]" />
                           <span className="text-[13px] font-bold leading-none">{date}</span>
+                          {item.moduleId === 'planner' && (item.content as any).publishDate && (
+                             <>
+                                <div className="w-[3px] h-[3px] rounded-full bg-[#D1D5DB]" />
+                                <Calendar size={14} strokeWidth={2.5} className="text-[#9CA3AF]" />
+                                <span className="text-[13px] font-bold leading-none">
+                                    {new Date((item.content as any).publishDate).toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                </span>
+                             </>
+                          )}
                        </div>
                     </div>
                 </div>
             </div>
 
             <div className="space-y-6 flex-1 flex flex-col">
-              <h4 className="text-2xl font-bold text-[#111827] leading-[1.2] group-hover/card:text-[#10B981] transition-colors font-display tracking-tight flex-1">
+              <h4 className={cn(
+                  "text-2xl font-bold text-[#111827] leading-[1.2] transition-colors font-display tracking-tight flex-1",
+                  config ? `group-hover/card:${config.text}` : "group-hover/card:text-[#10B981]"
+              )}>
                   {item.title}
               </h4>
 
               {item.metadata?.sourceId && (
-                  <div className="p-5 rounded-[1.5rem] bg-[#F9FAFB] border border-[#E5E7EB] border-l-4 border-l-[#10B981] shadow-sm">
+                  <div className={cn(
+                      "p-5 rounded-[1.5rem] bg-[#F9FAFB] border border-[#E5E7EB] border-l-4 shadow-sm",
+                      config ? `group-hover/card:${config.border.replace('border-', 'border-l-')}` : "border-l-[#10B981]"
+                  )}>
                       <div className="flex items-center gap-2 mb-2">
-                        <History size={14} className="text-[#10B981]" />
-                        <span className="text-[10px] font-black text-[#10B981] uppercase tracking-widest">Основано на {moduleLabels[item.metadata.sourceModule || ''] || 'другом модуле'}</span>
+                        <History size={14} className={config ? config.text : "text-[#10B981]"} />
+                        <span className={cn("text-[10px] font-black uppercase tracking-widest", config ? config.text : "text-[#10B981]")}>Основано на {moduleLabels[item.metadata.sourceModule || ''] || 'другом модуле'}</span>
                       </div>
                   </div>
               )}
