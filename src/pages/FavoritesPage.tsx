@@ -33,6 +33,8 @@ import { cn } from '@/src/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { useWorkspaceStore } from '@/src/stores/workspaceStore';
+
 const moduleIcons: Record<string, any> = {
   planner: LayoutGrid,
   newsletters: Mail,
@@ -318,13 +320,12 @@ export function FavoritesPage() {
                                             )}
                                         >
                                         {moduleItems.map(item => (
-                                            <FavoriteCard 
-                                                key={item.id} 
-                                                item={item} 
-                                                isCompact={isCompact}
-                                                onDelete={() => removeFavorite(item.id)}
-                                                onOpen={() => navigate(item.moduleId === 'planner' ? '/planner' : `/${item.moduleId}`)}
-                                            />
+                        <FavoriteCard 
+                            key={item.id} 
+                            item={item} 
+                            isCompact={isCompact}
+                            onDelete={() => removeFavorite(item.id)}
+                        />
                                         ))}
                                     </motion.div>
                                 )}
@@ -342,14 +343,12 @@ export function FavoritesPage() {
 function FavoriteCard({ 
     item, 
     isCompact, 
-    onDelete, 
-    onOpen 
+    onDelete
 }: { 
     item: FavoriteItem; 
     isCompact: boolean;
-    onDelete: () => void; 
-    onOpen: () => void; 
-    key?: string | number;
+    onDelete: () => void;
+    key?: React.Key;
 }) {
   const navigate = useNavigate();
   
@@ -359,6 +358,21 @@ function FavoriteCard({
     hour: '2-digit',
     minute: '2-digit'
   });
+
+  const handleOpen = () => {
+    if (item.type === 'result') {
+      useWorkspaceStore.getState().setModuleState(item.moduleId, {
+        result: item.content,
+        sourceInfo: item.metadata?.sourceId ? {
+          id: item.metadata.sourceId,
+          module: item.metadata.sourceModule,
+          title: 'Восстановлено из избранного'
+        } : null
+      });
+      toast.info(`Результат "${item.title}" загружен в рабочую область`);
+    }
+    navigate(`/${item.moduleId}`);
+  };
 
   const handleRepurpose = (targetModule: string) => {
     toast.success(`Контекст перенесен в ${moduleLabels[targetModule]}`);
@@ -430,7 +444,7 @@ function FavoriteCard({
                         <Trash2 size={18} />
                     </button>
                     <button 
-                        onClick={onOpen}
+                        onClick={handleOpen}
                         className="p-2 rounded-xl text-[#9CA3AF] hover:text-[#10B981] hover:bg-[#10B981]/5 transition-all"
                     >
                         <ExternalLink size={18} />
@@ -559,7 +573,7 @@ function FavoriteCard({
                     </button>
                     <div className="flex items-center gap-3">
                         <button 
-                            onClick={onOpen}
+                            onClick={handleOpen}
                             className="flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-[#111827] text-white hover:bg-[#10B981] transition-all text-[13px] font-bold shadow-lg active:scale-95"
                         >
                             <span>Открыть</span>

@@ -4,8 +4,9 @@ import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import { OpenAI } from "openai";
 import dotenv from "dotenv";
-import { getPlannerPrompts, getPostPrompts } from "./lib/prompts";
+import { getPlannerPrompts, getPostPrompts, getModulePrompts } from "./lib/prompts";
 import { PlannerResultSchema, PlannerItemSchema } from "./src/types/planner.ts";
+import { NewsletterResultSchema } from "./src/types/newsletter.ts";
 
 dotenv.config();
 
@@ -93,6 +94,49 @@ app.post("/api/planner", async (req, res) => {
       error: error.message || "Synthesis failed",
       details: error.errors
     });
+  }
+});
+
+app.post("/api/newsletter", async (req, res) => {
+  try {
+    const { subject, insights, advanced } = req.body;
+    const client = getOpenAI();
+    
+    const { system, user } = getModulePrompts("newsletter", { 
+      topic: subject, 
+      context: insights, 
+      tone: advanced?.tone || "conversational" 
+    });
+
+    const response = await client.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    const content = response.choices[0].message.content;
+    if (!content) throw new Error("Empty response");
+    
+    const rawData = JSON.parse(content);
+    
+    // Transform prompt response to schema if needed
+    const transformed = {
+      subject: rawData.subject_lines?.[0] || rawData.subject || subject,
+      preheader: rawData.preview_text || rawData.preheader || "",
+      body: rawData.newsletter?.body || rawData.body || "",
+      cta: typeof rawData.newsletter?.cta === 'string' 
+        ? { text: rawData.newsletter.cta, link: "#" } 
+        : (rawData.cta || { text: "Learn More", link: "#" }),
+      blocks: rawData.blocks || []
+    };
+
+    const validated = NewsletterResultSchema.parse(transformed);
+    res.json(validated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 

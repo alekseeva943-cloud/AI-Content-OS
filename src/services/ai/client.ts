@@ -1,4 +1,5 @@
 import { PlannerRequest, PlannerResult } from '@/src/types/planner';
+import { NewsletterRequest, NewsletterResult } from '@/src/types/newsletter';
 import { useDebugStore } from '@/src/stores/useDebugStore';
 
 export async function generateContentPlan(req: PlannerRequest & { sharedMemory: string[] }): Promise<PlannerResult> {
@@ -58,6 +59,28 @@ export async function generateContentPlan(req: PlannerRequest & { sharedMemory: 
     return result;
   } catch (err: any) {
     log({ type: 'error', module: 'Content Planner', message: `Synthesis failed: ${err.message}` });
+    throw err;
+  }
+}
+
+export async function generateNewsletter(req: NewsletterRequest): Promise<NewsletterResult> {
+  const log = useDebugStore.getState().addLog;
+  log({ type: 'request', module: 'Newsletter', message: `Synthesizing email: ${req.subject}` });
+
+  try {
+    const response = await fetch('/api/newsletter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    });
+
+    if (!response.ok) throw new Error('Failed to generate newsletter');
+    const result = await response.json();
+    
+    log({ type: 'response', module: 'Newsletter', message: 'Email synthesized successfully' });
+    return result;
+  } catch (err: any) {
+    log({ type: 'error', module: 'Newsletter', message: `Synthesis failed: ${err.message}` });
     throw err;
   }
 }

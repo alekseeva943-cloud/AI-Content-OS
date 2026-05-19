@@ -26,12 +26,13 @@ import { GlassCard, Button } from '@/src/shared/components/UI';
 import { EmptyResultState, GenerationLoader } from '@/src/shared/components/ResultPanel';
 import { AIField, AIInput, AITextarea, AISelect, AIToggleGroup, AIPillSelector, AIDateInput } from './forms/FormComponents';
 import { ModuleConfig } from '@/src/config/modules';
-import { generateContentPlan } from '@/src/services/ai/client';
+import { generateContentPlan, generateNewsletter } from '@/src/services/ai/client';
 import { useMemoryStore } from '@/src/stores/memoryStore';
 import { useFavoritesStore } from '@/src/stores/favoritesStore';
 import { useWorkspaceStore } from '@/src/stores/workspaceStore';
 import { toast } from 'sonner';
 import { PlannerResultDisplay } from '@/src/features/planner/components/PlannerResult';
+import { NewsletterResultDisplay } from '@/src/features/newsletter/components/NewsletterResult';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/src/lib/utils';
 import { AdvancedSettings, AdvancedSettingsState } from '@/src/features/planner/components/AdvancedSettings';
@@ -197,6 +198,27 @@ export function ModulePage({ config }: ModulePageProps) {
                 topic: request.topic,
                 period: request.period,
                 channels: request.channels
+            }
+         });
+      } else if (config.id === 'newsletters') {
+         const request = {
+            subject: formValues.subject,
+            insights: formValues.insights,
+            advanced: showAdvanced ? {
+                tone: formValues.adv_tone,
+                emotion: formValues.adv_emotion,
+                length: formValues.adv_length,
+            } : undefined
+         };
+         
+         const data = await generateNewsletter(request as any);
+         setResult(data);
+         
+         addGeneration({
+            type: 'newsletter',
+            data,
+            metadata: {
+                topic: request.subject,
             }
          });
       } else {
@@ -538,6 +560,12 @@ export function ModulePage({ config }: ModulePageProps) {
                   >
                     {config.id === 'planner' ? (
                        <PlannerResultDisplay result={result} sourceInfo={sourceInfo} />
+                    ) : config.id === 'newsletters' ? (
+                       <NewsletterResultDisplay 
+                        result={result} 
+                        sourceInfo={sourceInfo}
+                        onRegenerate={handleGenerate}
+                       />
                     ) : (
                        <div className="flex flex-col items-center justify-center h-full p-20 text-center bg-white border border-[#E5E7EB] rounded-[3.5rem] shadow-2xl">
                           <div className="w-24 h-24 rounded-[2.5rem] bg-[#F9FAFB] border border-[#E5E7EB] flex items-center justify-center text-[#10B981] mb-12 shadow-sm">
