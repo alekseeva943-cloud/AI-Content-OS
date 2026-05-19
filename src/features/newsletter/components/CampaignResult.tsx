@@ -33,56 +33,28 @@ interface CampaignResultDisplayProps {
   sourceInfo?: any;
 }
 
-export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceInfo }: CampaignResultDisplayProps) {
-  const [activeTab, setActiveTab] = useState<'email' | 'telegram' | 'vk'>('email');
+export function CampaignResultDisplay({ result, onRegenerate, sourceInfo }: CampaignResultDisplayProps) {
+  const channels = result.channels || [];
+  const [activeTab, setActiveTab] = useState<string>(channels[0]?.id || 'email');
   const [copied, setCopied] = useState<string | null>(null);
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   const [isGeneratingImage, setIsGeneratingImage] = useState<Record<string, boolean>>({});
 
-  // Normalization layer for old/mismatched data
-  const result = React.useMemo(() => {
-    if (!rawResult) return null;
-    
-    // If it's the new format, return as is
-    if (Array.isArray(rawResult.channels) && rawResult.channels.length > 0) {
-      return rawResult;
-    }
+  const availableTabs = [
+    { id: 'email', icon: Mail, label: 'Email' },
+    { id: 'telegram', icon: Send, label: 'Telegram' },
+    { id: 'vk', icon: MessageCircle, label: 'VK' }
+  ].filter(tab => channels.some(c => c.id === tab.id));
 
-    // Fallback for old/legacy formats
-    console.log("[CampaignResult] Legacy data detected, normalizing...", rawResult);
-    
-    const legacy = rawResult as any;
-    const body = legacy.body || legacy.content || "";
-    const name = legacy.name || legacy.title || legacy.subject || "Restored Campaign";
-    
-    return {
-      id: legacy.id || `legacy-${Date.now()}`,
-      name: name,
-      strategy: legacy.strategy || "Восстановление контента из архива",
-      channels: [
-        {
-          id: 'email' as const,
-          active: true,
-          content: {
-            subject: legacy.subject || name,
-            preheader: legacy.preheader || "",
-            body: body,
-            cta: legacy.cta ? (typeof legacy.cta === 'string' ? { text: legacy.cta, link: "#" } : legacy.cta) : { text: "Узнать больше", link: "#" },
-            imagePrompt: legacy.imagePrompt || legacy.image || ""
-          }
-        }
-      ],
-      variables: legacy.variables || {}
-    } as CampaignResult;
-  }, [rawResult]);
+  useEffect(() => {
+    if (channels.length > 0 && !channels.some(c => c.id === activeTab)) {
+      setActiveTab(channels[0].id);
+    }
+  }, [channels, activeTab]);
+  const activeChannel = channels.find(c => c.id === activeTab) || channels[0];
 
   const addFavorite = useFavoritesStore(state => state.addFavorite);
   
-  if (!result) return null;
-
-  const channels = result.channels || [];
-  const activeChannel = channels.find(c => c.id === activeTab) || channels[0];
-
   useEffect(() => {
     if (!result) return;
     
@@ -206,11 +178,7 @@ export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceI
         {/* Navigation Tabs */}
         <div className="flex items-center justify-between px-10 pt-10 border-b border-[#F3F4F6]">
             <div className="flex gap-10">
-                {[
-                    { id: 'email', icon: Mail, label: 'Email' },
-                    { id: 'telegram', icon: Send, label: 'Telegram' },
-                    { id: 'vk', icon: MessageCircle, label: 'VK' }
-                ].map((tab) => (
+                {availableTabs.map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}

@@ -6,16 +6,16 @@ export const CampaignResultSchema = z.object({
   strategy: z.string().optional(),
   channels: z.array(z.object({
     id: z.enum(['email', 'telegram', 'vk']),
-    active: z.boolean(),
+    active: z.boolean().default(true),
     content: z.object({
-      subject: z.string().optional(),
-      preheader: z.string().optional(),
-      body: z.string(),
+      subject: z.string().optional().default(""),
+      preheader: z.string().optional().default(""),
+      body: z.string().optional().default(""),
       cta: z.object({
         text: z.string(),
         link: z.string()
-      }),
-      imagePrompt: z.string().optional(),
+      }).optional().default({ text: "Узнать больше", link: "#" }),
+      imagePrompt: z.string().optional().default(""),
       imageUrl: z.string().optional(),
       formatting: z.object({
         emojis: z.boolean().optional(),
