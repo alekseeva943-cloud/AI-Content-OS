@@ -373,7 +373,7 @@ function PlanItemCard({
                       {/* Tone & Length Overrides */}
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-[#9CA3AF] uppercase tracking-widest flex items-center gap-1.5">
-                          <Smile size={10} /> Tone
+                          <Smile size={10} /> Тон
                         </label>
                         <select 
                           value={localSettings.tone}
@@ -389,7 +389,7 @@ function PlanItemCard({
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-[#9CA3AF] uppercase tracking-widest flex items-center gap-1.5">
-                          <AlignLeft size={10} /> Length
+                          <AlignLeft size={10} /> Длина
                         </label>
                         <select 
                           value={localSettings.length}
@@ -408,7 +408,7 @@ function PlanItemCard({
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                            <label className="text-[9px] font-black text-[#6B7280] uppercase tracking-wider flex items-center gap-1.5">
-                            <Zap size={10} className="text-[#EAB308]" /> Hook Intensity
+                            <Zap size={10} className="text-[#EAB308]" /> Сила хука
                            </label>
                            <span className="text-[9px] font-bold text-[#10B981]">{localSettings.hookIntensity}%</span>
                         </div>
@@ -423,7 +423,7 @@ function PlanItemCard({
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                            <label className="text-[9px] font-black text-[#6B7280] uppercase tracking-wider flex items-center gap-1.5">
-                            <Highlighter size={10} className="text-[#10B981]" /> Emoji Density
+                            <Highlighter size={10} className="text-[#10B981]" /> Эмодзи
                            </label>
                            <span className="text-[9px] font-bold text-[#10B981]">{localSettings.emojiDensity}%</span>
                         </div>
@@ -438,7 +438,7 @@ function PlanItemCard({
                       <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                         <div className="space-y-2">
                           <label className="text-[9px] font-black text-[#6B7280] uppercase tracking-wider flex items-center gap-1.5">
-                            <Feather size={10} /> Storytelling
+                            <Feather size={10} /> Сторителлинг
                           </label>
                           <input 
                             type="range" min="0" max="100" 
@@ -449,7 +449,7 @@ function PlanItemCard({
                         </div>
                         <div className="space-y-2">
                           <label className="text-[9px] font-black text-[#6B7280] uppercase tracking-wider flex items-center gap-1.5">
-                            <BookOpen size={10} /> Education
+                            <BookOpen size={10} /> Польза
                           </label>
                           <input 
                             type="range" min="0" max="100" 
