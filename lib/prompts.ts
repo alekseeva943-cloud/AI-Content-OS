@@ -53,24 +53,22 @@ export function loadPrompt(
     getPromptPath(group, fileName);
 
   const exists = fs.existsSync(filePath);
-  console.log(`[PromptLoader] File exists check:`, {
-    filePath,
-    exists
-  });
-
+  
   if (!exists) {
-    const promptsDir = path.join(process.cwd(), "prompts");
-    const promptsDirExists = fs.existsSync(promptsDir);
-    let dirContents: string[] = [];
-    if (promptsDirExists) {
-      try {
-        dirContents = fs.readdirSync(promptsDir);
-      } catch (e) {}
+    console.error(`[PromptLoader] Missing prompt file: ${filePath}`);
+    
+    // If it's a platform-specific prompt, we can try to fallback to telegram
+    if (group.startsWith("post/") && group !== `post/${PLATFORM_FALLBACK}`) {
+      const fallbackGroup = `post/${PLATFORM_FALLBACK}`;
+      const fallbackPath = getPromptPath(fallbackGroup, fileName);
+      console.warn(`[PromptLoader] Attempting fallback for ${cacheKey} -> ${fallbackGroup}/${fileName}`);
+      
+      if (fs.existsSync(fallbackPath)) {
+        const content = fs.readFileSync(fallbackPath, "utf8");
+        promptCache.set(cacheKey, content);
+        return content;
+      }
     }
-
-    console.error(
-      `[PromptLoader] Missing prompt file: ${filePath}. prompts dir exists: ${promptsDirExists}, contents: ${dirContents.join(", ")}`
-    );
 
     throw new Error(
       `Missing prompt file: ${cacheKey}`
@@ -83,6 +81,14 @@ export function loadPrompt(
 
     if (!content.trim()) {
       console.warn(`[PromptLoader] File is empty: ${filePath}`);
+      
+      // Fallback for empty files too
+      if (group.startsWith("post/") && group !== `post/${PLATFORM_FALLBACK}`) {
+         const fallbackGroup = `post/${PLATFORM_FALLBACK}`;
+         const fallbackContent = loadPrompt(fallbackGroup, fileName);
+         return fallbackContent;
+      }
+
       throw new Error(
         `Empty prompt file: ${cacheKey}`
       );
@@ -191,16 +197,28 @@ function buildSharedSystemLayer() {
 function resolvePlatform(
   platform?: string
 ) {
+  // Normalize platform string
+  const normalized = String(platform || "").toLowerCase().trim();
+  
+  console.log(`[Platform Routing] Resolving platform:`, { 
+    original: platform, 
+    normalized 
+  });
+
+  // Check if it's in our supported list AND the directory exists
+  const hasFiles = fs.existsSync(path.join(process.cwd(), "prompts", "post", normalized));
 
   if (
-    platform &&
-    SUPPORTED_PLATFORMS.includes(platform)
+    normalized &&
+    SUPPORTED_PLATFORMS.includes(normalized) &&
+    hasFiles
   ) {
-    return platform;
+    console.log(`[Platform Routing] Route matched: ${normalized}`);
+    return normalized;
   }
 
   console.warn(
-    `[PromptRouter] Unsupported platform "${platform}", using fallback "${PLATFORM_FALLBACK}"`
+    `[Platform Routing] Unsupported or missing platform "${platform}" (normalized: "${normalized}"), using fallback "${PLATFORM_FALLBACK}"`
   );
 
   return PLATFORM_FALLBACK;
@@ -276,11 +294,8 @@ export function getPlannerPrompts(
 
       channels:
         Array.isArray(data.channels)
-          ? data.channels.join(", ")
-          : (
-              data.channels ||
-              "telegram"
-            ),
+          ? data.channels.map((c: string) => String(c).toLowerCase().trim()).join(", ")
+          : String(data.channels || "telegram").toLowerCase().trim(),
 
       advanced:
         data.advanced || {},
@@ -302,6 +317,8 @@ export function getPostPrompts(
       data.item?.channel ||
       data.channel
     );
+
+  console.log("[Platform]", platform);
 
   const systemBase =
     renderPrompt(
