@@ -183,17 +183,17 @@ app.post("/api/newsletter", async (req, res) => {
             content: {
               subject: c.subject || c.title || ch.subject || ch.title || "",
               preheader: c.preheader || c.summary || c.preview || ch.preheader || ch.summary || "",
-              body: c.body || c.text || c.content || c.message || c.description || c.copy || ch.body || ch.text || ch.description || ch.message || ch.copy || "",
+              body: (c.body || c.text || c.message || c.content || c.description || c.copy || ch.body || ch.text || ch.description || ch.message || ch.copy || "").trim(),
               cta: (function() {
-                const rawCta = c.cta || ch.cta || c.action || c.button || ch.action || ch.button;
+                const rawCta = c.cta || ch.cta || c.action || c.button || ch.action || ch.button || c.link || ch.link;
                 if (!rawCta) return { text: "Узнать больше", link: "#" };
                 if (typeof rawCta === 'string') return { text: rawCta, link: "#" };
                 return { 
-                  text: rawCta.text || rawCta.label || rawCta.buttonText || rawCta.title || "Узнать больше", 
+                  text: rawCta.text || rawCta.label || rawCta.buttonText || rawCta.title || rawCta.name || "Узнать больше", 
                   link: rawCta.link || rawCta.url || rawCta.href || "#" 
                 };
               })(),
-              imagePrompt: c.imagePrompt || c.visuals || c.image_prompt || ch.imagePrompt || ch.visuals || ""
+              imagePrompt: c.imagePrompt || c.visuals || c.image_prompt || c.image_preview || ch.imagePrompt || ch.visuals || ""
             }
           };
       }).filter(Boolean),
@@ -403,8 +403,7 @@ app.post("/api/generate-image", async (req, res) => {
       console.log("[Visual Studio] Image generated:", url);
       return res.json({ url });
     } catch (dalle3Error: any) {
-      console.warn("[Visual Studio] dall-e-3 failed, trying dall-e-2 as fallback...", dalle3Error.message);
-      
+      // Quietly try dall-e-2 as fallback
       const response = await client.images.generate({
         model: "dall-e-2",
         prompt: prompt,

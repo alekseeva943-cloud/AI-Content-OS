@@ -55,24 +55,25 @@ export function CampaignResultDisplay({ result, onRegenerate, sourceInfo }: Camp
 
   const addFavorite = useFavoritesStore(state => state.addFavorite);
   
+  // Utility to clean HTML tags from body (esp. for email)
+  const normalizeContentBody = (body: string) => {
+    if (!body) return "";
+    return body
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n\n")
+      .replace(/<p>/gi, "")
+      .replace(/<[^>]*>/g, "")
+      .trim();
+  };
+
+  const activeChannelBody = normalizeContentBody(activeChannel.content?.body || "");
+  
   useEffect(() => {
     if (!result) return;
     
-    // Auto-generate images if prompts exist and no URL yet
-    // We use a separate async function to avoid blocking and handle isolation
-    const triggerVisuals = async () => {
-        for (const channel of channels) {
-            const channelId = channel.id;
-            const prompt = channel?.content?.imagePrompt;
-            
-            if (prompt && !imageUrls[channelId] && !isGeneratingImage[channelId]) {
-                console.log(`[CampaignResult] Auto-triggering visual for ${channelId}`);
-                await handleGenerateImage(channelId, prompt);
-            }
-        }
-    };
-
-    triggerVisuals();
+    // Auto-triggering visual generation is now DISABLED as per user request
+    // Image generation should only be manual via button.
+    console.log("[CampaignResult] Campaign loaded. Visuals ready for manual trigger.");
   }, [result.id]);
 
   if (!activeChannel || !activeChannel.content) {
@@ -237,7 +238,15 @@ export function CampaignResultDisplay({ result, onRegenerate, sourceInfo }: Camp
                             )}
 
                             <div className="markdown-body prose prose-slate prose-lg max-w-none">
-                                <ReactMarkdown>{activeChannel.content?.body || "Контент отсутствует"}</ReactMarkdown>
+                                <ReactMarkdown>
+                                    {activeChannelBody || (
+                                        activeTab === 'telegram' 
+                                            ? "Telegram-контент пока не был сгенерирован."
+                                            : activeTab === 'vk'
+                                                ? "VK-контент пока не был сгенерирован."
+                                                : "Контент отсутствует"
+                                    )}
+                                </ReactMarkdown>
                             </div>
 
                             {activeChannel.content?.cta && (
