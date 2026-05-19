@@ -26,13 +26,16 @@ import { GlassCard, Button } from '@/src/shared/components/UI';
 import { EmptyResultState, GenerationLoader } from '@/src/shared/components/ResultPanel';
 import { AIField, AIInput, AITextarea, AISelect, AIToggleGroup, AIPillSelector, AIDateInput } from './forms/FormComponents';
 import { ModuleConfig } from '@/src/config/modules';
-import { generateContentPlan, generateNewsletter } from '@/src/services/ai/client';
+import { generateContentPlan, generateNewsletter, generateLongread, generatePodcast, generateVideoAvatar } from '@/src/services/ai/client';
 import { useMemoryStore } from '@/src/stores/memoryStore';
 import { useFavoritesStore } from '@/src/stores/favoritesStore';
 import { useWorkspaceStore } from '@/src/stores/workspaceStore';
 import { toast } from 'sonner';
 import { PlannerResultDisplay } from '@/src/features/planner/components/PlannerResult';
 import { NewsletterResultDisplay } from '@/src/features/newsletter/components/NewsletterResult';
+import { LongreadResultDisplay } from '@/src/features/longreads/components/LongreadResult';
+import { PodcastResultDisplay } from '@/src/features/podcasts/components/PodcastResult';
+import { VideoAvatarResultDisplay } from '@/src/features/videoAvatar/components/VideoAvatarResult';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/src/lib/utils';
 import { AdvancedSettings, AdvancedSettingsState } from '@/src/features/planner/components/AdvancedSettings';
@@ -221,6 +224,31 @@ export function ModulePage({ config }: ModulePageProps) {
                 topic: request.subject,
             }
          });
+      } else if (config.id === 'longreads') {
+         const request = {
+            topic: formValues.title || formValues.topic,
+            context: formValues.layers || formValues.context,
+            advanced: showAdvanced ? { tone: formValues.adv_tone } : { tone: formValues.style }
+         };
+         const data = await generateLongread(request);
+         setResult(data);
+         addGeneration({ type: 'longread', data, metadata: { topic: request.topic } });
+      } else if (config.id === 'podcasts') {
+         const request = { 
+            topic: formValues.guest || formValues.topic, 
+            context: formValues.theme || formValues.context 
+         };
+         const data = await generatePodcast(request);
+         setResult(data);
+         addGeneration({ type: 'podcast', data, metadata: { topic: request.topic } });
+      } else if (config.id === 'avatars') {
+         const request = { 
+            topic: formValues.style || formValues.topic, 
+            context: formValues.script || formValues.context 
+         };
+         const data = await generateVideoAvatar(request);
+         setResult(data);
+         addGeneration({ type: 'avatars', data, metadata: { topic: request.topic } });
       } else {
         await new Promise(resolve => setTimeout(resolve, 3000));
         setResult({ mock: true });
@@ -566,13 +594,19 @@ export function ModulePage({ config }: ModulePageProps) {
                         sourceInfo={sourceInfo}
                         onRegenerate={handleGenerate}
                        />
+                    ) : config.id === 'longreads' ? (
+                        <LongreadResultDisplay result={result} sourceInfo={sourceInfo} onRegenerate={handleGenerate} />
+                    ) : config.id === 'podcasts' ? (
+                        <PodcastResultDisplay result={result} sourceInfo={sourceInfo} onRegenerate={handleGenerate} />
+                    ) : config.id === 'avatars' ? (
+                        <VideoAvatarResultDisplay result={result} sourceInfo={sourceInfo} onRegenerate={handleGenerate} />
                     ) : (
                        <div className="flex flex-col items-center justify-center h-full p-20 text-center bg-white border border-[#E5E7EB] rounded-[3.5rem] shadow-2xl">
                           <div className="w-24 h-24 rounded-[2.5rem] bg-[#F9FAFB] border border-[#E5E7EB] flex items-center justify-center text-[#10B981] mb-12 shadow-sm">
                              <Sparkles size={44} />
                           </div>
-                          <h2 className="text-4xl font-bold text-[#111827] mb-4 font-display tracking-tight">Синтез успешно завершен</h2>
-                          <p className="text-[#6B7280] text-[18px] font-medium max-w-md mb-14 leading-relaxed">Ваш проект готов к публикации или экспорту. Просмотрите детали ниже.</p>
+                          <h2 className="text-4xl font-bold text-[#111827] mb-4 font-display tracking-tight">Материал готов</h2>
+                          <p className="text-[#6B7280] text-[18px] font-medium max-w-md mb-14 leading-relaxed">Черновик собран и готов к публикации или экспорту.</p>
                           <div className="flex items-center gap-6">
                              <Button size="xl" className="rounded-2xl px-12">Редактировать</Button>
                              <Button 

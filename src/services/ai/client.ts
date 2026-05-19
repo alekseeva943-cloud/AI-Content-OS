@@ -85,6 +85,42 @@ export async function generateNewsletter(req: NewsletterRequest): Promise<Newsle
   }
 }
 
+export async function generateLongread(req: { topic: string, context: string, advanced?: any }): Promise<any> {
+    const log = useDebugStore.getState().addLog;
+    log({ type: 'request', module: 'Longread', message: `Crafting article: ${req.topic}` });
+    const response = await fetch('/api/longreads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req),
+    });
+    if (!response.ok) throw new Error('Failed to generate longread');
+    return response.json();
+}
+
+export async function generatePodcast(req: { topic: string, context: string, advanced?: any }): Promise<any> {
+    const log = useDebugStore.getState().addLog;
+    log({ type: 'request', module: 'Podcast', message: `Structuring episodes: ${req.topic}` });
+    const response = await fetch('/api/podcasts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req),
+    });
+    if (!response.ok) throw new Error('Failed to generate podcast');
+    return response.json();
+}
+
+export async function generateVideoAvatar(req: { topic: string, context: string, advanced?: any }): Promise<any> {
+    const log = useDebugStore.getState().addLog;
+    log({ type: 'request', module: 'AI-Avatar', message: `Choreographing scenes: ${req.topic}` });
+    const response = await fetch('/api/avatars', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req),
+    });
+    if (!response.ok) throw new Error('Failed to generate video avatar');
+    return response.json();
+}
+
 export async function generatePostText(item: any, context?: string, advanced?: any): Promise<string> {
   const log = useDebugStore.getState().addLog;
   log({ type: 'request', module: 'Post Generator', message: `Generating full post for: ${item.topic}` });

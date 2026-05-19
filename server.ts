@@ -129,12 +129,92 @@ app.post("/api/newsletter", async (req, res) => {
       body: rawData.newsletter?.body || rawData.body || "",
       cta: typeof rawData.newsletter?.cta === 'string' 
         ? { text: rawData.newsletter.cta, link: "#" } 
-        : (rawData.cta || { text: "Learn More", link: "#" }),
+        : (rawData.cta || { text: "Узнать больше", link: "#" }),
       blocks: rawData.blocks || []
     };
 
     const validated = NewsletterResultSchema.parse(transformed);
     res.json(validated);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/longreads", async (req, res) => {
+  try {
+    const { topic, context, advanced } = req.body;
+    const client = getOpenAI();
+    const { system, user } = getModulePrompts("longreads", { topic, context, tone: advanced?.tone });
+
+    const response = await client.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      response_format: { type: "json_object" }
+    });
+
+    const rawData = JSON.parse(response.choices[0].message.content || "{}");
+    // Flexible transformation for different prompt outputs
+    const result = {
+      title: rawData.title || topic,
+      subtitle: rawData.subtitle || "",
+      readingTime: rawData.readingTime || Math.ceil((rawData.content || "").split(' ').length / 200) || 5,
+      content: rawData.content || "",
+      outline: rawData.outline || [],
+      callouts: rawData.callouts || [],
+      socialSummary: rawData.socialSummary || ""
+    };
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/podcasts", async (req, res) => {
+  try {
+    const { topic, context, advanced } = req.body;
+    const client = getOpenAI();
+    const { system, user } = getModulePrompts("podcasts", { topic, context });
+
+    const response = await client.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      response_format: { type: "json_object" }
+    });
+
+    const rawData = JSON.parse(response.choices[0].message.content || "{}");
+    const result = {
+      topic: rawData.topic || topic,
+      intro: rawData.intro || "",
+      structure: rawData.structure || [],
+      guestQuestions: rawData.guestQuestions || [],
+      outro: rawData.outro || "",
+      cta: rawData.cta || ""
+    };
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/avatars", async (req, res) => {
+  try {
+    const { topic, context, advanced } = req.body;
+    const client = getOpenAI();
+    const { system, user } = getModulePrompts("video-avatar", { topic, context });
+
+    const response = await client.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "system", content: system }, { role: "user", content: user }],
+      response_format: { type: "json_object" }
+    });
+
+    const rawData = JSON.parse(response.choices[0].message.content || "{}");
+    const result = {
+      hook: rawData.hook || "",
+      scenes: rawData.scenes || [],
+      captionStyles: rawData.captionStyles || { font: "Inter", color: "#FFFFFF", animation: "fade" }
+    };
+    res.json(result);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

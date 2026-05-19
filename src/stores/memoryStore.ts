@@ -4,7 +4,7 @@ import { PlannerResult } from '@/src/types/planner';
 
 interface MemoryItem {
   id: string;
-  type: 'planner' | 'longread' | 'newsletter' | 'podcast';
+  type: 'planner' | 'longread' | 'newsletter' | 'podcast' | 'avatars';
   timestamp: number;
   data: any;
   metadata: {
