@@ -124,22 +124,53 @@ app.post("/api/newsletter", async (req, res) => {
     
     const rawData = JSON.parse(content);
     
-    // Robust transformation for different prompt outputs
-    const transformed = {
-      subject: (Array.isArray(rawData.subject_lines) ? rawData.subject_lines[0] : null) || rawData.subject || subject,
-      preheader: rawData.preview_text || rawData.preheader || rawData.summary || "",
-      body: rawData.newsletter?.body || rawData.body || rawData.content || "",
-      cta: typeof (rawData.newsletter?.cta || rawData.cta) === 'string' 
-        ? { text: (rawData.newsletter?.cta || rawData.cta), link: "#" } 
-        : (rawData.newsletter?.cta || rawData.cta || { text: "Узнать больше", link: "#" }),
-      blocks: Array.isArray(rawData.blocks || rawData.newsletter?.blocks) 
-        ? (rawData.blocks || rawData.newsletter?.blocks).map((b: any) => ({
-            type: ['text', 'image', 'highlight'].includes(b.type) ? b.type : 'text',
-            content: b.content || b.text || "",
-            title: b.title || b.header || undefined
-          }))
-        : []
-    };
+    // Robust transformation: check if already in new format, otherwise convert
+    let transformed: any;
+    
+    if (Array.isArray(rawData.channels)) {
+      transformed = {
+        id: rawData.id || `campaign-${Date.now()}`,
+        name: rawData.name || subject,
+        strategy: rawData.strategy || "",
+        channels: rawData.channels.map((ch: any) => ({
+          id: ch.id,
+          active: ch.active ?? true,
+          content: {
+            subject: ch.content?.subject || "",
+            preheader: ch.content?.preheader || "",
+            body: ch.content?.body || "",
+            cta: typeof ch.content?.cta === 'string' 
+              ? { text: ch.content.cta, link: "#" }
+              : (ch.content?.cta || { text: "Learn More", link: "#" }),
+            imagePrompt: ch.content?.imagePrompt || ""
+          }
+        })),
+        variables: rawData.variables || {}
+      };
+    } else {
+      // Legacy AI output format fallback
+      transformed = {
+        id: `campaign-${Date.now()}`,
+        name: rawData.name || rawData.newsletter?.title || subject,
+        strategy: rawData.strategy || "Generated from legacy prompt structure",
+        channels: [
+          {
+            id: 'email',
+            active: true,
+            content: {
+              subject: (Array.isArray(rawData.subject_lines) ? rawData.subject_lines[0] : null) || rawData.subject || rawData.newsletter?.title || subject,
+              preheader: rawData.preview_text || rawData.preheader || rawData.summary || "",
+              body: rawData.newsletter?.body || rawData.body || rawData.content || "",
+              cta: typeof (rawData.newsletter?.cta || rawData.cta) === 'string' 
+                ? { text: (rawData.newsletter?.cta || rawData.cta), link: "#" } 
+                : (rawData.newsletter?.cta || rawData.cta || { text: "Узнать больше", link: "#" }),
+              imagePrompt: rawData.imagePrompt || ""
+            }
+          }
+        ],
+        variables: rawData.variables || {}
+      };
+    }
 
     console.log("[Newsletter API] Normalized Data:", JSON.stringify(transformed, null, 2));
 

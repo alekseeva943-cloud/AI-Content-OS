@@ -31,6 +31,15 @@ export function LongreadResultDisplay({ result, onRegenerate, sourceInfo }: Long
   const [copied, setCopied] = useState(false);
   const addFavorite = useFavoritesStore(state => state.addFavorite);
 
+  if (!result || !result.content) {
+    return (
+        <div className="p-20 text-center bg-white border border-[#E5E7EB] rounded-[3rem] shadow-2xl">
+            <p className="text-[#6B7280]">Longread data is missing or corrupted.</p>
+            <Button onClick={onRegenerate} className="mt-4">Try Regenerating</Button>
+        </div>
+    );
+  }
+
   const handleCopy = () => {
     const text = `${result.title}\n\n${result.content}`;
     navigator.clipboard.writeText(text);
@@ -130,7 +139,7 @@ export function LongreadResultDisplay({ result, onRegenerate, sourceInfo }: Long
                       <h4 className="text-[11px] font-black text-[#10B981] uppercase tracking-[0.2em] flex items-center gap-2">
                          <Quote size={14} /> Ключевые тезисы
                       </h4>
-                      {result.callouts.map((callout, i) => (
+                      {(result.callouts || []).map((callout, i) => (
                          <div key={i} className="p-4 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] text-[12px] text-[#4B5563] leading-relaxed italic">
                             "{callout}"
                          </div>

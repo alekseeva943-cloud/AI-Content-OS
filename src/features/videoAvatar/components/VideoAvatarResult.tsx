@@ -34,6 +34,15 @@ export function VideoAvatarResultDisplay({ result, onRegenerate, sourceInfo }: V
   const [copied, setCopied] = useState(false);
   const addFavorite = useFavoritesStore(state => state.addFavorite);
 
+  if (!result || !result.scenes) {
+    return (
+        <div className="p-20 text-center bg-white border border-[#E5E7EB] rounded-[3rem] shadow-2xl">
+            <p className="text-[#6B7280]">Video avatar data is missing or corrupted.</p>
+            <Button onClick={onRegenerate} className="mt-4">Try Regenerating</Button>
+        </div>
+    );
+  }
+
   const handleCopy = () => {
     const scenes = result?.scenes || [];
     const text = `Hook: ${result?.hook || ''}\n\nScenes:\n${scenes.map(s => `${s?.narration || ''} (Gesture: ${s?.gesture || ''})`).join('\n')}`;

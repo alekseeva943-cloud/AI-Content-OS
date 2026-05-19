@@ -538,7 +538,7 @@ function FavoriteCard({
               )}
 
               <div className="text-[16px] text-[#6B7280] leading-relaxed font-medium flex-1 line-clamp-4">
-                  {typeof item.content === 'string' ? item.content : (item.content.summary || item.content.description || item.content.topic || 'Нет описания')}
+                  {typeof item.content === 'string' ? item.content : (item.content?.summary || item.content?.description || item.content?.topic || item.content?.body || 'Нет описания')}
               </div>
             </div>
 

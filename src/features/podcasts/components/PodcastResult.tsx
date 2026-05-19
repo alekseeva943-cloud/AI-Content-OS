@@ -31,6 +31,15 @@ export function PodcastResultDisplay({ result, onRegenerate, sourceInfo }: Podca
   const [copied, setCopied] = useState(false);
   const addFavorite = useFavoritesStore(state => state.addFavorite);
 
+  if (!result || !result.intro) {
+    return (
+        <div className="p-20 text-center bg-white border border-[#E5E7EB] rounded-[3rem] shadow-2xl">
+            <p className="text-[#6B7280]">Podcast scenario data is missing or corrupted.</p>
+            <Button onClick={onRegenerate} className="mt-4">Try Regenerating</Button>
+        </div>
+    );
+  }
+
   const handleCopy = () => {
     const structure = result?.structure || [];
     const text = `Topic: ${result?.topic || ''}\n\nStructure:\n${structure.map(s => `- ${s?.title || ''} (${s?.duration || ''}): ${(s?.points || []).join(', ')}`).join('\n')}`;

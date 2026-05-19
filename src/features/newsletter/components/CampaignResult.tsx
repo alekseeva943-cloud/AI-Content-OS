@@ -33,25 +33,82 @@ interface CampaignResultDisplayProps {
   sourceInfo?: any;
 }
 
-export function CampaignResultDisplay({ result, onRegenerate, sourceInfo }: CampaignResultDisplayProps) {
+export function CampaignResultDisplay({ result: rawResult, onRegenerate, sourceInfo }: CampaignResultDisplayProps) {
   const [activeTab, setActiveTab] = useState<'email' | 'telegram' | 'vk'>('email');
   const [copied, setCopied] = useState<string | null>(null);
   const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
   const [isGeneratingImage, setIsGeneratingImage] = useState<string | null>(null);
-  
+
+  // Normalization layer for old/mismatched data
+  const result = React.useMemo(() => {
+    if (!rawResult) return null;
+    
+    // If it's the new format, return as is
+    if (Array.isArray(rawResult.channels) && rawResult.channels.length > 0) {
+      return rawResult;
+    }
+
+    // Fallback for old/legacy formats
+    console.log("[CampaignResult] Legacy data detected, normalizing...", rawResult);
+    
+    const legacy = rawResult as any;
+    const body = legacy.body || legacy.content || "";
+    const name = legacy.name || legacy.title || legacy.subject || "Restored Campaign";
+    
+    return {
+      id: legacy.id || `legacy-${Date.now()}`,
+      name: name,
+      strategy: legacy.strategy || "Legacy content restoration",
+      channels: [
+        {
+          id: 'email' as const,
+          active: true,
+          content: {
+            subject: legacy.subject || name,
+            preheader: legacy.preheader || "",
+            body: body,
+            cta: legacy.cta ? (typeof legacy.cta === 'string' ? { text: legacy.cta, link: "#" } : legacy.cta) : { text: "Learn More", link: "#" },
+            imagePrompt: legacy.imagePrompt || legacy.image || ""
+          }
+        }
+      ],
+      variables: legacy.variables || {}
+    } as CampaignResult;
+  }, [rawResult]);
+
   const addFavorite = useFavoritesStore(state => state.addFavorite);
   
-  const channels = result?.channels || [];
+  if (!result) return null;
+
+  const channels = result.channels || [];
   const activeChannel = channels.find(c => c.id === activeTab) || channels[0];
 
   useEffect(() => {
+    if (!result) return;
+    console.log("[CampaignResult] Rendering:", result);
     // Auto-generate images if prompts exist and no URL yet
     channels.forEach(async (channel) => {
         if (channel?.content?.imagePrompt && !imageUrls[channel.id]) {
             handleGenerateImage(channel.id, channel.content.imagePrompt);
         }
     });
-  }, [result?.id]);
+  }, [result.id]);
+
+  if (!activeChannel || !activeChannel.content) {
+    return (
+      <div className="p-20 text-center bg-white border border-[#E5E7EB] rounded-[3.5rem] shadow-2xl">
+        <div className="w-20 h-20 rounded-3xl bg-red-50 flex items-center justify-center text-red-500 mx-auto mb-6">
+            <Info size={40} />
+        </div>
+        <h3 className="text-xl font-bold text-[#111827] mb-2 font-display">Data Inconsistency</h3>
+        <p className="text-[#6B7280] max-w-sm mx-auto">This campaign data format is unsupported or corrupted. Try generating a new campaign.</p>
+        <Button onClick={onRegenerate} variant="outline" className="mt-8 rounded-xl border-[#E5E7EB]">
+            <RefreshCw size={16} className="mr-2" />
+            Try Regenerating
+        </Button>
+      </div>
+    );
+  }
 
   const handleGenerateImage = async (channelId: string, prompt: string) => {
     setIsGeneratingImage(channelId);
@@ -186,20 +243,20 @@ export function CampaignResultDisplay({ result, onRegenerate, sourceInfo }: Camp
                                 <div className="p-8 rounded-[2rem] bg-[#F9FAFB] border border-[#E5E7EB] space-y-4">
                                     <div className="flex items-center gap-6 text-[13px]">
                                         <span className="w-20 font-bold text-[#9CA3AF] uppercase tracking-widest">Subject:</span>
-                                        <span className="font-bold text-[#111827]">{activeChannel.content.subject}</span>
+                                        <span className="font-bold text-[#111827]">{activeChannel.content?.subject || "No Subject Created"}</span>
                                     </div>
                                     <div className="flex items-center gap-6 text-[13px]">
                                         <span className="w-20 font-bold text-[#9CA3AF] uppercase tracking-widest">Preview:</span>
-                                        <span className="font-medium text-[#6B7280] italic">{activeChannel.content.preheader}</span>
+                                        <span className="font-medium text-[#6B7280] italic">{activeChannel.content?.preheader || "No Preview Text"}</span>
                                     </div>
                                 </div>
                             )}
 
                             <div className="markdown-body prose prose-slate prose-lg max-w-none">
-                                <ReactMarkdown>{activeChannel.content.body}</ReactMarkdown>
+                                <ReactMarkdown>{activeChannel.content?.body || "Content body is missing"}</ReactMarkdown>
                             </div>
 
-                            {activeChannel.content.cta && (
+                            {activeChannel.content?.cta && (
                                 <div className="pt-10 border-t border-[#F3F4F6] mt-10">
                                     <div className="flex items-center justify-between p-6 rounded-[2rem] bg-[#10B981]/5 border border-[#10B981]/10">
                                         <div className="flex items-center gap-4">
@@ -208,7 +265,7 @@ export function CampaignResultDisplay({ result, onRegenerate, sourceInfo }: Camp
                                             </div>
                                             <div>
                                                 <span className="text-[10px] font-black text-[#10B981] uppercase tracking-widest mb-1 block">Contextual CTA</span>
-                                                <h4 className="text-[15px] font-bold text-[#111827]">{activeChannel.content.cta.text}</h4>
+                                                <h4 className="text-[15px] font-bold text-[#111827]">{activeChannel.content.cta?.text || "Click Here"}</h4>
                                             </div>
                                         </div>
                                         <Button className="rounded-xl px-8 shadow-lg shadow-emerald-500/20">
