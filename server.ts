@@ -171,26 +171,31 @@ app.post("/api/newsletter", async (req, res) => {
         // Only include requested channels
         if (!requestedChannels.includes(ch.id)) return null;
 
-        const c = ch.content || {};
-        return {
-          id: ch.id as 'email' | 'telegram' | 'vk',
-          active: ch.active ?? true,
-          content: {
-            subject: c.subject || c.title || ch.subject || ch.title || "",
-            preheader: c.preheader || c.summary || c.preview || ch.preheader || ch.summary || "",
-            body: c.body || c.text || c.message || c.description || c.content || ch.body || ch.text || ch.description || ch.message || "",
-            cta: (function() {
-              const rawCta = c.cta || ch.cta;
-              if (!rawCta) return { text: "Узнать больше", link: "#" };
-              if (typeof rawCta === 'string') return { text: rawCta, link: "#" };
-              return { 
-                text: rawCta.text || rawCta.label || rawCta.buttonText || "Узнать больше", 
-                link: rawCta.link || rawCta.url || rawCta.href || "#" 
-              };
-            })(),
-            imagePrompt: c.imagePrompt || c.visuals || c.image_prompt || ch.imagePrompt || ch.visuals || ""
-          }
-        };
+          // AI might put content directly in ch, or in ch.content
+          const c = ch.content || ch;
+          
+          if (ch.id === 'telegram') console.log("[Newsletter API] RAW TELEGRAM:", JSON.stringify(ch, null, 2));
+          if (ch.id === 'vk') console.log("[Newsletter API] RAW VK:", JSON.stringify(ch, null, 2));
+
+          return {
+            id: ch.id as 'email' | 'telegram' | 'vk',
+            active: ch.active ?? true,
+            content: {
+              subject: c.subject || c.title || ch.subject || ch.title || "",
+              preheader: c.preheader || c.summary || c.preview || ch.preheader || ch.summary || "",
+              body: c.body || c.text || c.content || c.message || c.description || c.copy || ch.body || ch.text || ch.description || ch.message || ch.copy || "",
+              cta: (function() {
+                const rawCta = c.cta || ch.cta || c.action || c.button || ch.action || ch.button;
+                if (!rawCta) return { text: "Узнать больше", link: "#" };
+                if (typeof rawCta === 'string') return { text: rawCta, link: "#" };
+                return { 
+                  text: rawCta.text || rawCta.label || rawCta.buttonText || rawCta.title || "Узнать больше", 
+                  link: rawCta.link || rawCta.url || rawCta.href || "#" 
+                };
+              })(),
+              imagePrompt: c.imagePrompt || c.visuals || c.image_prompt || ch.imagePrompt || ch.visuals || ""
+            }
+          };
       }).filter(Boolean),
       variables: rawData.variables || {}
     };
