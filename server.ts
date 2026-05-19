@@ -118,25 +118,36 @@ app.post("/api/newsletter", async (req, res) => {
     });
 
     const content = response.choices[0].message.content;
+    console.log("[Newsletter API] RAW AI OUTPUT:", content);
+    
     if (!content) throw new Error("Empty response");
     
     const rawData = JSON.parse(content);
     
-    // Transform prompt response to schema if needed
+    // Robust transformation for different prompt outputs
     const transformed = {
-      subject: rawData.subject_lines?.[0] || rawData.subject || subject,
-      preheader: rawData.preview_text || rawData.preheader || "",
-      body: rawData.newsletter?.body || rawData.body || "",
-      cta: typeof rawData.newsletter?.cta === 'string' 
-        ? { text: rawData.newsletter.cta, link: "#" } 
-        : (rawData.cta || { text: "Узнать больше", link: "#" }),
-      blocks: rawData.blocks || []
+      subject: (Array.isArray(rawData.subject_lines) ? rawData.subject_lines[0] : null) || rawData.subject || subject,
+      preheader: rawData.preview_text || rawData.preheader || rawData.summary || "",
+      body: rawData.newsletter?.body || rawData.body || rawData.content || "",
+      cta: typeof (rawData.newsletter?.cta || rawData.cta) === 'string' 
+        ? { text: (rawData.newsletter?.cta || rawData.cta), link: "#" } 
+        : (rawData.newsletter?.cta || rawData.cta || { text: "Узнать больше", link: "#" }),
+      blocks: Array.isArray(rawData.blocks || rawData.newsletter?.blocks) 
+        ? (rawData.blocks || rawData.newsletter?.blocks).map((b: any) => ({
+            type: ['text', 'image', 'highlight'].includes(b.type) ? b.type : 'text',
+            content: b.content || b.text || "",
+            title: b.title || b.header || undefined
+          }))
+        : []
     };
+
+    console.log("[Newsletter API] Normalized Data:", JSON.stringify(transformed, null, 2));
 
     const validated = NewsletterResultSchema.parse(transformed);
     res.json(validated);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error("[Newsletter API] Generation Error:", error);
+    res.status(500).json({ error: error.message || "Newsletter synthesis failed" });
   }
 });
 
@@ -152,20 +163,27 @@ app.post("/api/longreads", async (req, res) => {
       response_format: { type: "json_object" }
     });
 
-    const rawData = JSON.parse(response.choices[0].message.content || "{}");
+    const rawContent = response.choices[0].message.content;
+    console.log("[Longreads API] RAW AI OUTPUT:", rawContent);
+    if (!rawContent) throw new Error("Empty response");
+
+    const rawData = JSON.parse(rawContent || "{}");
     // Flexible transformation for different prompt outputs
     const result = {
-      title: rawData.title || topic,
-      subtitle: rawData.subtitle || "",
-      readingTime: rawData.readingTime || Math.ceil((rawData.content || "").split(' ').length / 200) || 5,
-      content: rawData.content || "",
-      outline: rawData.outline || [],
-      callouts: rawData.callouts || [],
-      socialSummary: rawData.socialSummary || ""
+      title: rawData.title || rawData.article?.title || topic,
+      subtitle: rawData.subtitle || rawData.meta?.subtitle || "",
+      readingTime: rawData.readingTime || rawData.meta?.readingTime || Math.ceil((rawData.content || "").split(' ').length / 200) || 5,
+      content: rawData.content || rawData.article?.body || "",
+      outline: Array.isArray(rawData.outline) ? rawData.outline : [],
+      callouts: Array.isArray(rawData.callouts) ? rawData.callouts : [],
+      socialSummary: rawData.socialSummary || rawData.meta?.summary || ""
     };
+    
+    console.log("[Longreads API] Normalized Data:", JSON.stringify(result, null, 2));
     res.json(result);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error("[Longreads API] Generation Error:", error);
+    res.status(500).json({ error: error.message || "Longread synthesis failed" });
   }
 });
 
@@ -181,18 +199,31 @@ app.post("/api/podcasts", async (req, res) => {
       response_format: { type: "json_object" }
     });
 
-    const rawData = JSON.parse(response.choices[0].message.content || "{}");
+    const rawContent = response.choices[0].message.content;
+    console.log("[Podcasts API] RAW AI OUTPUT:", rawContent);
+    if (!rawContent) throw new Error("Empty response");
+
+    const rawData = JSON.parse(rawContent || "{}");
     const result = {
       topic: rawData.topic || topic,
-      intro: rawData.intro || "",
-      structure: rawData.structure || [],
-      guestQuestions: rawData.guestQuestions || [],
-      outro: rawData.outro || "",
+      intro: rawData.intro || rawData.hook || "",
+      structure: Array.isArray(rawData.structure) ? rawData.structure.map((s: any) => ({
+        id: s.id || Math.random().toString(36).substr(2, 9),
+        title: s.title || "Сегмент",
+        duration: s.duration || "2:00",
+        points: Array.isArray(s.points) ? s.points : [s.content || s.description].filter(Boolean),
+        talkingPoints: s.talkingPoints || []
+      })) : [],
+      guestQuestions: Array.isArray(rawData.guestQuestions) ? rawData.guestQuestions : [],
+      outro: rawData.outro || rawData.conclusion || "",
       cta: rawData.cta || ""
     };
+    
+    console.log("[Podcasts API] Normalized Data:", JSON.stringify(result, null, 2));
     res.json(result);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error("[Podcasts API] Generation Error:", error);
+    res.status(500).json({ error: error.message || "Podcast synthesis failed" });
   }
 });
 
@@ -208,15 +239,29 @@ app.post("/api/avatars", async (req, res) => {
       response_format: { type: "json_object" }
     });
 
-    const rawData = JSON.parse(response.choices[0].message.content || "{}");
+    const rawContent = response.choices[0].message.content;
+    console.log("[Avatars API] RAW AI OUTPUT:", rawContent);
+    if (!rawContent) throw new Error("Empty response");
+
+    const rawData = JSON.parse(rawContent || "{}");
     const result = {
-      hook: rawData.hook || "",
-      scenes: rawData.scenes || [],
+      hook: rawData.hook || rawData.opening || "",
+      scenes: Array.isArray(rawData.scenes) ? rawData.scenes.map((s: any) => ({
+        id: s.id || Math.random().toString(36).substr(2, 9),
+        description: s.description || s.visuals || "",
+        narration: s.narration || s.text || "",
+        gesture: s.gesture || s.action || "neutral",
+        emotion: s.emotion || "natural",
+        visuals: s.visuals || s.description || ""
+      })) : [],
       captionStyles: rawData.captionStyles || { font: "Inter", color: "#FFFFFF", animation: "fade" }
     };
+    
+    console.log("[Avatars API] Normalized Data:", JSON.stringify(result, null, 2));
     res.json(result);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error("[Avatars API] Generation Error:", error);
+    res.status(500).json({ error: error.message || "Avatar synthesis failed" });
   }
 });
 
