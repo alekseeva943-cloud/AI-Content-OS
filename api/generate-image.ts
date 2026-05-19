@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const imageUrl = response.data[0].url;
       return res.status(200).json({ url: imageUrl });
     } catch (d3Error: any) {
-      console.warn("[Image API] DALL-E-3 failed, trying DALL-E-2:", d3Error.message);
+      // Quiet fallback
       const response = await openai.images.generate({
         model: "dall-e-2",
         prompt: prompt,

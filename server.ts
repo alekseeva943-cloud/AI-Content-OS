@@ -138,29 +138,42 @@ app.post("/api/newsletter", async (req, res) => {
     
     const client = getOpenAI();
     
-    const { system, user } = getModulePrompts("newsletter", { 
-      topic: topic || "Без темы", 
-      context: context || "Нет дополнительного контекста", 
-      variables: JSON.stringify(variables || {}),
-      channels: requestedChannels.join(", "),
-      tone: advanced?.tone || "natural" 
-    });
+    async function generateAttempt() {
+      const { system, user } = getModulePrompts("newsletter", { 
+        topic: topic || "Без темы", 
+        context: context || "Нет дополнительного контекста", 
+        variables: JSON.stringify(variables || {}),
+        channels: requestedChannels.join(", "),
+        tone: advanced?.tone || "natural" 
+      });
 
-    const response = await client.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: system + "\n\nОБЯЗАТЕЛЬНО: Весь контент должен быть на РУССКОМ языке. Используй живой, современный стиль." },
-        { role: "user", content: user + "\n\nВАЖНО: Создай контент ТОЛЬКО для выбранных каналов: " + requestedChannels.join(", ") + ". Пиши СТРОГО на русском языке." }
-      ],
-      response_format: { type: "json_object" }
-    });
+      const response = await client.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: system + "\n\nОБЯЗАТЕЛЬНО: Весь контент должен быть на РУССКОМ языке. Используй живой, современный стиль." },
+          { role: "user", content: user + "\n\nВАЖНО: Создай контент ТОЛЬКО для выбранных каналов: " + requestedChannels.join(", ") + ". Пиши СТРОГО на русском языке." }
+        ],
+        response_format: { type: "json_object" }
+      });
 
-    const content = response.choices[0].message.content;
-    console.log("[Newsletter API] RAW AI RESPONSE:", content);
+      const content = response.choices[0].message.content;
+      if (!content) throw new Error("OpenAI returned an empty response");
+      return JSON.parse(content);
+    }
+
+    let rawData = await generateAttempt();
     
-    if (!content) throw new Error("OpenAI returned an empty response");
+    // Simple Language Guard: Check if dominant language seems English
+    // Just a heuristic: search for common English words if Russian letters are missing or very few.
+    const cyrillicPattern = /[\u0400-\u04FF]/;
+    const testText = JSON.stringify(rawData);
+    const hasCyrillic = cyrillicPattern.test(testText);
     
-    const rawData = JSON.parse(content);
+    if (!hasCyrillic) {
+      console.warn("[Newsletter API] English detected in AI response. Retrying once...");
+      rawData = await generateAttempt(); // One-time retry
+    }
+
     console.log("[Newsletter API] RAW AI DATA:", JSON.stringify(rawData, null, 2));
 
     // Handle both array and object formats for channels
@@ -185,8 +198,9 @@ app.post("/api/newsletter", async (req, res) => {
         // AI might return 'id' or 'channel' or 'type'
         const channelId = String(ch.id || ch.channel || ch.type || "").toLowerCase().trim();
         
-        // Only include requested channels
+        // STRICT: Only include requested channels
         if (!requestedChannels.includes(channelId)) {
+          console.log(`[Newsletter API] Excluding channel not in request: ${channelId}`);
           return null;
         }
 
@@ -196,13 +210,17 @@ app.post("/api/newsletter", async (req, res) => {
         if (channelId === 'telegram') console.log("[Newsletter API] RAW TELEGRAM:", JSON.stringify(ch, null, 2));
         if (channelId === 'vk') console.log("[Newsletter API] RAW VK:", JSON.stringify(ch, null, 2));
 
+        // Language Guard: Simple check if the AI returned something in English despite our prompt
+        let body = c.body || c.text || c.message || c.content || c.description || c.copy || ch.body || ch.text || ch.description || ch.message || ch.copy || "";
+        body = body.trim();
+
         return {
           id: channelId as 'email' | 'telegram' | 'vk',
           active: ch.active ?? true,
           content: {
             subject: c.subject || c.title || ch.subject || ch.title || "",
             preheader: c.preheader || c.summary || c.preview || ch.preheader || ch.summary || "",
-            body: (c.body || c.text || c.message || c.content || c.description || c.copy || ch.body || ch.text || ch.description || ch.message || ch.copy || "").trim(),
+            body: body,
             cta: (function() {
               const rawCta = c.cta || ch.cta || c.action || c.button || ch.action || ch.button || c.link || ch.link;
               if (!rawCta) return { text: "Узнать больше", link: "#" };
@@ -432,7 +450,7 @@ app.post("/api/generate-image", async (req, res) => {
       });
 
       const url = response.data[0].url;
-      console.log("[Visual Studio] Image generated (dall-e-2):", url);
+      console.log("[Visual Studio] Image generated (fallback):", url);
       return res.json({ url });
     }
   } catch (error: any) {
