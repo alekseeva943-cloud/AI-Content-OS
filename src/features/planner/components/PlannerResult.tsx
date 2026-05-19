@@ -26,8 +26,8 @@ import {
   Type,
   Youtube,
   Linkedin,
-  Video,
-  Globe
+  Link,
+  MessageCircle
 } from 'lucide-react';
 import { PlannerItem, PlannerResult, PostSettings } from '@/src/types/planner';
 import { GlassCard, Button } from '@/src/shared/components/UI';
@@ -95,16 +95,14 @@ export function PlannerResultDisplay({ result, sourceInfo }: PlannerResultProps)
     return dateValue === 'Unknown' ? 'Дата не определена' : dateValue;
   };
 
-  const formatDateShort = (dateValue: string) => {
-    if (!isNaN(Date.parse(dateValue))) {
-      const date = new Date(dateValue);
-      return date.toLocaleDateString('ru-RU', { 
+  const formatDateLabel = (dateValue?: string) => {
+    if (!dateValue || isNaN(Date.parse(dateValue))) return null;
+    const date = new Date(dateValue);
+    return date.toLocaleDateString('ru-RU', { 
         weekday: 'short', 
         day: 'numeric', 
         month: 'short' 
-      }).replace(/^\w/, (c) => c.toUpperCase());
-    }
-    return dateValue;
+    }).replace(/^\w/, (c) => c.toUpperCase());
   };
 
   if (items.length === 0) {
@@ -291,14 +289,14 @@ function PlanItemCard({
         lightBg: 'bg-blue-500/10'
     },
     vk: { 
-        icon: Globe, 
-        label: 'VKontakte', 
-        color: '#4C75A3', 
-        bg: 'bg-sky-50', 
-        border: 'border-sky-100', 
-        text: 'text-sky-700',
-        accentBg: 'bg-sky-600',
-        lightBg: 'bg-sky-600/10'
+        icon: MessageCircle, 
+        label: 'ВКонтакте', 
+        color: '#0077FF', 
+        bg: 'bg-blue-50', 
+        border: 'border-blue-100', 
+        text: 'text-blue-700',
+        accentBg: 'bg-blue-600',
+        lightBg: 'bg-blue-600/10'
     },
     email: { 
         icon: Mail, 
@@ -335,16 +333,14 @@ function PlanItemCard({
   const config = channelConfig[item.channel as keyof typeof channelConfig] || channelConfig.telegram;
   const Icon = config.icon;
 
-  const formatDateShort = (dateValue: string) => {
-    if (!isNaN(Date.parse(dateValue))) {
-      const date = new Date(dateValue);
-      return date.toLocaleDateString('ru-RU', { 
+  const formatDateLabel = (dateValue?: string) => {
+    if (!dateValue || isNaN(Date.parse(dateValue))) return null;
+    const date = new Date(dateValue);
+    return date.toLocaleDateString('ru-RU', { 
         weekday: 'short', 
         day: 'numeric', 
         month: 'short' 
-      }).replace(/^\w/, (c) => c.toUpperCase());
-    }
-    return dateValue;
+    }).replace(/^\w/, (c) => c.toUpperCase());
   };
 
   return (
@@ -399,7 +395,7 @@ function PlanItemCard({
                    </div>
                    <div className="flex items-center gap-2.5 text-[#6B7280]">
                       <Calendar size={14} strokeWidth={2.5} className="text-[#9CA3AF]" />
-                      <span className="text-[13px] font-bold leading-none">{formatDateShort(item.publishDate)}</span>
+                      <span className="text-[13px] font-bold leading-none">{formatDateLabel(item.publishDate) || item.day}</span>
                       <div className="w-[3px] h-[3px] rounded-full bg-[#D1D5DB]" />
                       <Clock size={14} strokeWidth={2.5} className="text-[#9CA3AF]" />
                       <span className="text-[13px] font-bold leading-none">{item.time}</span>

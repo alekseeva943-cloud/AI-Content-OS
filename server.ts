@@ -72,9 +72,14 @@ app.post("/api/planner", async (req, res) => {
     validated.items = validated.items.map(item => {
       const itemDate = new Date(startObj);
       itemDate.setDate(startObj.getDate() + (item.dayIndex || 0));
+      
+      const weekday = itemDate.toLocaleDateString('ru-RU', { weekday: 'long' });
+      const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+
       return {
         ...item,
-        publishDate: itemDate.toISOString().split('T')[0]
+        publishDate: itemDate.toISOString().split('T')[0],
+        weekday: capitalizedWeekday
       };
     });
 

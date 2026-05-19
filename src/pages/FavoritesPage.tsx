@@ -25,7 +25,7 @@ import {
   Tag,
   Youtube,
   Linkedin,
-  Globe
+  MessageCircle
 } from 'lucide-react';
 import { useFavoritesStore, FavoriteItem } from '@/src/stores/favoritesStore';
 import { GlassCard, Button } from '@/src/shared/components/UI';
@@ -43,7 +43,7 @@ const moduleIcons: Record<string, any> = {
 
 const channelConfig: Record<string, any> = {
     telegram: { icon: Send, label: 'Telegram', color: '#3B82F6', text: 'text-blue-600', lightBg: 'bg-blue-50', border: 'border-blue-100', accentBg: 'bg-blue-500' },
-    vk: { icon: Globe, label: 'VKontakte', color: '#4C75A3', text: 'text-sky-700', lightBg: 'bg-sky-50', border: 'border-sky-100', accentBg: 'bg-sky-600' },
+    vk: { icon: MessageCircle, label: 'ВКонтакте', color: '#0077FF', text: 'text-blue-700', lightBg: 'bg-blue-50', border: 'border-blue-100', accentBg: 'bg-blue-600' },
     email: { icon: Mail, label: 'Email', color: '#EA4335', text: 'text-red-600', lightBg: 'bg-red-50', border: 'border-red-100', accentBg: 'bg-red-500' },
     youtube: { icon: Youtube, label: 'YouTube', color: '#FF0000', text: 'text-rose-600', lightBg: 'bg-rose-50', border: 'border-rose-100', accentBg: 'bg-rose-600' },
     linkedin: { icon: Linkedin, label: 'LinkedIn', color: '#0077B5', text: 'text-indigo-600', lightBg: 'bg-indigo-50', border: 'border-indigo-100', accentBg: 'bg-indigo-600' },
