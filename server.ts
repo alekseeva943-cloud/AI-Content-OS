@@ -6,7 +6,7 @@ import { OpenAI } from "openai";
 import dotenv from "dotenv";
 import { getPlannerPrompts, getPostPrompts, getModulePrompts } from "./lib/prompts";
 import { PlannerResultSchema, PlannerItemSchema } from "./src/types/planner.ts";
-import { NewsletterResultSchema } from "./src/types/newsletter.ts";
+import { CampaignResultSchema } from "./src/types/newsletter.ts";
 
 dotenv.config();
 
@@ -143,7 +143,7 @@ app.post("/api/newsletter", async (req, res) => {
 
     console.log("[Newsletter API] Normalized Data:", JSON.stringify(transformed, null, 2));
 
-    const validated = NewsletterResultSchema.parse(transformed);
+    const validated = CampaignResultSchema.parse(transformed);
     res.json(validated);
   } catch (error: any) {
     console.error("[Newsletter API] Generation Error:", error);

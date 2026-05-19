@@ -26,23 +26,25 @@ import { GlassCard, Button } from '@/src/shared/components/UI';
 import { EmptyResultState, GenerationLoader } from '@/src/shared/components/ResultPanel';
 import { AIField, AIInput, AITextarea, AISelect, AIToggleGroup, AIPillSelector, AIDateInput } from './forms/FormComponents';
 import { ModuleConfig } from '@/src/config/modules';
-import { generateContentPlan, generateNewsletter, generateLongread, generatePodcast, generateVideoAvatar } from '@/src/services/ai/client';
+import { detectCampaignVariables, generateCampaign, generateContentPlan, generateLongread, generatePodcast, generateVideoAvatar } from '@/src/services/ai/client';
 import { useMemoryStore } from '@/src/stores/memoryStore';
 import { useFavoritesStore } from '@/src/stores/favoritesStore';
 import { useWorkspaceStore } from '@/src/stores/workspaceStore';
+import { useBrandStore } from '@/src/stores/brandStore';
 import { toast } from 'sonner';
 import { PlannerResultDisplay } from '@/src/features/planner/components/PlannerResult';
-import { NewsletterResultDisplay } from '@/src/features/newsletter/components/NewsletterResult';
+import { CampaignResultDisplay } from '@/src/features/newsletter/components/CampaignResult';
 import { LongreadResultDisplay } from '@/src/features/longreads/components/LongreadResult';
 import { PodcastResultDisplay } from '@/src/features/podcasts/components/PodcastResult';
 import { VideoAvatarResultDisplay } from '@/src/features/videoAvatar/components/VideoAvatarResult';
+import { VariableRequirement } from '@/src/types/newsletter';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/src/lib/utils';
 import { AdvancedSettings, AdvancedSettingsState } from '@/src/features/planner/components/AdvancedSettings';
 
 const moduleLabels: Record<string, string> = {
   planner: 'Планировщик',
-  newsletters: 'Рассылки',
+  newsletters: 'Publishing Studio',
   podcasts: 'Подкасты',
   avatars: 'AI-Аватары',
   longreads: 'Лонгриды',
@@ -54,14 +56,20 @@ interface ModulePageProps {
 
 export function ModulePage({ config }: ModulePageProps) {
   const { modules, setModuleState, clearModule } = useWorkspaceStore();
+  const brandVariables = useBrandStore(state => state.variables);
+  const updateBrandVariable = useBrandStore(state => state.updateVariable);
+
   const moduleState = modules[config.id] || {
     formValues: {},
     result: null,
     showAdvanced: false,
     sourceInfo: null,
+    builderStep: 'input',
+    requirements: [] as VariableRequirement[],
   };
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDiscovering, setIsDiscovering] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [generationStep, setGenerationStep] = useState<string>('Инициализация...');
@@ -153,6 +161,23 @@ export function ModulePage({ config }: ModulePageProps) {
     'Кристаллизую финальную стратегию...'
   ];
 
+  const handleCampaignDiscovery = async () => {
+    setIsDiscovering(true);
+    setError(null);
+    try {
+        const { requirements } = await detectCampaignVariables({
+            topic: formValues.topic,
+            context: formValues.context
+        });
+        setModuleState(config.id, { requirements, builderStep: 'variables' });
+        toast.info('AI обнаружил недостающие переменные для точности');
+    } catch (err: any) {
+        setError(err.message);
+    } finally {
+        setIsDiscovering(false);
+    }
+  };
+
   const handleGenerate = async () => {
     setIsGenerating(true);
     setResult(null);
@@ -205,23 +230,25 @@ export function ModulePage({ config }: ModulePageProps) {
          });
       } else if (config.id === 'newsletters') {
          const request = {
-            subject: formValues.subject,
-            insights: formValues.insights,
+            topic: formValues.topic,
+            context: formValues.context,
+            variables: { ...brandVariables, ...formValues.variables },
+            channels: ['email', 'telegram', 'vk'], // Dynamic selection can be added later
             advanced: showAdvanced ? {
                 tone: formValues.adv_tone,
                 emotion: formValues.adv_emotion,
-                length: formValues.adv_length,
             } : undefined
          };
          
-         const data = await generateNewsletter(request as any);
+         const data = await generateCampaign(request as any);
          setResult(data);
+         setModuleState(config.id, { builderStep: 'result' });
          
          addGeneration({
             type: 'newsletter',
             data,
             metadata: {
-                topic: request.subject,
+                topic: request.topic,
             }
          });
       } else if (config.id === 'longreads') {
@@ -366,50 +393,86 @@ export function ModulePage({ config }: ModulePageProps) {
 
            <GlassCard className="p-8 bg-white border-[#E5E7EB] shadow-xl space-y-10">
               <div className="space-y-8">
-                {config.fields.map((field) => (
-                  <AIField 
-                    key={field.id} 
-                    label={field.label} 
-                    description={field.description}
-                    id={field.id}
-                  >
-                    {field.type === 'text' && (
-                        <AIInput 
-                            placeholder={field.placeholder} 
-                            value={formValues[field.id]} 
-                            onChange={(e) => handleInputChange(field.id, e.target.value)}
-                        />
-                    )}
-                    {field.type === 'textarea' && (
-                        <AITextarea 
-                            placeholder={field.placeholder} 
-                            value={formValues[field.id]}
-                            onChange={(e) => handleInputChange(field.id, e.target.value)}
-                        />
-                    )}
-                    {field.type === 'date' && (
-                        <AIDateInput 
-                            value={formValues[field.id]} 
-                            onChange={(e) => handleInputChange(field.id, e.target.value)}
-                        />
-                    )}
-                    {field.type === 'select' && (
-                      Array.isArray(field.defaultValue) ? (
-                        <AIPillSelector 
-                          value={Array.isArray(formValues[field.id]) ? formValues[field.id] : [formValues[field.id]]}
-                          options={field.options || []}
-                          onChange={(val) => handleInputChange(field.id, val)}
-                        />
-                      ) : (
-                        <AIToggleGroup 
-                          value={formValues[field.id]}
-                          options={field.options || []}
-                          onChange={(val) => handleInputChange(field.id, val)}
-                        />
-                      )
-                    )}
-                  </AIField>
-                ))}
+                {config.id === 'newsletters' && moduleState.builderStep === 'variables' ? (
+                    <motion.div 
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="space-y-8"
+                    >
+                        <div className="p-6 rounded-3xl bg-[#10B981]/5 border border-[#10B981]/10 mb-2">
+                            <p className="text-[13px] text-[#065F46] font-semibold leading-relaxed">
+                                AI проанализировал Ваш запрос. Для создания безупречной кампании без "заглушек", пожалуйста, уточните следующие детали:
+                            </p>
+                        </div>
+                        {moduleState.requirements.map((req: VariableRequirement) => (
+                            <AIField 
+                                key={req.id} 
+                                label={req.label} 
+                                description={req.description}
+                                id={req.id}
+                            >
+                                <AIInput 
+                                    placeholder={req.importance === 'critical' ? 'Обязательно для заполнения...' : 'Опционально...'}
+                                    value={formValues.variables?.[req.id] || ''}
+                                    onChange={(e) => handleInputChange('variables', { ...formValues.variables, [req.id]: e.target.value })}
+                                />
+                            </AIField>
+                        ))}
+                        <button 
+                            onClick={() => setModuleState(config.id, { builderStep: 'input' })}
+                            className="text-[12px] font-bold text-[#9CA3AF] hover:text-[#111827] flex items-center gap-2 uppercase tracking-widest transition-colors"
+                        >
+                            <ChevronLeft size={14} />
+                            Назад к описанию
+                        </button>
+                    </motion.div>
+                ) : (
+                    config.fields.map((field) => (
+                      <AIField 
+                        key={field.id} 
+                        label={field.label} 
+                        description={field.description}
+                        id={field.id}
+                      >
+                        {field.type === 'text' && (
+                            <AIInput 
+                                placeholder={field.placeholder} 
+                                value={formValues[field.id]} 
+                                onChange={(e) => handleInputChange(field.id, e.target.value)}
+                            />
+                        )}
+                        {field.type === 'textarea' && (
+                            <AITextarea 
+                                placeholder={field.placeholder} 
+                                value={formValues[field.id]}
+                                onChange={(e) => handleInputChange(field.id, e.target.value)}
+                            />
+                        )}
+                        {field.type === 'date' && (
+                            <AIDateInput 
+                                value={formValues[field.id]} 
+                                onChange={(e) => handleInputChange(field.id, e.target.value)}
+                            />
+                        )}
+                        {field.type === 'select' && (
+                          Array.isArray(field.defaultValue) ? (
+                            <AIPillSelector 
+                              value={Array.isArray(formValues[field.id]) ? formValues[field.id] : [formValues[field.id]]}
+                              options={field.options || []}
+                              onChange={(val) => handleInputChange(field.id, val)}
+                            />
+                          ) : (
+                            <AIToggleGroup 
+                              value={formValues[field.id]}
+                              options={field.options || []}
+                              onChange={(val) => handleInputChange(field.id, val)}
+                            />
+                          )
+                        )}
+                      </AIField>
+                    ))
+                )}
+              </div>
 
                 {sourceInfo && (
                     <motion.div 
@@ -481,178 +544,181 @@ export function ModulePage({ config }: ModulePageProps) {
                      )}
                    </AnimatePresence>
                 </div>
-              </div>
 
-              {error && (
-                <div className="p-4 rounded-xl bg-red-50 border border-red-100 flex items-start gap-4">
-                  <AlertCircle size={18} className="text-red-500 shrink-0" />
-                  <p className="text-[13px] text-red-600 font-medium leading-relaxed">{error}</p>
-                </div>
-              )}
-
-              <div className="pt-8 border-t border-[#F3F4F6]">
-                <Button 
-                  onClick={handleGenerate}
-                  isLoading={isGenerating}
-                  size="xl" 
-                  className="w-full gap-3 shadow-[0_12px_24px_rgba(16,185,129,0.2)] rounded-2xl h-14"
-                >
-                  <Wand2 size={24} />
-                  <span>{config.actionLabel}</span>
-                </Button>
-                
-                <div className="flex items-center justify-between mt-6 px-1">
-                   <button 
-                    onClick={handleReset}
-                    className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-[#9CA3AF] hover:text-[#10B981] transition-colors"
-                  >
-                    <RotateCcw size={14} />
-                    Сбросить
-                  </button>
-                  <span className="text-[11px] text-[#9CA3AF] font-bold uppercase tracking-tight">Catalyst v4.4</span>
-                </div>
-              </div>
-           </GlassCard>
-        </motion.div>
-
-        {/* Workspace Toggle Button (Sticky) */}
-        <div className="h-full flex items-center justify-center sticky top-1/2 z-30">
-           <button 
-              onClick={toggleCollapse}
-              className="w-10 h-10 rounded-full bg-white border border-[#E5E7EB] shadow-lg flex items-center justify-center text-[#9CA3AF] hover:text-[#10B981] hover:border-[#10B981]/30 transition-all group -ml-5 translate-x-2"
-              title={isCollapsed ? "Развернуть панель" : "Свернуть панель"}
-           >
-              {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-           </button>
-        </div>
-
-        {/* Results Workspace */}
-        <div className="flex-1 h-full overflow-y-auto pr-4 no-scrollbar custom-scroll flex flex-col gap-8 min-w-0">
-           <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                 <span className={cn(
-                    "w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold font-display transition-all",
-                    result ? "bg-[#10B981] text-white" : "bg-[#E5E7EB] text-[#9CA3AF]"
-                 )}>2</span>
-                 <h3 className="text-[14px] font-bold text-[#374151] uppercase tracking-widest">Просмотр результата</h3>
-              </div>
-              <div className="flex items-center gap-6 text-[#9CA3AF] text-[12px] font-bold uppercase tracking-widest">
-                 <div className="flex items-center gap-2 mr-4 px-3 py-1.5 rounded-xl bg-white border border-[#E5E7EB] shadow-sm">
-                    <button 
-                      onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}
-                      className="p-1 hover:text-[#10B981] transition-colors"
-                      title="Уменьшить масштаб"
-                    >
-                      <Minus size={14} />
-                    </button>
-                    <span className="w-12 text-center text-[10px] text-[#374151] font-black">{Math.round(zoom * 100)}%</span>
-                    <button 
-                      onClick={() => setZoom(Math.min(1.5, zoom + 0.1))}
-                      className="p-1 hover:text-[#10B981] transition-colors"
-                      title="Увеличить масштаб"
-                    >
-                      <Plus size={14} />
-                    </button>
+               {error && (
+                 <div className="p-4 rounded-xl bg-red-50 border border-red-100 flex items-start gap-4">
+                   <AlertCircle size={18} className="text-red-500 shrink-0" />
+                   <p className="text-[13px] text-red-600 font-medium leading-relaxed">{error}</p>
                  </div>
-                 <button className="hover:text-[#10B981] transition-colors">Скачать PDF</button>
-                 <button className="hover:text-[#10B981] transition-colors">Экспорт</button>
-              </div>
-           </div>
+               )}
 
-           <div 
-             className="min-h-[600px] flex flex-col origin-top transition-all duration-300"
-             style={{ 
-               transform: `scale(${zoom})`, 
-               width: zoom < 1 ? `${100 / zoom}%` : '100%' 
-             }}
-           >
-              <AnimatePresence mode="wait">
-                {isGenerating ? (
-                  <motion.div 
-                    key="loading"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="h-full flex-1"
-                  >
-                    <GlassCard className="h-full flex-1 flex items-center justify-center bg-[#F9FAFB]/50 border-dashed border-[#CBD5E1] rounded-[3rem]">
-                       <GenerationLoader status={generationStep} statusColor="#10B981" />
-                    </GlassCard>
-                  </motion.div>
-                ) : result ? (
-                  <motion.div 
-                    key="result"
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="h-full flex-1"
-                  >
-                    {config.id === 'planner' ? (
-                       <PlannerResultDisplay result={result} sourceInfo={sourceInfo} />
-                    ) : config.id === 'newsletters' ? (
-                       <NewsletterResultDisplay 
-                        result={result} 
-                        sourceInfo={sourceInfo}
-                        onRegenerate={handleGenerate}
-                       />
-                    ) : config.id === 'longreads' ? (
-                        <LongreadResultDisplay result={result} sourceInfo={sourceInfo} onRegenerate={handleGenerate} />
-                    ) : config.id === 'podcasts' ? (
-                        <PodcastResultDisplay result={result} sourceInfo={sourceInfo} onRegenerate={handleGenerate} />
-                    ) : config.id === 'avatars' ? (
-                        <VideoAvatarResultDisplay result={result} sourceInfo={sourceInfo} onRegenerate={handleGenerate} />
-                    ) : (
-                       <div className="flex flex-col items-center justify-center h-full p-20 text-center bg-white border border-[#E5E7EB] rounded-[3.5rem] shadow-2xl">
-                          <div className="w-24 h-24 rounded-[2.5rem] bg-[#F9FAFB] border border-[#E5E7EB] flex items-center justify-center text-[#10B981] mb-12 shadow-sm">
-                             <Sparkles size={44} />
-                          </div>
-                          <h2 className="text-4xl font-bold text-[#111827] mb-4 font-display tracking-tight">Материал готов</h2>
-                          <p className="text-[#6B7280] text-[18px] font-medium max-w-md mb-14 leading-relaxed">Черновик собран и готов к публикации или экспорту.</p>
-                          <div className="flex items-center gap-6">
-                             <Button size="xl" className="rounded-2xl px-12">Редактировать</Button>
-                             <Button 
-                                variant="outline" 
-                                size="xl" 
-                                className="rounded-2xl border-[#E5E7EB]"
-                                onClick={() => {
-                                  addFavorite({
-                                    id: `${config.id}-${Date.now()}`,
-                                    moduleId: config.id,
-                                    type: 'result',
-                                    title: `${config.title} Result`,
-                                    content: result,
-                                    metadata: {
-                                      generatedAt: new Date().toISOString(),
-                                      sourceId: sourceInfo?.id,
-                                      sourceModule: sourceInfo?.module
-                                    }
-                                  });
-                                  toast.success('Сохранено в избранное');
-                                }}
-                             >
-                                Сохранить в избранное
-                             </Button>
-                          </div>
-                       </div>
-                    )}
-                  </motion.div>
-                ) : (
-                  <motion.div 
-                    key="empty"
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="h-full flex-1"
-                  >
-                    <GlassCard className="h-full flex-1 flex items-center justify-center bg-[#F9FAFB]/50 border-dashed border-[#CBD5E1] hover:border-[#10B981]/40 transition-all duration-1000 rounded-[3.5rem]">
-                       <EmptyResultState 
-                        title="Ожидание параметров для синтеза"
-                        description="Заполните настройки в левой части экрана, чтобы Ваш AI-ассистент смог сформировать идеальный контент."
-                       />
-                    </GlassCard>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-           </div>
-        </div>
+               <div className="pt-8 border-t border-[#F3F4F6]">
+                 <Button 
+                   onClick={config.id === 'newsletters' && moduleState.builderStep === 'input' ? handleCampaignDiscovery : handleGenerate}
+                   isLoading={isGenerating || isDiscovering}
+                   size="xl" 
+                   className="w-full gap-3 shadow-[0_12px_24px_rgba(16,185,129,0.2)] rounded-2xl h-14"
+                 >
+                   <Wand2 size={24} />
+                   <span>
+                    {config.id === 'newsletters' && moduleState.builderStep === 'input' 
+                      ? 'Analyze Campaign' 
+                      : (config.id === 'newsletters' && moduleState.builderStep === 'variables' ? 'Generate Synthesis' : config.actionLabel)}
+                   </span>
+                 </Button>
+                 
+                 <div className="flex items-center justify-between mt-6 px-1">
+                    <button 
+                     onClick={handleReset}
+                     className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-[#9CA3AF] hover:text-[#10B981] transition-colors"
+                   >
+                     <RotateCcw size={14} />
+                     Сбросить
+                   </button>
+                   <span className="text-[11px] text-[#9CA3AF] font-bold uppercase tracking-tight">Catalyst v4.4</span>
+                 </div>
+               </div>
+            </GlassCard>
+         </motion.div>
+
+         {/* Workspace Toggle Button (Sticky) */}
+         <div className="h-full flex items-center justify-center sticky top-1/2 z-30">
+            <button 
+               onClick={toggleCollapse}
+               className="w-10 h-10 rounded-full bg-white border border-[#E5E7EB] shadow-lg flex items-center justify-center text-[#9CA3AF] hover:text-[#10B981] hover:border-[#10B981]/30 transition-all group -ml-5 translate-x-2"
+               title={isCollapsed ? "Развернуть панель" : "Свернуть панель"}
+            >
+               {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            </button>
+         </div>
+
+         {/* Results Workspace */}
+         <div className="flex-1 h-full overflow-y-auto pr-4 no-scrollbar custom-scroll flex flex-col gap-8 min-w-0">
+            <div className="flex items-center justify-between">
+               <div className="flex items-center gap-3">
+                  <span className={cn(
+                     "w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold font-display transition-all",
+                     result ? "bg-[#10B981] text-white" : "bg-[#E5E7EB] text-[#9CA3AF]"
+                  )}>2</span>
+                  <h3 className="text-[14px] font-bold text-[#374151] uppercase tracking-widest">Просмотр результата</h3>
+               </div>
+               <div className="flex items-center gap-6 text-[#9CA3AF] text-[12px] font-bold uppercase tracking-widest">
+                  <div className="flex items-center gap-2 mr-4 px-3 py-1.5 rounded-xl bg-white border border-[#E5E7EB] shadow-sm">
+                     <button 
+                       onClick={() => setZoom(Math.max(0.5, zoom - 0.1))}
+                       className="p-1 hover:text-[#10B981] transition-colors"
+                       title="Уменьшить масштаб"
+                     >
+                       <Minus size={14} />
+                     </button>
+                     <span className="w-12 text-center text-[10px] text-[#374151] font-black">{Math.round(zoom * 100)}%</span>
+                     <button 
+                       onClick={() => setZoom(Math.min(1.5, zoom + 0.1))}
+                       className="p-1 hover:text-[#10B981] transition-colors"
+                       title="Увеличить масштаб"
+                     >
+                       <Plus size={14} />
+                     </button>
+                  </div>
+                  <button className="hover:text-[#10B981] transition-colors">Скачать PDF</button>
+                  <button className="hover:text-[#10B981] transition-colors">Экспорт</button>
+               </div>
+            </div>
+
+            <div 
+              className="min-h-[600px] flex flex-col origin-top transition-all duration-300"
+              style={{ 
+                transform: `scale(${zoom})`, 
+                width: zoom < 1 ? `${100 / zoom}%` : '100%' 
+              }}
+            >
+               <AnimatePresence mode="wait">
+                 {isGenerating ? (
+                   <motion.div 
+                     key="loading"
+                     initial={{ opacity: 0 }}
+                     animate={{ opacity: 1 }}
+                     exit={{ opacity: 0 }}
+                     className="h-full flex-1"
+                   >
+                     <GlassCard className="h-full flex-1 flex items-center justify-center bg-[#F9FAFB]/50 border-dashed border-[#CBD5E1] rounded-[3rem]">
+                        <GenerationLoader status={generationStep} statusColor="#10B981" />
+                     </GlassCard>
+                   </motion.div>
+                 ) : result ? (
+                   <motion.div 
+                     key="result"
+                     initial={{ opacity: 0, y: 30 }}
+                     animate={{ opacity: 1, y: 0 }}
+                     className="h-full flex-1"
+                   >
+                     {config.id === 'planner' ? (
+                        <PlannerResultDisplay result={result} sourceInfo={sourceInfo} />
+                     ) : config.id === 'newsletters' ? (
+                        <CampaignResultDisplay 
+                         result={result} 
+                         sourceInfo={sourceInfo}
+                         onRegenerate={handleGenerate}
+                        />
+                     ) : config.id === 'longreads' ? (
+                         <LongreadResultDisplay result={result} sourceInfo={sourceInfo} onRegenerate={handleGenerate} />
+                     ) : config.id === 'podcasts' ? (
+                         <PodcastResultDisplay result={result} sourceInfo={sourceInfo} onRegenerate={handleGenerate} />
+                     ) : config.id === 'avatars' ? (
+                         <VideoAvatarResultDisplay result={result} sourceInfo={sourceInfo} onRegenerate={handleGenerate} />
+                     ) : (
+                        <div className="flex flex-col items-center justify-center h-full p-20 text-center bg-white border border-[#E5E7EB] rounded-[3.5rem] shadow-2xl">
+                           <div className="w-24 h-24 rounded-[2.5rem] bg-[#F9FAFB] border border-[#E5E7EB] flex items-center justify-center text-[#10B981] mb-12 shadow-sm">
+                              <Sparkles size={44} />
+                           </div>
+                           <h2 className="text-4xl font-bold text-[#111827] mb-4 font-display tracking-tight">Материал готов</h2>
+                           <p className="text-[#6B7280] text-[18px] font-medium max-w-md mb-14 leading-relaxed">Черновик собран и готов к публикации или экспорту.</p>
+                           <div className="flex items-center gap-6">
+                              <Button size="xl" className="rounded-2xl px-12">Редактировать</Button>
+                              <Button 
+                                 variant="outline" 
+                                 size="xl" 
+                                 className="rounded-2xl border-[#E5E7EB]"
+                                 onClick={() => {
+                                   addFavorite({
+                                     id: `${config.id}-${Date.now()}`,
+                                     moduleId: config.id,
+                                     type: 'result',
+                                     title: `${config.title} Result`,
+                                     content: result,
+                                     metadata: {
+                                       generatedAt: new Date().toISOString(),
+                                       sourceId: sourceInfo?.id,
+                                       sourceModule: sourceInfo?.module
+                                     }
+                                   });
+                                   toast.success('Сохранено в избранное');
+                                 }}
+                              >
+                                 Сохранить в избранное
+                              </Button>
+                           </div>
+                        </div>
+                     )}
+                   </motion.div>
+                 ) : (
+                   <motion.div 
+                     key="empty"
+                     initial={{ opacity: 0, scale: 0.98 }}
+                     animate={{ opacity: 1, scale: 1 }}
+                     className="h-full flex-1"
+                   >
+                     <GlassCard className="h-full flex-1 flex items-center justify-center bg-[#F9FAFB]/50 border-dashed border-[#CBD5E1] hover:border-[#10B981]/40 transition-all duration-1000 rounded-[3.5rem]">
+                        <EmptyResultState 
+                         title="Ожидание параметров для синтеза"
+                         description="Заполните настройки в левой части экрана, чтобы Ваш AI-ассистент смог сформировать идеальный контент."
+                        />
+                     </GlassCard>
+                   </motion.div>
+                 )}
+               </AnimatePresence>
+            </div>
+         </div>
       </div>
     </div>
   );

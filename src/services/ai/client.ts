@@ -1,5 +1,5 @@
 import { PlannerRequest, PlannerResult } from '@/src/types/planner';
-import { NewsletterRequest, NewsletterResult } from '@/src/types/newsletter';
+import { CampaignRequest, CampaignResult, VariableRequirement } from '@/src/types/newsletter';
 import { useDebugStore } from '@/src/stores/useDebugStore';
 
 export async function generateContentPlan(req: PlannerRequest & { sharedMemory: string[] }): Promise<PlannerResult> {
@@ -42,18 +42,10 @@ export async function generateContentPlan(req: PlannerRequest & { sharedMemory: 
     }
 
     const result = await response.json();
-    
-    // Debug log the raw response before passing it to the UI
-    console.log('[AI Client] Global received raw data:', result);
-
     log({ 
       type: 'response', 
       module: 'Content Planner', 
-      message: 'Plan synthesized successfully', 
-      data: { 
-        duration: result.debug?.duration,
-        summary: result.summary 
-      }
+      message: 'Plan synthesized successfully'
     });
 
     return result;
@@ -63,26 +55,55 @@ export async function generateContentPlan(req: PlannerRequest & { sharedMemory: 
   }
 }
 
-export async function generateNewsletter(req: NewsletterRequest): Promise<NewsletterResult> {
+export async function detectCampaignVariables(req: { topic: string, context: string }): Promise<{ requirements: VariableRequirement[], suggestedChannels: string[] }> {
   const log = useDebugStore.getState().addLog;
-  log({ type: 'request', module: 'Newsletter', message: `Synthesizing email: ${req.subject}` });
+  log({ type: 'request', module: 'Discovery', message: `Analyzing campaign intent: ${req.topic}` });
+
+  const response = await fetch('/api/campaign-detect', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  });
+
+  if (!response.ok) throw new Error('Failed to analyze campaign');
+  return response.json();
+}
+
+export async function generateCampaign(req: CampaignRequest): Promise<CampaignResult> {
+  const log = useDebugStore.getState().addLog;
+  log({ type: 'request', module: 'Campaign Builder', message: `Launching synthesis for: ${req.topic}` });
 
   try {
-    const response = await fetch('/api/newsletter', {
+    const response = await fetch('/api/newsletter', { // Keeping endpoint as /api/newsletter to avoid re-routing if possible, or link to /api/campaign
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req),
     });
 
-    if (!response.ok) throw new Error('Failed to generate newsletter');
+    if (!response.ok) throw new Error('Failed to generate campaign');
     const result = await response.json();
     
-    log({ type: 'response', module: 'Newsletter', message: 'Email synthesized successfully' });
+    log({ type: 'response', module: 'Campaign Builder', message: 'Campaign ready to push' });
     return result;
   } catch (err: any) {
-    log({ type: 'error', module: 'Newsletter', message: `Synthesis failed: ${err.message}` });
+    log({ type: 'error', module: 'Campaign Builder', message: `Launch failed: ${err.message}` });
     throw err;
   }
+}
+
+export async function generateCampaignImage(prompt: string): Promise<string> {
+  const log = useDebugStore.getState().addLog;
+  log({ type: 'request', module: 'Visual Studio', message: 'Designing custom asset' });
+
+  const response = await fetch('/api/generate-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt }),
+  });
+
+  if (!response.ok) throw new Error('Failed to generate image');
+  const { url } = await response.json();
+  return url;
 }
 
 export async function generateLongread(req: { topic: string, context: string, advanced?: any }): Promise<any> {

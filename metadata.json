@@ -1,5 +1,5 @@
 {
-  "name": "Studio AI",
+  "name": "Catalyst Studio",
   "description": "Premium AI-Creative Workspace for modern content production.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

@@ -6,6 +6,8 @@ interface ModuleState {
   result: any | null;
   showAdvanced: boolean;
   sourceInfo: { id?: string; module?: string; title?: string } | null;
+  builderStep?: 'input' | 'variables' | 'generating' | 'result';
+  requirements?: any[];
 }
 
 interface WorkspaceStore {
