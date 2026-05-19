@@ -4,6 +4,7 @@ import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import { OpenAI } from "openai";
 import dotenv from "dotenv";
+
 import {
   getPlannerPrompts,
   getPostPrompts,
@@ -23,6 +24,7 @@ import {
 dotenv.config();
 
 const app = express();
+
 const PORT = 3000;
 
 app.use((req, res, next) => {
@@ -34,9 +36,13 @@ app.use((req, res, next) => {
 });
 
 app.use(cors());
-app.use(express.json());
 
-let openaiClient: OpenAI | null = null;
+app.use(express.json({
+  limit: "20mb"
+}));
+
+let openaiClient: OpenAI | null =
+  null;
 
 function getOpenAI() {
   if (!openaiClient) {
@@ -50,10 +56,44 @@ function getOpenAI() {
     }
 
     openaiClient =
-      new OpenAI({ apiKey });
+      new OpenAI({
+        apiKey
+      });
   }
 
   return openaiClient;
+}
+
+function normalizeChannel(
+  value?: string
+) {
+  const v =
+    String(value || "")
+      .toLowerCase()
+      .trim();
+
+  if (
+    v === "telegram" ||
+    v === "tg"
+  ) {
+    return "telegram";
+  }
+
+  if (
+    v === "vk" ||
+    v === "vkontakte"
+  ) {
+    return "vk";
+  }
+
+  if (
+    v === "email" ||
+    v === "mail"
+  ) {
+    return "email";
+  }
+
+  return v;
 }
 
 app.post("/api/planner", async (req, res) => {
@@ -273,14 +313,13 @@ app.post("/api/newsletter", async (req, res) => {
       advanced
     } = req.body;
 
-    const requestedChannels = (
-      channels || ["email"]
-    )
-      .map((c: string) =>
-        String(c)
-          .toLowerCase()
-          .trim()
-      );
+    const requestedChannels =
+      Array.isArray(channels) &&
+      channels.length > 0
+        ? channels.map(
+            normalizeChannel
+          )
+        : ["telegram"];
 
     console.log(
       "[Newsletter API] Requested channels:",
@@ -350,7 +389,7 @@ app.post("/api/newsletter", async (req, res) => {
           type: "json_object"
         },
 
-        temperature: 0.8
+        temperature: 0.9
       });
 
     const rawContent =
@@ -370,7 +409,7 @@ app.post("/api/newsletter", async (req, res) => {
     const rawData =
       JSON.parse(rawContent);
 
-    // SUPPORT LEGACY FORMAT
+    // LEGACY FORMAT SUPPORT
 
     if (!rawData.channels) {
       rawData.channels = [];
@@ -419,20 +458,28 @@ app.post("/api/newsletter", async (req, res) => {
 
           .map((ch: any) => {
             const channelId =
-              String(
+              normalizeChannel(
                 ch.id ||
                   ch.channel ||
                   ch.type ||
                   ""
-              )
-                .toLowerCase()
-                .trim();
+              );
+
+            console.log(
+              "[Newsletter API] Channel from AI:",
+              channelId
+            );
 
             if (
               !requestedChannels.includes(
                 channelId
               )
             ) {
+              console.log(
+                "[Newsletter API] SKIPPED:",
+                channelId
+              );
+
               return null;
             }
 
@@ -658,49 +705,6 @@ app.post("/api/regenerate-item", async (req, res) => {
 
     res.status(500).json({
       error: error.message
-    });
-  }
-});
-
-app.post("/api/generate-image", async (req, res) => {
-  try {
-    const { prompt } = req.body;
-
-    if (!prompt) {
-      return res.status(400).json({
-        error:
-          "Prompt is required"
-      });
-    }
-
-    const client = getOpenAI();
-
-    const response =
-      await client.images.generate({
-        model: "gpt-image-1",
-
-        prompt,
-
-        size: "1024x1024"
-      });
-
-    const image =
-      response.data?.[0];
-
-    res.json({
-      url: image?.url || null
-    });
-
-  } catch (error: any) {
-    console.error(
-      "[Image Generation ERROR]",
-      error
-    );
-
-    res.status(500).json({
-      error:
-        error.message ||
-        "Failed to generate image"
     });
   }
 });

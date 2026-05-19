@@ -8,6 +8,38 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
+function normalizeChannel(
+  channel?: string
+) {
+  const value =
+    String(channel || "")
+      .toLowerCase()
+      .trim();
+
+  if (
+    value === "tg" ||
+    value === "telegram"
+  ) {
+    return "telegram";
+  }
+
+  if (
+    value === "vk" ||
+    value === "vkontakte"
+  ) {
+    return "vk";
+  }
+
+  if (
+    value === "mail" ||
+    value === "email"
+  ) {
+    return "email";
+  }
+
+  return "telegram";
+}
+
 function buildPlatformPrompt({
   prompt,
   channel,
@@ -17,78 +49,79 @@ function buildPlatformPrompt({
   channel?: string;
   context?: string;
 }) {
+  const normalized =
+    normalizeChannel(channel);
+
   const baseStyle = `
 Создай профессиональное изображение
 для контент-кампании.
 
 Стиль:
-- современный,
-- cinematic,
-- атмосферный,
-- premium,
-- реалистичный,
-- визуально сильный,
-- без текста на изображении,
-- без watermark,
-- без AI-artifacts,
-- без дешевого AI look.
+- современный
+- cinematic
+- атмосферный
+- premium
+- реалистичный
+- визуально сильный
+- без текста
+- без watermark
+- без логотипов
+- без AI-artifacts
+- без дешевого AI look
 
-Изображение должно выглядеть:
+Изображение должно выглядеть
 как работа сильного digital designer.
 `;
 
-  const telegramStyle = `
+  let platformStyle = "";
+
+  if (normalized === "telegram") {
+    platformStyle = `
 Платформа: Telegram
 
 Требования:
-- сильный визуальный хук,
-- высокая контрастность,
-- эмоциональная композиция,
-- image-first storytelling,
-- хорошо смотрится в мобильной ленте,
-- вертикальный визуальный акцент,
-- clean composition.
+- сильный визуальный хук
+- высокая контрастность
+- mobile-first композиция
+- эмоциональная подача
+- cinematic lighting
+- image-first storytelling
+- хорошо смотрится в мобильной ленте
 `;
+  }
 
-  const vkStyle = `
+  if (normalized === "vk") {
+    platformStyle = `
 Платформа: VK
 
 Требования:
-- более социальный стиль,
-- storytelling image,
-- эмоциональность,
-- естественные сцены,
-- дружелюбная атмосфера,
-- визуал для вовлечения аудитории.
+- естественная сцена
+- storytelling image
+- эмоциональность
+- дружелюбная атмосфера
+- social-media aesthetic
+- визуал для вовлечения
 `;
+  }
 
-  const emailStyle = `
+  if (normalized === "email") {
+    platformStyle = `
 Платформа: Email
 
 Требования:
-- editorial style,
-- clean marketing visual,
-- premium newsletter aesthetic,
-- спокойная композиция,
-- focus point в центре,
-- минимализм,
-- ощущение дорогого digital media.
+- editorial style
+- premium minimalism
+- clean composition
+- focus point в центре
+- спокойная композиция
+- ощущение дорогого digital media
 `;
-
-  let platformBlock = emailStyle;
-
-  if (channel === "telegram") {
-    platformBlock = telegramStyle;
-  }
-
-  if (channel === "vk") {
-    platformBlock = vkStyle;
   }
 
   return `
 ${baseStyle}
 
-${platformBlock}
+${platformStyle}
 
 Контекст кампании:
 ${context || "Нет дополнительного контекста"}
@@ -97,27 +130,32 @@ ${context || "Нет дополнительного контекста"}
 ${prompt}
 
 КРИТИЧЕСКИ ВАЖНО:
-- никаких надписей,
-- никаких логотипов,
-- никаких watermark,
-- никакого текста внутри изображения,
-- без AI distortions,
-- без лишних деталей,
-- cinematic lighting,
-- high quality composition.
+- никаких надписей
+- никаких watermark
+- никаких логотипов
+- никаких текстовых элементов
+- без AI distortions
+- cinematic lighting
+- high detail
+- realistic composition
 `;
 }
 
-function getImageSize(channel?: string) {
-  switch (channel) {
+function getImageSize(
+  channel?: string
+) {
+  const normalized =
+    normalizeChannel(channel);
+
+  switch (normalized) {
     case "telegram":
       return "1024x1792";
 
-    case "vk":
-      return "1024x1024";
-
     case "email":
       return "1792x1024";
+
+    case "vk":
+      return "1024x1024";
 
     default:
       return "1024x1024";
@@ -128,13 +166,13 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
-  if (req.method !== "POST") {
-    return res.status(405).json({
-      error: "Method Not Allowed"
-    });
-  }
-
   try {
+    if (req.method !== "POST") {
+      return res.status(405).json({
+        error: "Method Not Allowed"
+      });
+    }
+
     const {
       prompt,
       channel,
@@ -155,12 +193,12 @@ export default async function handler(
       });
 
     console.log(
-      "[Image API] Channel:",
+      "[IMAGE API] Channel:",
       channel
     );
 
     console.log(
-      "[Image API] Final prompt:",
+      "[IMAGE API] Final Prompt:",
       finalPrompt
     );
 
@@ -170,7 +208,9 @@ export default async function handler(
 
         prompt: finalPrompt,
 
-        size: getImageSize(channel),
+        size: getImageSize(
+          channel
+        ),
 
         quality: "high"
       });
@@ -184,7 +224,34 @@ export default async function handler(
       );
     }
 
+    console.log(
+      "[IMAGE API] Response:",
+      JSON.stringify(
+        image,
+        null,
+        2
+      )
+    );
+
+    if (image.b64_json) {
+      return res.status(200).json({
+        success: true,
+
+        type: "base64",
+
+        imageBase64:
+          image.b64_json,
+
+        revisedPrompt:
+          finalPrompt
+      });
+    }
+
     return res.status(200).json({
+      success: true,
+
+      type: "url",
+
       url: image.url || null,
 
       revisedPrompt:
@@ -193,11 +260,13 @@ export default async function handler(
 
   } catch (error: any) {
     console.error(
-      "[Image API ERROR]",
+      "[IMAGE API ERROR]",
       error
     );
 
     return res.status(500).json({
+      success: false,
+
       error:
         error.message ||
         "Image generation failed"
