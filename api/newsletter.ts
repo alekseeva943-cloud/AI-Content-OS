@@ -101,42 +101,24 @@ VK:
 // ============================================
 
 function getImageSize(
-  channel: string
-) {
 
-  switch (channel) {
+  // ============================================
+  // CONTENT GENERATION
+  // ============================================
 
-    case "telegram":
-      return "1024x1792";
-
-    case "email":
-      return "1792x1024";
-
-    case "vk":
-      return "1024x1024";
-
-    default:
-      return "1024x1024";
-  }
-}
-
-// ============================================
-// CONTENT GENERATION
-// ============================================
-
-async function generateChannelContent({
-  topic,
-  context,
-  variables,
-  tone,
-  channel
-}: {
-  topic: string;
-  context: string;
-  variables: any;
-  tone?: string;
-  channel: string;
-}) {
+  async function generateChannelContent({
+    topic,
+    context,
+    variables,
+    tone,
+    channel
+  }: {
+    topic: string;
+    context: string;
+    variables: any;
+    tone?: string;
+    channel: string;
+  }) {
 
   const systemPrompt = `
 Вы —
@@ -188,10 +170,10 @@ ${context}
 
 ПЕРЕМЕННЫЕ:
 ${JSON.stringify(
-  variables || {},
-  null,
-  2
-)}
+    variables || {},
+    null,
+    2
+  )}
 
 ТОН:
 ${tone || "Дружелюбный"}
