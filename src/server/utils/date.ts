@@ -1,3 +1,5 @@
+import { normalizeChannel } from "./channels";
+
 export function parseLocalDate(dateStr: string): Date {
   const parts = String(dateStr || "").split("-");
   if (parts.length === 3) {
@@ -21,7 +23,7 @@ export function processPlannerItems(items: any[], allowedChannels: string[], sta
   })();
 
   const requestedChannels = Array.isArray(allowedChannels) && allowedChannels.length > 0
-    ? allowedChannels.map(c => String(c).toLowerCase().trim())
+    ? allowedChannels.map(c => normalizeChannel(String(c)))
     : ["telegram", "vk", "email"];
 
   const uniqueDaysOrdered: string[] = [];
@@ -38,7 +40,7 @@ export function processPlannerItems(items: any[], allowedChannels: string[], sta
   }
 
   return (items || []).map((item, index) => {
-    const rawChannel = String(item.channel || "").toLowerCase().trim();
+    const rawChannel = normalizeChannel(item.channel);
     const isChannelValid = requestedChannels.includes(rawChannel);
     const channel = isChannelValid 
       ? rawChannel 
