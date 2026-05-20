@@ -17,6 +17,10 @@ const openai = new OpenAI({
     process.env.OPENAI_API_KEY
 });
 
+// ============================================
+// CHANNEL NORMALIZATION
+// ============================================
+
 function normalizeChannels(
   channels: any
 ): string[] {
@@ -40,6 +44,10 @@ function normalizeChannels(
         .includes(c)
     );
 }
+
+// ============================================
+// CHANNEL PROMPTS
+// ============================================
 
 function buildChannelPrompt(
   channel: string
@@ -88,6 +96,34 @@ VK:
 `;
 }
 
+// ============================================
+// IMAGE SIZE
+// ============================================
+
+function getImageSize(
+  channel: string
+) {
+
+  switch (channel) {
+
+    case "telegram":
+      return "1024x1792";
+
+    case "email":
+      return "1792x1024";
+
+    case "vk":
+      return "1024x1024";
+
+    default:
+      return "1024x1024";
+  }
+}
+
+// ============================================
+// CONTENT GENERATION
+// ============================================
+
 async function generateChannelContent({
   topic,
   context,
@@ -127,6 +163,20 @@ ${buildChannelPrompt(channel)}
 
 Если данных не хватает —
 придумайте реалистичные значения.
+
+Также создайте imagePrompt
+для генерации изображения.
+
+ImagePrompt должен:
+
+- быть на английском языке
+- быть подробным
+- cinematic style
+- realistic
+- no text
+- no watermark
+- premium composition
+- platform aware
 `;
 
   const userPrompt = `
@@ -162,6 +212,10 @@ ${tone || "Дружелюбный"}
 }
 `;
 
+  console.log(
+    `[CONTENT] GENERATING ${channel}`
+  );
+
   const completion =
     await openai.chat.completions.create({
       model: "gpt-4o",
@@ -190,13 +244,108 @@ ${tone || "Дружелюбный"}
       .message.content;
 
   if (!content) {
+
     throw new Error(
       `Empty ${channel} response`
     );
   }
 
-  return JSON.parse(content);
+  const parsed =
+    JSON.parse(content);
+
+  console.log(
+    `[CONTENT] SUCCESS ${channel}`
+  );
+
+  return parsed;
 }
+
+// ============================================
+// IMAGE GENERATION
+// ============================================
+
+async function generateImage({
+  prompt,
+  channel
+}: {
+  prompt: string;
+  channel: string;
+}) {
+
+  try {
+
+    console.log(
+      `[IMAGE] GENERATING ${channel}`
+    );
+
+    const response =
+      await openai.images.generate({
+        model: "gpt-image-1",
+
+        prompt,
+
+        size:
+          getImageSize(
+            channel
+          ),
+
+        quality: "high"
+      });
+
+    const image =
+      response.data?.[0];
+
+    if (!image) {
+
+      console.error(
+        `[IMAGE] EMPTY ${channel}`
+      );
+
+      return null;
+    }
+
+    // ============================================
+    // BASE64 RESPONSE
+    // ============================================
+
+    if (image.b64_json) {
+
+      console.log(
+        `[IMAGE] BASE64 SUCCESS ${channel}`
+      );
+
+      return `data:image/png;base64,${image.b64_json}`;
+    }
+
+    // ============================================
+    // URL RESPONSE
+    // ============================================
+
+    if (image.url) {
+
+      console.log(
+        `[IMAGE] URL SUCCESS ${channel}`
+      );
+
+      return image.url;
+    }
+
+    return null;
+
+  } catch (err) {
+
+    console.error(
+      `[IMAGE ERROR ${channel}]`,
+      err
+    );
+
+    return null;
+  }
+}
+
+// ============================================
+// MAIN HANDLER
+// ============================================
 
 export default async function handler(
   req: VercelRequest,
@@ -231,11 +380,19 @@ export default async function handler(
       normalizedChannels
     );
 
+    // ============================================
+    // GENERATE CHANNELS
+    // ============================================
+
     const generatedChannels =
       await Promise.all(
 
         normalizedChannels.map(
           async (channel) => {
+
+            // ============================================
+            // CONTENT
+            // ============================================
 
             const content =
               await generateChannelContent({
@@ -247,12 +404,36 @@ export default async function handler(
                 channel
               });
 
+            // ============================================
+            // IMAGE
+            // ============================================
+
+            let imageUrl = null;
+
+            if (
+              content.imagePrompt
+            ) {
+
+              imageUrl =
+                await generateImage({
+                  prompt:
+                    content.imagePrompt,
+
+                  channel
+                });
+            }
+
+            // ============================================
+            // RETURN
+            // ============================================
+
             return {
               id: channel,
 
               active: true,
 
               content: {
+
                 subject:
                   content.subject ||
                   "",
@@ -266,6 +447,7 @@ export default async function handler(
                   "",
 
                 cta: {
+
                   text:
                     content.cta?.text ||
                     "Подробнее",
@@ -277,14 +459,21 @@ export default async function handler(
 
                 imagePrompt:
                   content.imagePrompt ||
-                  ""
+                  "",
+
+                imageUrl
               }
             };
           }
         )
       );
 
+    // ============================================
+    // FINAL RESULT
+    // ============================================
+
     const finalResult = {
+
       id:
         `campaign_${Date.now()}`,
 
@@ -301,6 +490,10 @@ export default async function handler(
       variables:
         variables || {}
     };
+
+    console.log(
+      "[NEWSLETTER] SUCCESS"
+    );
 
     const validated =
       CampaignResultSchema.parse(
