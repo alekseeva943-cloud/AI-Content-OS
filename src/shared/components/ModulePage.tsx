@@ -1,3 +1,7 @@
+// ============================================
+// FILE: src/shared/components/ModulePage.tsx
+// ============================================
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -173,17 +177,46 @@ export function ModulePage({ config }: ModulePageProps) {
         handleInputChange('channels', suggestedChannels);
       }
 
-      setModuleState(
-        config.id,
-        {
-          requirements,
+      const safeRequirements =
+        Array.isArray(requirements)
+          ? requirements
+          : [];
 
-          builderStep:
-            requirements.length > 0
-              ? 'variables'
-              : 'result'
-        }
-      );
+      if (
+        safeRequirements.length > 0
+      ) {
+
+        setModuleState(
+          config.id,
+          {
+            requirements:
+              safeRequirements,
+
+            builderStep:
+              'variables'
+          }
+        );
+
+        toast.success(
+          `AI запросил ${safeRequirements.length} дополнительных полей`
+        );
+
+      } else {
+
+        setModuleState(
+          config.id,
+          {
+            requirements: [],
+
+            builderStep:
+              'ready'
+          }
+        );
+
+        toast.success(
+          'Дополнительные данные не требуются'
+        );
+      }
       toast.info('AI проанализировал запрос и обнаружил важные переменные');
     } catch (err: any) {
       setError(err.message);
@@ -532,7 +565,9 @@ export function ModulePage({ config }: ModulePageProps) {
 
           <GlassCard className="p-8 bg-white border-[#E5E7EB] shadow-xl space-y-10">
             <div className="space-y-8">
-              {config.id === 'newsletters' && moduleState.builderStep === 'variables' ? (
+              {config.id === 'newsletters' && (
+                moduleState.builderStep === 'variables'
+              ) ? (
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -579,7 +614,79 @@ export function ModulePage({ config }: ModulePageProps) {
                     Назад к описанию
                   </button>
                 </motion.div>
+              ) : config.id === 'newsletters' &&
+                moduleState.builderStep === 'ready' ? (
+
+                <motion.div
+                  initial={{
+                    opacity: 0,
+                    y: 20
+                  }}
+
+                  animate={{
+                    opacity: 1,
+                    y: 0
+                  }}
+
+                  className="space-y-8"
+                >
+
+                  <div className="
+    p-6
+    rounded-3xl
+    bg-[#10B981]/5
+    border
+    border-[#10B981]/10
+  ">
+
+                    <p className="
+      text-[13px]
+      text-[#065F46]
+      font-semibold
+      leading-relaxed
+    ">
+                      AI завершил анализ кампании.
+
+                      Дополнительные данные
+                      для генерации не требуются.
+
+                      Можно запускать генерацию.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      setModuleState(
+                        config.id,
+                        {
+                          builderStep: 'input'
+                        }
+                      )
+                    }
+
+                    className="
+      text-[12px]
+      font-bold
+      text-[#9CA3AF]
+      hover:text-[#111827]
+      flex
+      items-center
+      gap-2
+      uppercase
+      tracking-widest
+      transition-colors
+    "
+                  >
+
+                    <ChevronLeft size={14} />
+
+                    Назад к описанию
+                  </button>
+
+                </motion.div>
+
               ) : (
+
                 <div className="space-y-8">
                   {config.id === 'newsletters' && (
                     <AIField
@@ -741,7 +848,54 @@ export function ModulePage({ config }: ModulePageProps) {
 
             <div className="pt-8 border-t border-[#F3F4F6]">
               <Button
-                onClick={config.id === 'newsletters' && moduleState.builderStep === 'input' ? handleCampaignDiscovery : handleGenerate}
+                onClick={() => {
+
+                  if (
+                    config.id === 'newsletters'
+                  ) {
+
+                    // STEP 1
+                    // DISCOVERY
+
+                    if (
+                      moduleState.builderStep ===
+                      'input'
+                    ) {
+
+                      handleCampaignDiscovery();
+
+                      return;
+                    }
+
+                    // STEP 2
+                    // VARIABLES
+
+                    if (
+                      moduleState.builderStep ===
+                      'variables'
+                    ) {
+
+                      handleGenerate();
+
+                      return;
+                    }
+
+                    // STEP 3
+                    // READY
+
+                    if (
+                      moduleState.builderStep ===
+                      'ready'
+                    ) {
+
+                      handleGenerate();
+
+                      return;
+                    }
+                  }
+
+                  handleGenerate();
+                }}
                 isLoading={isCampaignLoading || isDiscovering}
                 size="xl"
                 className="w-full gap-3 shadow-[0_12px_24px_rgba(16,185,129,0.2)] rounded-2xl h-14"
