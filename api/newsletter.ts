@@ -232,8 +232,24 @@ ${tone || "Дружелюбный"}
     );
   }
 
-  const parsed =
-    JSON.parse(content);
+  let parsed: any = {};
+
+  try {
+
+    parsed =
+      JSON.parse(content);
+
+  } catch (err) {
+
+    console.error(
+      '[JSON PARSE ERROR]',
+      content
+    );
+
+    throw new Error(
+      'AI returned invalid JSON'
+    );
+  }
 
   console.log(
     `[CONTENT] SUCCESS ${channel}`
