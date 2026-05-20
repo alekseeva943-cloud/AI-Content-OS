@@ -444,31 +444,114 @@ export function CampaignResultDisplay({
                 {/* TABS */}
 
                 <div className="
-                    flex
-                    items-center
-                    justify-between
-                    px-10
-                    pt-10
-                    border-b
-                    border-[#F3F4F6]
-                ">
+    flex
+    items-center
+    justify-between
+">
 
-                    <div className="flex gap-10">
+                    <h4 className="
+        text-[11px]
+        font-black
+        text-[#9CA3AF]
+        uppercase
+        tracking-widest
+    ">
+                        Визуальное сопровождение
+                    </h4>
 
-                        {availableTabs.map(
-                            (tab) => (
+                    <div className="flex items-center gap-2">
+
+                        {imageUrls[
+                            activeChannel.id
+                        ] && (
 
                                 <button
-                                    key={tab.id}
+                                    onClick={() => {
 
-                                    onClick={() =>
-                                        setActiveTab(
-                                            tab.id
-                                        )
-                                    }
+                                        const link =
+                                            document.createElement(
+                                                'a'
+                                            );
 
-                                    className={cn(
-                                        `
+                                        link.href =
+                                            imageUrls[
+                                            activeChannel.id
+                                            ];
+
+                                        link.download =
+                                            `${activeChannel.id}-visual.png`;
+
+                                        link.click();
+                                    }}
+
+                                    className="
+                    p-2
+                    rounded-lg
+                    bg-white
+                    border
+                    border-[#E5E7EB]
+                "
+                                >
+
+                                    <Download size={14} />
+                                </button>
+                            )}
+
+                        <button
+                            onClick={() =>
+                                activeChannel
+                                    .content
+                                    .imagePrompt &&
+                                handleGenerateImage(
+                                    activeChannel.id,
+                                    activeChannel.content.imagePrompt
+                                )
+                            }
+
+                            disabled={
+                                isGeneratingImage[
+                                activeChannel.id
+                                ]
+                            }
+
+                            className="
+                p-2
+                rounded-lg
+                bg-white
+                border
+                border-[#E5E7EB]
+            "
+                        >
+
+                            <RefreshCw
+                                size={14}
+                                className={cn(
+                                    isGeneratingImage[
+                                    activeChannel.id
+                                    ] &&
+                                    'animate-spin'
+                                )}
+                            />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="flex gap-10">
+
+                    {availableTabs.map(
+                        (tab) => (
+
+                            <button
+                                key={tab.id}
+
+                                onClick={() =>
+                                    setActiveTab(
+                                        tab.id
+                                    )
+                                }
+
+                                className={cn(
+                                    `
                                         flex
                                         items-center
                                         gap-2.5
@@ -477,49 +560,49 @@ export function CampaignResultDisplay({
                                         transition-all
                                         relative
                                         `,
-                                        activeTab ===
-                                            tab.id
+                                    activeTab ===
+                                        tab.id
 
-                                            ? `
+                                        ? `
                                                 border-[#10B981]
                                                 text-[#111827]
                                             `
 
-                                            : `
+                                        : `
                                                 border-transparent
                                                 text-[#9CA3AF]
                                             `
-                                    )}
-                                >
+                                )}
+                            >
 
-                                    <tab.icon size={18} />
+                                <tab.icon size={18} />
 
-                                    <span className="
+                                <span className="
                                         text-[14px]
                                         font-bold
                                         uppercase
                                         tracking-wider
                                     ">
-                                        {tab.label}
-                                    </span>
-                                </button>
-                            )
-                        )}
-                    </div>
+                                    {tab.label}
+                                </span>
+                            </button>
+                        )
+                    )}
                 </div>
+        </div>
 
-                {/* BODY */}
+                {/* BODY */ }
 
-                <div className="
+    <div className="
                     flex
                     flex-col
                     lg:flex-row
                     min-h-[600px]
                 ">
 
-                    {/* CONTENT */}
+        {/* CONTENT */}
 
-                    <div className="
+        <div className="
                         flex-1
                         p-10
                         lg:p-16
@@ -527,16 +610,16 @@ export function CampaignResultDisplay({
                         border-[#F3F4F6]
                     ">
 
-                        <div className="
+            <div className="
                             max-w-[700px]
                             mx-auto
                             space-y-10
                         ">
 
-                            {activeTab ===
-                                'email' && (
+                {activeTab ===
+                    'email' && (
 
-                                    <div className="
+                        <div className="
                                     p-8
                                     rounded-[2rem]
                                     bg-[#F9FAFB]
@@ -545,74 +628,74 @@ export function CampaignResultDisplay({
                                     space-y-4
                                 ">
 
-                                        <div className="
+                            <div className="
                                         flex
                                         items-center
                                         gap-6
                                         text-[13px]
                                     ">
 
-                                            <span className="
+                                <span className="
                                             w-20
                                             font-bold
                                             text-[#9CA3AF]
                                             uppercase
                                         ">
-                                                Тема:
-                                            </span>
+                                    Тема:
+                                </span>
 
-                                            <span className="
+                                <span className="
                                             font-bold
                                             text-[#111827]
                                         ">
-                                                {activeChannel.content?.subject}
-                                            </span>
-                                        </div>
+                                    {activeChannel.content?.subject}
+                                </span>
+                            </div>
 
-                                        <div className="
+                            <div className="
                                         flex
                                         items-center
                                         gap-6
                                         text-[13px]
                                     ">
 
-                                            <span className="
+                                <span className="
                                             w-20
                                             font-bold
                                             text-[#9CA3AF]
                                             uppercase
                                         ">
-                                                Превью:
-                                            </span>
+                                    Превью:
+                                </span>
 
-                                            <span className="
+                                <span className="
                                             font-medium
                                             text-[#6B7280]
                                             italic
                                         ">
-                                                {activeChannel.content?.preheader}
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
+                                    {activeChannel.content?.preheader}
+                                </span>
+                            </div>
+                        </div>
+                    )}
 
-                            <div className="
+                <div className="
                                 prose
                                 prose-slate
                                 prose-lg
                                 max-w-none
                             ">
 
-                                <ReactMarkdown>
-                                    {activeChannelBody}
-                                </ReactMarkdown>
-                            </div>
-                        </div>
-                    </div>
+                    <ReactMarkdown>
+                        {activeChannelBody}
+                    </ReactMarkdown>
+                </div>
+            </div>
+        </div>
 
-                    {/* SIDEBAR */}
+        {/* SIDEBAR */}
 
-                    <div className="
+        <div className="
                         w-full
                         lg:w-[400px]
                         bg-[#F9FAFB]/50
@@ -622,97 +705,116 @@ export function CampaignResultDisplay({
                         gap-8
                     ">
 
-                        {/* IMAGE */}
+            {/* IMAGE */}
 
-                        <div className="space-y-4">
+            <div className="space-y-4">
 
-                            <div className="
+                <div className="
                                 flex
                                 items-center
                                 justify-between
                             ">
 
-                                <h4 className="
+                    <h4 className="
                                     text-[11px]
                                     font-black
                                     text-[#9CA3AF]
                                     uppercase
                                     tracking-widest
                                 ">
-                                    Визуальное сопровождение
-                                </h4>
+                        Визуальное сопровождение
+                    </h4>
 
-                                <button
-                                    onClick={() =>
-                                        activeChannel
-                                            .content
-                                            .imagePrompt &&
-                                        handleGenerateImage(
-                                            activeChannel.id,
-                                            activeChannel.content.imagePrompt
-                                        )
-                                    }
+                    <button
+                        onClick={() =>
+                            activeChannel
+                                .content
+                                .imagePrompt &&
+                            handleGenerateImage(
+                                activeChannel.id,
+                                activeChannel.content.imagePrompt
+                            )
+                        }
 
-                                    disabled={
-                                        isGeneratingImage[
-                                        activeChannel.id
-                                        ]
-                                    }
+                        disabled={
+                            isGeneratingImage[
+                            activeChannel.id
+                            ]
+                        }
 
-                                    className="
+                        className="
                                         p-2
                                         rounded-lg
                                         bg-white
                                         border
                                         border-[#E5E7EB]
                                     "
-                                >
+                    >
 
-                                    <RefreshCw
-                                        size={14}
-                                        className={cn(
-                                            isGeneratingImage[
-                                            activeChannel.id
-                                            ] &&
-                                            'animate-spin'
-                                        )}
-                                    />
-                                </button>
-                            </div>
+                        <RefreshCw
+                            size={14}
+                            className={cn(
+                                isGeneratingImage[
+                                activeChannel.id
+                                ] &&
+                                'animate-spin'
+                            )}
+                        />
+                    </button>
+                </div>
 
-                            <div className="
-                                aspect-square
-                                rounded-[2rem]
-                                bg-white
-                                border
-                                border-[#E5E7EB]
-                                overflow-hidden
-                                relative
+                <div className={cn(
+
+                    `
+    rounded-[2rem]
+    bg-white
+    border
+    border-[#E5E7EB]
+    overflow-hidden
+    relative
+    `,
+
+                    activeChannel.id === 'telegram' &&
+                    'aspect-[9/16]',
+
+                    activeChannel.id === 'email' &&
+                    'aspect-[16/9]',
+
+                    activeChannel.id === 'vk' &&
+                    'aspect-square'
+                )}>
+                    rounded-[2rem]
+                    bg-white
+                    border
+                    border-[#E5E7EB]
+                    overflow-hidden
+                    relative
                             ">
 
-                                {imageUrls[
-                                    activeChannel.id
-                                ] ? (
+                    {imageUrls[
+                        activeChannel.id
+                    ] ? (
 
-                                    <img
-                                        src={
-                                            imageUrls[
-                                            activeChannel.id
-                                            ]
-                                        }
+                        <img
+                            src={
+                                imageUrls[
+                                activeChannel.id
+                                ]
+                            }
 
-                                        alt="Campaign"
+                            alt="Campaign"
+                            loading="lazy"
 
-                                        className="
+                            className="
                                             w-full
                                             h-full
                                             object-cover
                                         "
-                                    />
+                        />
 
-                                ) : (
+                    ) : (
 
-                                    <div className="
+                        <div className="
                                         w-full
                                         h-full
                                         flex
@@ -723,12 +825,12 @@ export function CampaignResultDisplay({
                                         p-8
                                     ">
 
-                                        {isGeneratingImage[
-                                            activeChannel.id
-                                        ] ? (
+                            {isGeneratingImage[
+                                activeChannel.id
+                            ] ? (
 
-                                            <>
-                                                <div className="
+                                <>
+                                    <div className="
                                                     w-12
                                                     h-12
                                                     rounded-full
@@ -738,61 +840,61 @@ export function CampaignResultDisplay({
                                                     animate-spin
                                                 " />
 
-                                                <p className="
+                                    <p className="
                                                     text-[11px]
                                                     font-bold
                                                     text-[#6B7280]
                                                 ">
-                                                    Создаю визуал...
-                                                </p>
-                                            </>
+                                        Создаю визуал...
+                                    </p>
+                                </>
 
-                                        ) : (
+                            ) : (
 
-                                            <>
-                                                <ImageIcon
-                                                    size={40}
-                                                    className="text-[#D1D5DB]"
-                                                />
+                                <>
+                                    <ImageIcon
+                                        size={40}
+                                        className="text-[#D1D5DB]"
+                                    />
 
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="rounded-xl"
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="rounded-xl"
 
-                                                    onClick={() =>
-                                                        activeChannel
-                                                            .content
-                                                            .imagePrompt &&
-                                                        handleGenerateImage(
-                                                            activeChannel.id,
-                                                            activeChannel.content.imagePrompt
-                                                        )
-                                                    }
-                                                >
-                                                    Создать visual
-                                                </Button>
-                                            </>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                                        onClick={() =>
+                                            activeChannel
+                                                .content
+                                                .imagePrompt &&
+                                            handleGenerateImage(
+                                                activeChannel.id,
+                                                activeChannel.content.imagePrompt
+                                            )
+                                        }
+                                    >
+                                        Создать visual
+                                    </Button>
+                                </>
+                            )}
                         </div>
+                    )}
+                </div>
+            </div>
 
 
 
-                        {/* ACTIONS */}
+            {/* ACTIONS */}
 
-                        <div className="
+            <div className="
                             mt-auto
                             space-y-3
                         ">
 
-                            <Button
-                                variant="secondary"
-                                size="xl"
+                <Button
+                    variant="secondary"
+                    size="xl"
 
-                                className="
+                    className="
                                     w-full
                                     bg-[#111827]
                                     text-white
@@ -800,123 +902,123 @@ export function CampaignResultDisplay({
                                     h-14
                                 "
 
-                                onClick={() =>
-                                    handleCopy(
-                                        activeChannel.content.body,
-                                        activeTab
-                                    )
-                                }
-                            >
+                    onClick={() =>
+                        handleCopy(
+                            activeChannel.content.body,
+                            activeTab
+                        )
+                    }
+                >
 
-                                {copied === activeTab
+                    {copied === activeTab
 
-                                    ? <Check size={20} className="mr-2" />
+                        ? <Check size={20} className="mr-2" />
 
-                                    : <Copy size={20} className="mr-2" />
-                                }
+                        : <Copy size={20} className="mr-2" />
+                    }
 
-                                <span>
-                                    {copied === activeTab
-                                        ? 'Скопировано'
-                                        : 'Копировать контент'
-                                    }
-                                </span>
-                            </Button>
+                    <span>
+                        {copied === activeTab
+                            ? 'Скопировано'
+                            : 'Копировать контент'
+                        }
+                    </span>
+                </Button>
 
-                            <div className="
+                <div className="
                                 grid
                                 grid-cols-2
                                 gap-3
                             ">
 
-                                <Button
-                                    variant="outline"
+                    <Button
+                        variant="outline"
 
-                                    className="
+                        className="
                                         rounded-xl
                                         h-12
                                     "
 
-                                    onClick={exportAsTxt}
-                                >
+                        onClick={exportAsTxt}
+                    >
 
-                                    <FileText
-                                        size={16}
-                                        className="mr-2"
-                                    />
+                        <FileText
+                            size={16}
+                            className="mr-2"
+                        />
 
-                                    .TXT
-                                </Button>
+                        .TXT
+                    </Button>
 
-                                <Button
-                                    variant="outline"
+                    <Button
+                        variant="outline"
 
-                                    className="
+                        className="
                                         rounded-xl
                                         h-12
                                     "
-                                >
+                    >
 
-                                    <Download
-                                        size={16}
-                                        className="mr-2"
-                                    />
+                        <Download
+                            size={16}
+                            className="mr-2"
+                        />
 
-                                    .MD
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
+                        .MD
+                    </Button>
                 </div>
-            </GlassCard>
-
-            {/* FOOTER */}
-
-            <div className="
-                flex
-                items-center
-                justify-center
-                gap-6
-            ">
-
-                <Button
-                    variant="outline"
-                    size="xl"
-
-                    className="
-                        rounded-[2.5rem]
-                        px-12
-                        gap-3
-                        border-[#E5E7EB]
-                        h-16
-                    "
-
-                    onClick={onRegenerate}
-                >
-
-                    <RefreshCw size={24} />
-
-                    Перегенерировать всё
-                </Button>
-
-                <Button
-                    size="xl"
-
-                    className="
-                        rounded-[2.5rem]
-                        px-12
-                        gap-3
-                        h-16
-                    "
-
-                    onClick={handleSave}
-                >
-
-                    <Save size={24} />
-
-                    Сохранить в Workspace
-                </Button>
             </div>
         </div>
+    </div>
+            </GlassCard >
+
+        {/* FOOTER */ }
+
+        < div className = "
+    flex
+    items - center
+    justify - center
+    gap - 6
+    ">
+
+        < Button
+    variant = "outline"
+    size = "xl"
+
+    className = "
+    rounded - [2.5rem]
+    px - 12
+    gap - 3
+    border - [#E5E7EB]
+    h - 16
+    "
+
+    onClick = { onRegenerate }
+        >
+
+        <RefreshCw size={24} />
+
+                    Перегенерировать всё
+                </Button >
+
+        <Button
+            size="xl"
+
+            className="
+                        rounded-[2.5rem]
+                        px-12
+                        gap-3
+                        h-16
+                    "
+
+            onClick={handleSave}
+        >
+
+            <Save size={24} />
+
+            Сохранить в Workspace
+        </Button>
+            </div >
+        </div >
     );
 }
