@@ -3,7 +3,7 @@
 // ============================================
 
 import { OpenAI } from "openai";
-import { getImageSize } from "./getImageSize";
+import { getImageSize } from "./getImageSize.js";
 
 let openaiClient: OpenAI | null = null;
 

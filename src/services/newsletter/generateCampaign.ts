@@ -2,9 +2,9 @@
 // FILE: src/services/newsletter/generateCampaign.ts
 // ============================================
 
-import { normalizeChannels } from "./normalizeChannels";
-import { generateChannelContent } from "./generateChannelContent";
-import { generateImage } from "./generateImage";
+import { normalizeChannels } from "./normalizeChannels.js";
+import { generateChannelContent } from "./generateChannelContent.js";
+import { generateImage } from "./generateImage.js";
 
 // ============================================
 // GENERATE CHANNELS
