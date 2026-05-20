@@ -42,72 +42,55 @@ function cleanJsonResponse(content: string): string {
     .trim();
 }
 
-function normalizeItems(items: any[]) {
-  return items.map((item, index) => {
-    const rawChannel = String(item.channel || "telegram").toLowerCase().trim();
-    const channel = ["telegram", "vk", "email", "youtube", "linkedin"].includes(rawChannel)
-      ? rawChannel
-      : "telegram";
-
-    return {
-      id: item.id || `item-${index + 1}`,
-      day: item.day || "День 1",
-      time: item.time || "12:00",
-      channel,
-      topic: item.topic || "Без названия",
-      dayIndex: typeof item.dayIndex === 'number' ? item.dayIndex : undefined,
-      publishDate: item.publishDate || undefined,
-      weekday: item.weekday || undefined,
-
-      description: item.description || "",
-      type: item.type || "Пост",
-      purpose: item.purpose || "Вовлечение",
-      goal: item.goal || "Активность",
-      angle: item.angle || "",
-      rationale: item.rationale || "",
-      hashtags: Array.isArray(item.hashtags) ? item.hashtags : []
-    };
-  });
-}
-
-function fillDatesAndIndices(items: any[], startDateString?: string): any[] {
-  let baseDate = new Date();
-  if (startDateString) {
-    const parsed = Date.parse(startDateString);
-    if (!isNaN(parsed)) {
-      baseDate = new Date(parsed);
+function parseLocalDate(dateStr: string): Date {
+  const parts = String(dateStr || "").split("-");
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1; // 0-11
+    const d = parseInt(parts[2], 10);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+      return new Date(y, m, d, 12, 0, 0); // Noon to survive timezone daylight savings
     }
   }
+  const fallback = new Date();
+  fallback.setHours(12, 0, 0, 0);
+  return fallback;
+}
 
-  const uniqueDaysFound: string[] = [];
+function processPlannerItems(items: any[], allowedChannels: string[], startDateString?: string): any[] {
+  const baseDate = startDateString ? parseLocalDate(startDateString) : (() => {
+    const d = new Date();
+    d.setHours(12, 0, 0, 0);
+    return d;
+  })();
 
-  return items.map((item) => {
-    let dayIdx = -1;
+  const requestedChannels = Array.isArray(allowedChannels) && allowedChannels.length > 0
+    ? allowedChannels.map(c => String(c).toLowerCase().trim())
+    : ["telegram", "vk", "email"];
 
-    if (typeof item.dayIndex === "number" && !isNaN(item.dayIndex)) {
-      dayIdx = item.dayIndex;
-    } else if (item.dayIndex && !isNaN(parseInt(item.dayIndex))) {
-      dayIdx = parseInt(item.dayIndex, 10);
+  const uniqueDaysOrdered: string[] = [];
+  (items || []).forEach(item => {
+    if (!item) return;
+    const dayStr = String(item.day || "").trim();
+    if (dayStr && !uniqueDaysOrdered.includes(dayStr)) {
+      uniqueDaysOrdered.push(dayStr);
     }
+  });
 
-    if (dayIdx < 0 && item.day) {
-      const match = String(item.day).match(/\d+/);
-      if (match) {
-        dayIdx = parseInt(match[0], 10) - 1;
-      }
-    }
+  if (uniqueDaysOrdered.length === 0) {
+    uniqueDaysOrdered.push("День 1");
+  }
 
-    if (dayIdx < 0) {
-      const dayStr = String(item.day || "День 1");
-      let idx = uniqueDaysFound.indexOf(dayStr);
-      if (idx === -1) {
-        uniqueDaysFound.push(dayStr);
-        idx = uniqueDaysFound.length - 1;
-      }
-      dayIdx = idx;
-    }
+  return (items || []).map((item, index) => {
+    const rawChannel = String(item.channel || "").toLowerCase().trim();
+    const isChannelValid = requestedChannels.includes(rawChannel);
+    const channel = isChannelValid 
+      ? rawChannel 
+      : requestedChannels[index % requestedChannels.length];
 
-    if (dayIdx < 0) dayIdx = 0;
+    const dayStr = String(item.day || "День 1").trim();
+    const dayIdxFromOrder = uniqueDaysOrdered.indexOf(dayStr);
+    const dayIdx = dayIdxFromOrder !== -1 ? dayIdxFromOrder : 0;
 
     const itemDate = new Date(baseDate.getTime());
     itemDate.setDate(baseDate.getDate() + dayIdx);
@@ -121,11 +104,22 @@ function fillDatesAndIndices(items: any[], startDateString?: string): any[] {
     const publishDate = `${yyyy}-${mm}-${dd}`;
 
     return {
-      ...item,
+      id: item.id || `item-${index + 1}`,
+      day: item.day || `День ${dayIdx + 1}`,
+      time: item.time || "12:00",
+      channel,
+      topic: item.topic || "Без названия",
       dayIndex: dayIdx,
       publishDate,
       weekday,
-      day: item.day || `День ${dayIdx + 1}`
+
+      description: item.description || "",
+      type: item.type || "Пост",
+      purpose: item.purpose || "Вовлечение",
+      goal: item.goal || "Активность",
+      angle: item.angle || "",
+      rationale: item.rationale || "",
+      hashtags: Array.isArray(item.hashtags) ? item.hashtags : []
     };
   });
 }
@@ -230,8 +224,7 @@ export default async function handler(
       });
     }
 
-    parsed.items = normalizeItems(parsed.items || []);
-    parsed.items = fillDatesAndIndices(parsed.items, startDate);
+    parsed.items = processPlannerItems(parsed.items || [], channels, startDate);
 
     const validated =
       PlannerResultSchema.parse(parsed);

@@ -109,20 +109,34 @@ export function PlannerResultDisplay({ result, sourceInfo }: PlannerResultProps)
   });
 
   const formatDateFull = (dateValue: string) => {
-    if (!isNaN(Date.parse(dateValue))) {
-      const date = new Date(dateValue);
-      const dayNum = String(date.getDate()).padStart(2, '0');
-      const monthNum = String(date.getMonth() + 1).padStart(2, '0');
+    const match = String(dateValue || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      const yyyy = match[1];
+      const mm = match[2];
+      const dd = match[3];
+
+      const y = parseInt(yyyy, 10);
+      const m = parseInt(mm, 10) - 1;
+      const d = parseInt(dd, 10);
+      const tempDate = new Date(y, m, d, 12, 0, 0);
       const weekdays = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
-      const weekdayName = weekdays[date.getDay()];
-      return `${dayNum}.${monthNum} — ${weekdayName}`;
+      const weekdayName = weekdays[tempDate.getDay()];
+      
+      return `${dd}.${mm} — ${weekdayName}`;
     }
     return dateValue === 'Unknown' ? 'Дата не определена' : dateValue;
   };
 
   const formatDateLabel = (dateValue?: string) => {
-    if (!dateValue || isNaN(Date.parse(dateValue))) return null;
-    const date = new Date(dateValue);
+    if (!dateValue) return null;
+    const match = String(dateValue).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+
+    const y = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10) - 1;
+    const d = parseInt(match[3], 10);
+    const date = new Date(y, m, d, 12, 0, 0);
+
     return date.toLocaleDateString('ru-RU', { 
         weekday: 'short', 
         day: 'numeric', 
