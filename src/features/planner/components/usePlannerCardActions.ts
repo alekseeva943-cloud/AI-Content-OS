@@ -24,7 +24,7 @@ export function usePlannerCardActions({
   const [generatedText, setGeneratedText] = useState<string | null>(null);
   const { addFavorite, removeFavorite, isFavorite } = useFavoritesStore();
 
-  const favoriteId = item.id || `${item.day}-${index}`;
+  const favoriteId = `planner-item-${item.topic.replace(/\s+/g, '-').slice(0, 40)}-${item.channel}-${item.publishDate || item.day}-${item.time}`;
   const activeFavorite = isFavorite(favoriteId);
 
   const toggleFavorite = () => {

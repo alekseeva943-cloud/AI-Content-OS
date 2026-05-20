@@ -193,6 +193,46 @@ function PlanItemCard({
     sourceInfo
   });
 
+  const channelStyles: Record<string, { container: string; text: string; label: string; badge: string; angle: string }> = {
+    telegram: {
+      container: "bg-sky-50 text-sky-600 border-sky-100 group-hover/card:bg-sky-100/80 group-hover/card:border-sky-300 group-hover/card:text-sky-700",
+      text: "text-sky-600 group-hover/card:text-sky-700",
+      label: "text-sky-600",
+      badge: "bg-sky-500/90 group-hover/card:bg-sky-500",
+      angle: "text-sky-700 bg-sky-50/60 border-sky-100"
+    },
+    vk: {
+      container: "bg-blue-50 text-blue-600 border-blue-100 group-hover/card:bg-blue-100/80 group-hover/card:border-blue-300 group-hover/card:text-blue-700",
+      text: "text-blue-600 group-hover/card:text-blue-700",
+      label: "text-blue-600",
+      badge: "bg-blue-600/90 group-hover/card:bg-blue-600",
+      angle: "text-blue-700 bg-blue-50/60 border-blue-100"
+    },
+    email: {
+      container: "bg-emerald-50 text-emerald-600 border-emerald-100 group-hover/card:bg-emerald-100/80 group-hover/card:border-emerald-300 group-hover/card:text-emerald-700",
+      text: "text-emerald-600 group-hover/card:text-emerald-700",
+      label: "text-emerald-600",
+      badge: "bg-emerald-500/90 group-hover/card:bg-emerald-500",
+      angle: "text-emerald-700 bg-emerald-50/60 border-emerald-100"
+    },
+    youtube: {
+      container: "bg-rose-50 text-rose-600 border-rose-100 group-hover/card:bg-rose-100/80 group-hover/card:border-rose-300 group-hover/card:text-rose-700",
+      text: "text-rose-600 group-hover/card:text-rose-700",
+      label: "text-rose-600",
+      badge: "bg-rose-600/90 group-hover/card:bg-rose-600",
+      angle: "text-rose-700 bg-rose-50/60 border-rose-100"
+    },
+    linkedin: {
+      container: "bg-indigo-50 text-indigo-600 border-indigo-100 group-hover/card:bg-indigo-100/80 group-hover/card:border-indigo-300 group-hover/card:text-indigo-700",
+      text: "text-indigo-600 group-hover/card:text-indigo-700",
+      label: "text-indigo-600",
+      badge: "bg-indigo-600/90 group-hover/card:bg-indigo-600",
+      angle: "text-indigo-700 bg-indigo-50/60 border-indigo-100"
+    }
+  };
+
+  const chStyle = channelStyles[item.channel as keyof typeof channelStyles] || channelStyles.telegram;
+
   const updateLocalSetting = (key: keyof PostSettings, value: any) => {
     setLocalSettings(prev => ({ ...prev, [key]: value }));
   };
@@ -220,21 +260,21 @@ function PlanItemCard({
             <div className="flex items-center gap-5 flex-wrap">
                 <div className={cn(
                     "w-14 h-14 shrink-0 rounded-[1.25rem] border flex items-center justify-center transition-all duration-500 shadow-sm",
-                    "bg-[#F9FAFB] border-[#E5E7EB] text-[#9CA3AF]",
-                    `group-hover/card:${config.text} group-hover/card:${config.lightBg} group-hover/card:${config.border} group-hover/card:scale-110`
+                    chStyle.container,
+                    "group-hover/card:scale-110"
                 )}>
                     <Icon size={26} />
                 </div>
                 <div className="flex flex-col gap-2 min-w-0">
                    <div className="flex items-center gap-2 flex-wrap">
                         <span className={cn(
-                            "text-[12px] font-black uppercase tracking-[0.15em] leading-none shrink-0",
-                            `group-hover/card:${config.text} transition-colors duration-500`
+                            "text-[12px] font-black uppercase tracking-[0.15em] leading-none shrink-0 transition-colors duration-500",
+                            chStyle.text
                         )}>{config.label}</span>
                         {item.type && (
                              <span className={cn(
                                 "text-[10px] font-black text-white px-2.5 py-1 rounded-md uppercase tracking-widest whitespace-nowrap",
-                                config.accentBg
+                                chStyle.badge
                              )}>
                                 {item.type}
                              </span>
@@ -242,7 +282,7 @@ function PlanItemCard({
                         {item.angle && (
                              <span className={cn(
                                 "text-[9px] font-black px-2.5 py-1 rounded-md uppercase tracking-widest border whitespace-nowrap",
-                                config.text, config.lightBg, config.border
+                                chStyle.angle
                              )}>
                                 {item.angle}
                              </span>
