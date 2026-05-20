@@ -853,6 +853,10 @@ export function ModulePage({ config }: ModulePageProps) {
                   if (
                     config.id === 'newsletters'
                   ) {
+                    console.log(
+                      '[NEWSLETTER STATE]',
+                      moduleState.builderStep
+                    );
 
                     // STEP 1
                     // DISCOVERY
@@ -888,7 +892,39 @@ export function ModulePage({ config }: ModulePageProps) {
                       'ready'
                     ) {
 
+                      console.log(
+                        '[READY -> GENERATE]'
+                      );
+
                       handleGenerate();
+
+                      return;
+                    }
+
+                    // ============================================
+                    // RESULT -> RESTART DISCOVERY
+                    // ============================================
+
+                    if (
+                      moduleState.builderStep ===
+                      'result'
+                    ) {
+
+                      console.log(
+                        '[RESULT -> RESET TO INPUT]'
+                      );
+
+                      setModuleState(
+                        config.id,
+                        {
+                          builderStep:
+                            'input',
+
+                          result: null
+                        }
+                      );
+
+                      handleCampaignDiscovery();
 
                       return;
                     }
