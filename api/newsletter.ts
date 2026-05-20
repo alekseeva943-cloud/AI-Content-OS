@@ -301,7 +301,7 @@ async function generateImage({
         `[IMAGE] EMPTY ${channel}`
       );
 
-      return null;
+      return "";
     }
 
     // ============================================
@@ -330,7 +330,7 @@ async function generateImage({
       return image.url;
     }
 
-    return null;
+    return "";
 
   } catch (err) {
 
@@ -339,7 +339,7 @@ async function generateImage({
       err
     );
 
-    return null;
+    return "";
   }
 }
 
@@ -408,7 +408,7 @@ export default async function handler(
             // IMAGE
             // ============================================
 
-            let imageUrl = null;
+            let imageUrl = "";
 
             if (
               content.imagePrompt
@@ -461,7 +461,8 @@ export default async function handler(
                   content.imagePrompt ||
                   "",
 
-                imageUrl
+                imageUrl:
+                  imageUrl || ""
               }
             };
           }
