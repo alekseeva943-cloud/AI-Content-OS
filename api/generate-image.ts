@@ -17,8 +17,8 @@ function normalizeChannel(
       .trim();
 
   if (
-    value === "tg" ||
-    value === "telegram"
+    value === "telegram" ||
+    value === "tg"
   ) {
     return "telegram";
   }
@@ -31,8 +31,8 @@ function normalizeChannel(
   }
 
   if (
-    value === "mail" ||
-    value === "email"
+    value === "email" ||
+    value === "mail"
   ) {
     return "email";
   }

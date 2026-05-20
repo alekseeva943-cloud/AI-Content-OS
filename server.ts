@@ -409,8 +409,6 @@ app.post("/api/newsletter", async (req, res) => {
     const rawData =
       JSON.parse(rawContent);
 
-    // LEGACY FORMAT SUPPORT
-
     if (!rawData.channels) {
       rawData.channels = [];
 
@@ -466,7 +464,7 @@ app.post("/api/newsletter", async (req, res) => {
               );
 
             console.log(
-              "[Newsletter API] Channel from AI:",
+              "[Newsletter API] Channel:",
               channelId
             );
 
@@ -475,21 +473,34 @@ app.post("/api/newsletter", async (req, res) => {
                 channelId
               )
             ) {
-              console.log(
-                "[Newsletter API] SKIPPED:",
-                channelId
-              );
-
               return null;
             }
 
             const c =
               ch.content || {};
 
-            const body =
-              String(
-                c.body || ""
-              ).trim();
+            let fixedCTA = c.cta;
+
+            if (
+              typeof fixedCTA ===
+              "string"
+            ) {
+              fixedCTA = {
+                text: fixedCTA,
+                link: "#"
+              };
+            }
+
+            if (
+              !fixedCTA ||
+              typeof fixedCTA !==
+                "object"
+            ) {
+              fixedCTA = {
+                text: "Подробнее",
+                link: "#"
+              };
+            }
 
             return {
               id: channelId,
@@ -504,21 +515,29 @@ app.post("/api/newsletter", async (req, res) => {
                 preheader:
                   c.preheader || "",
 
-                body,
+                body: String(
+                  c.body || ""
+                ).trim(),
 
                 cta: {
                   text:
-                    c.cta?.text ||
+                    fixedCTA.text ||
                     "Подробнее",
 
                   link:
-                    c.cta?.link ||
+                    fixedCTA.link ||
                     "#"
                 },
 
                 imagePrompt:
                   c.imagePrompt ||
-                  ""
+                  "",
+
+                imageUrl:
+                  c.imageUrl || null,
+
+                formatting:
+                  c.formatting || {}
               }
             };
           })
@@ -528,29 +547,6 @@ app.post("/api/newsletter", async (req, res) => {
       variables:
         rawData.variables || {}
     };
-
-    // STRICT VALIDATION
-
-    for (const channel of transformed.channels) {
-      const body =
-        channel.content?.body || "";
-
-      if (!body) {
-        throw new Error(
-          `Missing body for ${channel.id}`
-        );
-      }
-
-      const russianChars =
-        body.match(/[а-яА-ЯЁё]/g)
-          ?.length || 0;
-
-      if (russianChars < 20) {
-        throw new Error(
-          `Channel ${channel.id} failed Russian validation`
-        );
-      }
-    }
 
     console.log(
       "[Newsletter API] FINAL:",
