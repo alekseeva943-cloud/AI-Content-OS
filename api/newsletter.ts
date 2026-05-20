@@ -101,24 +101,47 @@ VK:
 // ============================================
 
 function getImageSize(
+  channel: string
+) {
 
-  // ============================================
-  // CONTENT GENERATION
-  // ============================================
+  switch (channel) {
 
-  async function generateChannelContent({
-    topic,
-    context,
-    variables,
-    tone,
-    channel
-  }: {
-    topic: string;
-    context: string;
-    variables: any;
-    tone?: string;
-    channel: string;
-  }) {
+    case "telegram":
+
+      return "1024x1024";
+
+    case "email":
+
+      return "1024x1024";
+
+    case "vk":
+
+      return "1024x1024";
+
+    default:
+
+      return "1024x1024";
+  }
+}
+
+
+// ============================================
+// CONTENT GENERATION
+// ============================================
+
+async function generateChannelContent({
+  topic,
+  context,
+  variables,
+  tone,
+  channel
+}: {
+  topic: string;
+  context: string;
+  variables: any;
+  tone?: string;
+  channel: string;
+}) {
 
   const systemPrompt = `
 Вы —
