@@ -2,21 +2,22 @@ import React from 'react';
 import { cn } from '@/src/lib/utils';
 import { Image as ImageIcon, RefreshCw } from 'lucide-react';
 import { Button } from '@/src/shared/components/UI';
+import { NEWSLETTER_CHANNELS } from '@/src/config/newsletterChannels';
 
 interface ImagePanelProps {
     activeChannel: any;
     imageUrls: Record<string, string>;
-    setImageUrls: React.Dispatch<React.SetStateAction<Record<string, string>>>;
     isGeneratingImage: Record<string, boolean>;
-    setIsGeneratingImage: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
     handleGenerateImage: (channelId: string, prompt: string) => Promise<void>;
+    handleDownloadImage: (channelId: string) => void;
 }
 
 export function ImagePanel({
     activeChannel,
     imageUrls,
     isGeneratingImage,
-    handleGenerateImage
+    handleGenerateImage,
+    handleDownloadImage
 }: ImagePanelProps) {
     return (
         <div className="space-y-4">
@@ -70,9 +71,7 @@ export function ImagePanel({
                 overflow-hidden
                 relative
                 `,
-                activeChannel.id === 'telegram' && 'aspect-[9/16]',
-                activeChannel.id === 'email' && 'aspect-[16/9]',
-                activeChannel.id === 'vk' && 'aspect-square'
+                NEWSLETTER_CHANNELS[activeChannel.id]?.aspectRatio || 'aspect-square'
             )}>
                 {imageUrls[activeChannel.id] ? (
                     <img

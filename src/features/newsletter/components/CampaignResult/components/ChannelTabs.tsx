@@ -14,6 +14,7 @@ interface ChannelTabsProps {
     imageUrls: Record<string, string>;
     isGeneratingImage: Record<string, boolean>;
     handleGenerateImage: (channelId: string, prompt: string) => Promise<void>;
+    handleDownloadImage: (channelId: string) => void;
 }
 
 export function ChannelTabs({
@@ -23,7 +24,8 @@ export function ChannelTabs({
     activeChannel,
     imageUrls,
     isGeneratingImage,
-    handleGenerateImage
+    handleGenerateImage,
+    handleDownloadImage
 }: ChannelTabsProps) {
     return (
         <div className="p-10 pb-0 border-b border-[#F3F4F6]">
@@ -45,12 +47,7 @@ export function ChannelTabs({
                 <div className="flex items-center gap-2">
                     {imageUrls[activeChannel.id] && (
                         <button
-                            onClick={() => {
-                                const link = document.createElement('a');
-                                link.href = imageUrls[activeChannel.id];
-                                link.download = `${activeChannel.id}-visual.png`;
-                                link.click();
-                            }}
+                            onClick={() => handleDownloadImage(activeChannel.id)}
                             className="
                                 p-2
                                 rounded-lg

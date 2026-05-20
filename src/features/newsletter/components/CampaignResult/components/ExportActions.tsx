@@ -1,40 +1,24 @@
 import React from 'react';
 import { Button } from '@/src/shared/components/UI';
 import { Check, Copy, FileText, Download } from 'lucide-react';
-import { toast } from 'sonner';
 
 interface ExportActionsProps {
     activeChannel: any;
     activeTab: string;
     copied: string | null;
-    setCopied: (copied: string | null) => void;
+    handleCopy: (content: string, type: string) => void;
     exportAsTxt: () => void;
+    exportAsMarkdown: (channelId: string, body: string) => void;
 }
 
 export function ExportActions({
     activeChannel,
     activeTab,
     copied,
-    setCopied,
-    exportAsTxt
+    handleCopy,
+    exportAsTxt,
+    exportAsMarkdown
 }: ExportActionsProps) {
-    const handleCopy = (content: string, type: string) => {
-        navigator.clipboard.writeText(content);
-        setCopied(type);
-        toast.success('Контент скопирован');
-        setTimeout(() => setCopied(null), 2000);
-    };
-
-    const exportAsMd = () => {
-        const text = activeChannel.content?.body || '';
-        const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${activeChannel.id}-campaign.md`;
-        a.click();
-    };
-
     return (
         <div className="mt-auto space-y-3">
             <Button
@@ -78,7 +62,7 @@ export function ExportActions({
                         rounded-xl
                         h-12
                     "
-                    onClick={exportAsMd}
+                    onClick={() => exportAsMarkdown(activeChannel.id, activeChannel.content?.body || '')}
                 >
                     <Download size={16} className="mr-2" />
                     .MD

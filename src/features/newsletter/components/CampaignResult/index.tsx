@@ -4,7 +4,9 @@ import { CampaignResult } from '@/src/types/newsletter';
 import { GlassCard } from '@/src/shared/components/UI';
 import { toast } from 'sonner';
 import { useFavoritesStore } from '@/src/stores/favoritesStore';
-import { generateCampaignImage } from '@/src/services/ai/client';
+import { useCampaignImages } from '../../hooks/useCampaignImages';
+import { useCampaignExport } from '../../hooks/useCampaignExport';
+import { NEWSLETTER_CHANNELS } from '@/src/config/newsletterChannels';
 
 import { Header } from './components/Header';
 import { ChannelTabs } from './components/ChannelTabs';
@@ -12,6 +14,12 @@ import { ContentBody } from './components/ContentBody';
 import { ImagePanel } from './components/ImagePanel';
 import { ExportActions } from './components/ExportActions';
 import { FooterActions } from './components/FooterActions';
+
+const ICON_COMPONENTS = {
+    Mail,
+    Send,
+    MessageCircle
+};
 
 interface CampaignResultDisplayProps {
     result: CampaignResult;
@@ -30,39 +38,27 @@ export function CampaignResultDisplay({
         channels[0]?.id || 'email'
     );
 
-    const [copied, setCopied] = useState<string | null>(null);
+    const {
+        imageUrls,
+        isGeneratingImage,
+        handleGenerateImage,
+        handleDownloadImage
+    } = useCampaignImages(channels);
 
-    const [imageUrls, setImageUrls] = useState<Record<string, string>>(() => {
-        const initialImages: Record<string, string> = {};
-        channels.forEach((channel) => {
-            if (channel.content?.imageUrl) {
-                initialImages[channel.id] = channel.content.imageUrl;
-            }
-        });
-        return initialImages;
-    });
+    const {
+        copied,
+        handleCopy,
+        exportAsTxt,
+        exportAsMarkdown
+    } = useCampaignExport(result, channels);
 
-    const [isGeneratingImage, setIsGeneratingImage] = useState<Record<string, boolean>>(
-        {}
-    );
-
-    const availableTabs = [
-        {
-            id: 'email',
-            icon: Mail,
-            label: 'Email'
-        },
-        {
-            id: 'telegram',
-            icon: Send,
-            label: 'Telegram'
-        },
-        {
-            id: 'vk',
-            icon: MessageCircle,
-            label: 'VK'
-        }
-    ].filter(tab => channels.some(c => c.id === tab.id));
+    const availableTabs = Object.values(NEWSLETTER_CHANNELS)
+        .map((ch) => ({
+            id: ch.id,
+            label: ch.label,
+            icon: ICON_COMPONENTS[ch.iconName]
+        }))
+        .filter(tab => channels.some(c => c.id === tab.id));
 
     useEffect(() => {
         if (
@@ -76,37 +72,6 @@ export function CampaignResultDisplay({
     const activeChannel = channels.find(c => c.id === activeTab) || channels[0];
 
     const addFavorite = useFavoritesStore(state => state.addFavorite);
-
-    const handleGenerateImage = async (channelId: string, prompt: string) => {
-        if (isGeneratingImage[channelId]) {
-            return;
-        }
-
-        setIsGeneratingImage(prev => ({
-            ...prev,
-            [channelId]: true
-        }));
-
-        try {
-            const url = await generateCampaignImage(prompt, channelId);
-
-            if (url) {
-                setImageUrls(prev => ({
-                    ...prev,
-                    [channelId]: url
-                }));
-                toast.success('Визуал создан');
-            }
-        } catch (err) {
-            console.error(err);
-            toast.error('Не удалось создать изображение');
-        } finally {
-            setIsGeneratingImage(prev => ({
-                ...prev,
-                [channelId]: false
-            }));
-        }
-    };
 
     const handleSave = () => {
         addFavorite({
@@ -122,21 +87,6 @@ export function CampaignResultDisplay({
             }
         });
         toast.success('Кампания сохранена');
-    };
-
-    const exportAsTxt = () => {
-        const text =
-            `КАМПАНИЯ: ${result?.name || 'Без названия'}\n\n` +
-            channels.map(
-                c => `--- ${(c?.id || 'Unknown').toUpperCase()} ---\n${c?.content?.body || ''}\n`
-            ).join('\n');
-
-        const blob = new Blob([text], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${result?.name || 'campaign'}.txt`;
-        a.click();
     };
 
     if (!activeChannel || !activeChannel.content) {
@@ -178,6 +128,7 @@ export function CampaignResultDisplay({
                     imageUrls={imageUrls}
                     isGeneratingImage={isGeneratingImage}
                     handleGenerateImage={handleGenerateImage}
+                    handleDownloadImage={handleDownloadImage}
                 />
 
                 {/* BODY */}
@@ -207,10 +158,9 @@ export function CampaignResultDisplay({
                         <ImagePanel
                             activeChannel={activeChannel}
                             imageUrls={imageUrls}
-                            setImageUrls={setImageUrls}
                             isGeneratingImage={isGeneratingImage}
-                            setIsGeneratingImage={setIsGeneratingImage}
                             handleGenerateImage={handleGenerateImage}
+                            handleDownloadImage={handleDownloadImage}
                         />
 
                         {/* ACTIONS */}
@@ -218,8 +168,9 @@ export function CampaignResultDisplay({
                             activeChannel={activeChannel}
                             activeTab={activeTab}
                             copied={copied}
-                            setCopied={setCopied}
+                            handleCopy={handleCopy}
                             exportAsTxt={exportAsTxt}
+                            exportAsMarkdown={exportAsMarkdown}
                         />
                     </div>
                 </div>
