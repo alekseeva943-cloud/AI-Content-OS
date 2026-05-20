@@ -1,15 +1,15 @@
 import { Router } from "express";
-import { getOpenAI } from "../utils/openai";
-import { processPlannerItems } from "../utils/date";
+import { getOpenAI } from "../utils/openai.js";
+import { processPlannerItems } from "../utils/date.js";
 import {
   getPlannerPrompts,
   getPostPrompts,
   renderPrompt
-} from "../../../lib/prompts";
+} from "../../../lib/prompts.js";
 import {
   PlannerResultSchema,
   PlannerItemSchema
-} from "../../types/planner.ts";
+} from "../../types/planner.js";
 
 const router = Router();
 

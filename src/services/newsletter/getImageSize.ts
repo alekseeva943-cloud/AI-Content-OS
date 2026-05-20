@@ -2,7 +2,7 @@
 // FILE: src/services/newsletter/getImageSize.ts
 // ============================================
 
-import { NEWSLETTER_CHANNELS } from "../../config/newsletterChannels";
+import { NEWSLETTER_CHANNELS } from "../../config/newsletterChannels.js";
 
 // ============================================
 // IMAGE SIZE

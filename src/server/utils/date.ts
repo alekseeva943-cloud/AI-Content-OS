@@ -1,4 +1,4 @@
-import { normalizeChannel } from "./channels";
+import { normalizeChannel } from "./channels.js";
 
 export function parseLocalDate(dateStr: string): Date {
   const parts = String(dateStr || "").split("-");

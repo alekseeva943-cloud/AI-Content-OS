@@ -1,13 +1,13 @@
 import { Router } from "express";
-import { getOpenAI } from "../utils/openai";
-import { normalizeChannel } from "../utils/channels";
+import { getOpenAI } from "../utils/openai.js";
+import { normalizeChannel } from "../utils/channels.js";
 import {
   getModulePrompts,
   renderPrompt
-} from "../../../lib/prompts";
+} from "../../../lib/prompts.js";
 import {
   CampaignResultSchema
-} from "../../types/newsletter.ts";
+} from "../../types/newsletter.js";
 
 const router = Router();
 
