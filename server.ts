@@ -180,7 +180,7 @@ app.post("/api/planner", async (req, res) => {
 
         itemDate.setDate(
           startObj.getDate() +
-            (item.dayIndex || 0)
+          (item.dayIndex || 0)
         );
 
         const weekday =
@@ -315,10 +315,10 @@ app.post("/api/newsletter", async (req, res) => {
 
     const requestedChannels =
       Array.isArray(channels) &&
-      channels.length > 0
+        channels.length > 0
         ? channels.map(
-            normalizeChannel
-          )
+          normalizeChannel
+        )
         : ["telegram"];
 
     console.log(
@@ -452,34 +452,34 @@ app.post("/api/newsletter", async (req, res) => {
         rawData.strategy || "",
 
       channels:
-        (rawData.channels || [])
+        requestedChannels.map(
+          (requestedId: string) => {
 
-          .map((ch: any) => {
-            const channelId =
-              normalizeChannel(
-                ch.id ||
-                  ch.channel ||
-                  ch.type ||
-                  ""
-              );
+            // TRY FIND MATCHING CHANNEL
 
-            console.log(
-              "[Newsletter API] Channel:",
-              channelId
-            );
+            const found =
+              (rawData.channels || [])
+                .find((ch: any) => {
 
-            if (
-              !requestedChannels.includes(
-                channelId
-              )
-            ) {
-              return null;
-            }
+                  const normalized =
+                    normalizeChannel(
+                      ch.id ||
+                      ch.channel ||
+                      ch.type ||
+                      ""
+                    );
+
+                  return (
+                    normalized ===
+                    requestedId
+                  );
+                });
 
             const c =
-              ch.content || {};
+              found?.content || {};
 
-            let fixedCTA = c.cta;
+            let fixedCTA =
+              c.cta;
 
             if (
               typeof fixedCTA ===
@@ -494,7 +494,7 @@ app.post("/api/newsletter", async (req, res) => {
             if (
               !fixedCTA ||
               typeof fixedCTA !==
-                "object"
+              "object"
             ) {
               fixedCTA = {
                 text: "Подробнее",
@@ -503,10 +503,9 @@ app.post("/api/newsletter", async (req, res) => {
             }
 
             return {
-              id: channelId,
+              id: requestedId,
 
-              active:
-                ch.active ?? true,
+              active: true,
 
               content: {
                 subject:
@@ -534,15 +533,16 @@ app.post("/api/newsletter", async (req, res) => {
                   "",
 
                 imageUrl:
-                  c.imageUrl || null,
+                  c.imageUrl ||
+                  null,
 
                 formatting:
-                  c.formatting || {}
+                  c.formatting ||
+                  {}
               }
             };
-          })
-
-          .filter(Boolean),
+          }
+        ),
 
       variables:
         rawData.variables || {}
