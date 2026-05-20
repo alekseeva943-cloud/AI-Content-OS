@@ -1,16 +1,23 @@
+// ============================================
+// FILE: api/generate-image.ts
+// ============================================
+
 import { OpenAI } from "openai";
+
 import type {
   VercelRequest,
   VercelResponse
 } from "@vercel/node";
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey:
+    process.env.OPENAI_API_KEY
 });
 
 function normalizeChannel(
   channel?: string
 ) {
+
   const value =
     String(channel || "")
       .toLowerCase()
@@ -40,6 +47,32 @@ function normalizeChannel(
   return "telegram";
 }
 
+function getImageSize(
+  channel?: string
+) {
+
+  const normalized =
+    normalizeChannel(channel);
+
+  switch (normalized) {
+
+    // MOBILE VERTICAL
+    case "telegram":
+      return "1024x1536";
+
+    // WIDE BANNER
+    case "email":
+      return "1536x1024";
+
+    // SOCIAL SQUARE
+    case "vk":
+      return "1024x1024";
+
+    default:
+      return "1024x1024";
+  }
+}
+
 function buildPlatformPrompt({
   prompt,
   channel,
@@ -49,6 +82,7 @@ function buildPlatformPrompt({
   channel?: string;
   context?: string;
 }) {
+
   const normalized =
     normalizeChannel(channel);
 
@@ -56,65 +90,105 @@ function buildPlatformPrompt({
 Создай профессиональное изображение
 для контент-кампании.
 
-Стиль:
-- современный
-- cinematic
-- атмосферный
-- premium
-- реалистичный
-- визуально сильный
+КРИТИЧЕСКИ ВАЖНО:
+
 - без текста
-- без watermark
 - без логотипов
-- без AI-artifacts
+- без watermark
+- без интерфейсов
+- без коллажей
 - без дешевого AI look
+- без искажений лица
+- без лишних деталей
+- без typography
+
+Стиль:
+
+- cinematic
+- premium
+- realistic
+- atmospheric
+- visually strong
+- clean composition
+- high detail
+- realistic lighting
 
 Изображение должно выглядеть
-как работа сильного digital designer.
+как работа сильного digital designer
+и premium media studio.
 `;
 
   let platformStyle = "";
 
-  if (normalized === "telegram") {
-    platformStyle = `
-Платформа: Telegram
+  // ============================================
+  // TELEGRAM
+  // ============================================
 
-Требования:
+  if (
+    normalized === "telegram"
+  ) {
+
+    platformStyle = `
+ПЛАТФОРМА: TELEGRAM
+
+ТРЕБОВАНИЯ:
+
+- вертикальная композиция
+- mobile-first визуал
 - сильный визуальный хук
+- эмоциональная сцена
 - высокая контрастность
-- mobile-first композиция
-- эмоциональная подача
 - cinematic lighting
 - image-first storytelling
+- фокус на одном главном объекте
 - хорошо смотрится в мобильной ленте
 `;
   }
 
-  if (normalized === "vk") {
-    platformStyle = `
-Платформа: VK
+  // ============================================
+  // VK
+  // ============================================
 
-Требования:
-- естественная сцена
+  if (
+    normalized === "vk"
+  ) {
+
+    platformStyle = `
+ПЛАТФОРМА: VK
+
+ТРЕБОВАНИЯ:
+
 - storytelling image
-- эмоциональность
+- естественная сцена
 - дружелюбная атмосфера
+- эмоциональность
 - social-media aesthetic
+- реалистичная композиция
 - визуал для вовлечения
 `;
   }
 
-  if (normalized === "email") {
-    platformStyle = `
-Платформа: Email
+  // ============================================
+  // EMAIL
+  // ============================================
 
-Требования:
+  if (
+    normalized === "email"
+  ) {
+
+    platformStyle = `
+ПЛАТФОРМА: EMAIL
+
+ТРЕБОВАНИЯ:
+
 - editorial style
-- premium minimalism
+- premium newsletter aesthetic
 - clean composition
 - focus point в центре
-- спокойная композиция
-- ощущение дорогого digital media
+- дорогой визуальный стиль
+- минимализм
+- wide banner composition
+- спокойная cinematic сцена
 `;
   }
 
@@ -123,54 +197,44 @@ ${baseStyle}
 
 ${platformStyle}
 
-Контекст кампании:
+КОНТЕКСТ КАМПАНИИ:
+
 ${context || "Нет дополнительного контекста"}
 
-Основная идея:
+ОСНОВНАЯ ИДЕЯ:
+
 ${prompt}
 
-КРИТИЧЕСКИ ВАЖНО:
-- никаких надписей
-- никаких watermark
-- никаких логотипов
-- никаких текстовых элементов
-- без AI distortions
-- cinematic lighting
-- high detail
+ФИНАЛЬНЫЕ ТРЕБОВАНИЯ:
+
 - realistic composition
+- premium quality
+- cinematic lighting
+- ultra detailed
+- modern visual language
+- photorealistic
+- visually clean
 `;
-}
-
-function getImageSize(
-  channel?: string
-) {
-  const normalized =
-    normalizeChannel(channel);
-
-  switch (normalized) {
-    case "telegram":
-      return "1024x1792";
-
-    case "email":
-      return "1792x1024";
-
-    case "vk":
-      return "1024x1024";
-
-    default:
-      return "1024x1024";
-  }
 }
 
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
 ) {
+
   try {
-    if (req.method !== "POST") {
-      return res.status(405).json({
-        error: "Method Not Allowed"
-      });
+
+    if (
+      req.method !== "POST"
+    ) {
+
+      return res
+        .status(405)
+        .json({
+          success: false,
+          error:
+            "Method Not Allowed"
+        });
     }
 
     const {
@@ -180,96 +244,152 @@ export default async function handler(
     } = req.body;
 
     if (!prompt) {
-      return res.status(400).json({
-        error: "Prompt is required"
-      });
+
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error:
+            "Prompt is required"
+        });
     }
+
+    const normalizedChannel =
+      normalizeChannel(
+        channel
+      );
+
+    const imageSize =
+      getImageSize(
+        normalizedChannel
+      );
 
     const finalPrompt =
       buildPlatformPrompt({
         prompt,
-        channel,
+        channel:
+          normalizedChannel,
         context
       });
 
     console.log(
-      "[IMAGE API] Channel:",
-      channel
+      "[IMAGE API] CHANNEL:",
+      normalizedChannel
     );
 
     console.log(
-      "[IMAGE API] Final Prompt:",
+      "[IMAGE API] SIZE:",
+      imageSize
+    );
+
+    console.log(
+      "[IMAGE API] PROMPT:",
       finalPrompt
     );
 
+    // ============================================
+    // OPENAI IMAGE GENERATION
+    // ============================================
+
     const response =
       await openai.images.generate({
-        model: "gpt-image-1",
+        model:
+          "gpt-image-1",
 
-        prompt: finalPrompt,
+        prompt:
+          finalPrompt,
 
-        size: getImageSize(
-          channel
-        ),
+        size:
+          imageSize,
 
-        quality: "high"
+        quality:
+          "high"
       });
 
     const image =
       response.data?.[0];
 
     if (!image) {
+
       throw new Error(
-        "No image returned"
+        "No image returned from OpenAI"
       );
     }
 
     console.log(
-      "[IMAGE API] Response:",
-      JSON.stringify(
-        image,
-        null,
-        2
-      )
+      "[IMAGE API] SUCCESS"
     );
 
-    if (image.b64_json) {
-      return res.status(200).json({
-        success: true,
+    // ============================================
+    // BASE64 MODE
+    // ============================================
 
-        type: "base64",
+    if (
+      image.b64_json
+    ) {
 
-        imageBase64:
-          image.b64_json,
+      return res
+        .status(200)
+        .json({
+          success: true,
 
-        revisedPrompt:
-          finalPrompt
-      });
+          type:
+            "base64",
+
+          imageBase64:
+            image.b64_json,
+
+          revisedPrompt:
+            finalPrompt,
+
+          channel:
+            normalizedChannel,
+
+          size:
+            imageSize
+        });
     }
 
-    return res.status(200).json({
-      success: true,
+    // ============================================
+    // URL MODE
+    // ============================================
 
-      type: "url",
+    return res
+      .status(200)
+      .json({
+        success: true,
 
-      url: image.url || null,
+        type:
+          "url",
 
-      revisedPrompt:
-        finalPrompt
-    });
+        url:
+          image.url || null,
+
+        revisedPrompt:
+          finalPrompt,
+
+        channel:
+          normalizedChannel,
+
+        size:
+          imageSize
+      });
 
   } catch (error: any) {
+
     console.error(
       "[IMAGE API ERROR]",
       error
     );
 
-    return res.status(500).json({
-      success: false,
+    return res
+      .status(500)
+      .json({
+        success: false,
 
-      error:
-        error.message ||
-        "Image generation failed"
-    });
+        error:
+          error?.message ||
+          "Image generation failed"
+      });
   }
 }
