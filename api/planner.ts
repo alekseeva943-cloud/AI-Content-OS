@@ -9,8 +9,11 @@ const PlannerItemSchema = z.object({
   id: z.string(),
   day: z.string(),
   time: z.string(),
-  channel: z.enum(["telegram", "email", "vk"]),
+  channel: z.string(),
   topic: z.string(),
+  dayIndex: z.number().optional(),
+  publishDate: z.string().optional(),
+  weekday: z.string().optional(),
 
   description: z.string().optional().default(""),
   type: z.string().optional().default("Пост"),
@@ -40,26 +43,91 @@ function cleanJsonResponse(content: string): string {
 }
 
 function normalizeItems(items: any[]) {
-  return items.map((item, index) => ({
-    id: item.id || `item-${index + 1}`,
-    day: item.day || "День 1",
-    time: item.time || "12:00",
-    channel: ["telegram", "vk", "email"].includes(item.channel)
-      ? item.channel
-      : "telegram",
+  return items.map((item, index) => {
+    const rawChannel = String(item.channel || "telegram").toLowerCase().trim();
+    const channel = ["telegram", "vk", "email", "youtube", "linkedin"].includes(rawChannel)
+      ? rawChannel
+      : "telegram";
 
-    topic: item.topic || "Без названия",
+    return {
+      id: item.id || `item-${index + 1}`,
+      day: item.day || "День 1",
+      time: item.time || "12:00",
+      channel,
+      topic: item.topic || "Без названия",
+      dayIndex: typeof item.dayIndex === 'number' ? item.dayIndex : undefined,
+      publishDate: item.publishDate || undefined,
+      weekday: item.weekday || undefined,
 
-    description: item.description || "",
-    type: item.type || "Пост",
-    purpose: item.purpose || "Вовлечение",
-    goal: item.goal || "Активность",
-    angle: item.angle || "",
-    rationale: item.rationale || "",
-    hashtags: Array.isArray(item.hashtags)
-      ? item.hashtags
-      : []
-  }));
+      description: item.description || "",
+      type: item.type || "Пост",
+      purpose: item.purpose || "Вовлечение",
+      goal: item.goal || "Активность",
+      angle: item.angle || "",
+      rationale: item.rationale || "",
+      hashtags: Array.isArray(item.hashtags) ? item.hashtags : []
+    };
+  });
+}
+
+function fillDatesAndIndices(items: any[], startDateString?: string): any[] {
+  let baseDate = new Date();
+  if (startDateString) {
+    const parsed = Date.parse(startDateString);
+    if (!isNaN(parsed)) {
+      baseDate = new Date(parsed);
+    }
+  }
+
+  const uniqueDaysFound: string[] = [];
+
+  return items.map((item) => {
+    let dayIdx = -1;
+
+    if (typeof item.dayIndex === "number" && !isNaN(item.dayIndex)) {
+      dayIdx = item.dayIndex;
+    } else if (item.dayIndex && !isNaN(parseInt(item.dayIndex))) {
+      dayIdx = parseInt(item.dayIndex, 10);
+    }
+
+    if (dayIdx < 0 && item.day) {
+      const match = String(item.day).match(/\d+/);
+      if (match) {
+        dayIdx = parseInt(match[0], 10) - 1;
+      }
+    }
+
+    if (dayIdx < 0) {
+      const dayStr = String(item.day || "День 1");
+      let idx = uniqueDaysFound.indexOf(dayStr);
+      if (idx === -1) {
+        uniqueDaysFound.push(dayStr);
+        idx = uniqueDaysFound.length - 1;
+      }
+      dayIdx = idx;
+    }
+
+    if (dayIdx < 0) dayIdx = 0;
+
+    const itemDate = new Date(baseDate.getTime());
+    itemDate.setDate(baseDate.getDate() + dayIdx);
+
+    const weekdaysRu = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+    const weekday = weekdaysRu[itemDate.getDay()];
+
+    const yyyy = itemDate.getFullYear();
+    const mm = String(itemDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(itemDate.getDate()).padStart(2, '0');
+    const publishDate = `${yyyy}-${mm}-${dd}`;
+
+    return {
+      ...item,
+      dayIndex: dayIdx,
+      publishDate,
+      weekday,
+      day: item.day || `День ${dayIdx + 1}`
+    };
+  });
 }
 
 export default async function handler(
@@ -86,7 +154,8 @@ export default async function handler(
       period,
       channels,
       sharedMemory,
-      advanced
+      advanced,
+      startDate
     } = req.body;
 
     if (!topic || !period || !channels?.length) {
@@ -162,6 +231,7 @@ export default async function handler(
     }
 
     parsed.items = normalizeItems(parsed.items || []);
+    parsed.items = fillDatesAndIndices(parsed.items, startDate);
 
     const validated =
       PlannerResultSchema.parse(parsed);

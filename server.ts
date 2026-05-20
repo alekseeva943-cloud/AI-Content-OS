@@ -173,37 +173,48 @@ app.post("/api/planner", async (req, res) => {
       ? new Date(startDate)
       : new Date();
 
-    validated.items =
-      validated.items.map((item) => {
-        const itemDate =
-          new Date(startObj);
+    const uniqueDaysFound: string[] = [];
 
-        itemDate.setDate(
-          startObj.getDate() +
-          (item.dayIndex || 0)
-        );
+    validated.items = validated.items.map((item) => {
+      let dayIdx = -1;
 
-        const weekday =
-          itemDate.toLocaleDateString(
-            "ru-RU",
-            {
-              weekday: "long"
-            }
-          );
+      if (typeof item.dayIndex === "number" && !isNaN(item.dayIndex)) {
+        dayIdx = item.dayIndex;
+      }
 
-        return {
-          ...item,
+      if (dayIdx < 0 && item.day) {
+        const match = String(item.day).match(/\d+/);
+        if (match) {
+          dayIdx = parseInt(match[0], 10) - 1;
+        }
+      }
 
-          publishDate:
-            itemDate
-              .toISOString()
-              .split("T")[0],
+      if (dayIdx < 0) {
+        const dayStr = String(item.day || "День 1");
+        let idx = uniqueDaysFound.indexOf(dayStr);
+        if (idx === -1) {
+          uniqueDaysFound.push(dayStr);
+          idx = uniqueDaysFound.length - 1;
+        }
+        dayIdx = idx;
+      }
 
-          weekday:
-            weekday.charAt(0).toUpperCase() +
-            weekday.slice(1)
-        };
-      });
+      if (dayIdx < 0) dayIdx = 0;
+
+      const itemDate = new Date(startObj.getTime());
+      itemDate.setDate(startObj.getDate() + dayIdx);
+
+      const weekdaysRu = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+      const weekdayName = weekdaysRu[itemDate.getDay()];
+
+      return {
+        ...item,
+        dayIndex: dayIdx,
+        publishDate: itemDate.toISOString().split("T")[0],
+        weekday: weekdayName,
+        day: item.day || `День ${dayIdx + 1}`
+      };
+    });
 
     res.json(validated);
 

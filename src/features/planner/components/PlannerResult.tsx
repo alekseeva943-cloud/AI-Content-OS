@@ -35,6 +35,7 @@ import { cn } from '@/src/lib/utils';
 import { generatePostText, regeneratePlannerItem } from '@/src/services/ai/client';
 import { useFavoritesStore } from '@/src/stores/favoritesStore';
 import { toast } from 'sonner';
+import { NEWSLETTER_CHANNELS } from '@/src/config/newsletterChannels';
 
 interface PlannerResultProps {
   result: PlannerResult;
@@ -64,8 +65,32 @@ export function PlannerResultDisplay({ result, sourceInfo }: PlannerResultProps)
   // Debug log to trace response shape
   console.log('[PlannerResultDisplay] Rendering with result:', result);
 
-  // Group items by day with defensive check
-  const items = result?.items ?? [];
+  // Group items by day with defensive check and front-end date reconstruction fallback
+  const items = (result?.items ?? []).map((item, index) => {
+    if (!item) return item;
+    if (item.publishDate && !isNaN(Date.parse(item.publishDate))) {
+      return item;
+    }
+    // Fallback date generation if publishDate is missing
+    const baseDate = new Date();
+    const dayIdx = typeof item.dayIndex === 'number' ? item.dayIndex : index;
+    const itemDate = new Date(baseDate.getTime());
+    itemDate.setDate(baseDate.getDate() + dayIdx);
+    
+    const weekdaysRu = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+    const weekday = weekdaysRu[itemDate.getDay()];
+    const yyyy = itemDate.getFullYear();
+    const mm = String(itemDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(itemDate.getDate()).padStart(2, '0');
+    const fallbackPublishDate = `${yyyy}-${mm}-${dd}`;
+    
+    return {
+      ...item,
+      publishDate: fallbackPublishDate,
+      weekday,
+      day: item.day || `День ${dayIdx + 1}`
+    };
+  });
   
   const itemsByDay = items.reduce((acc, item) => {
     if (!item) return acc;
@@ -86,11 +111,11 @@ export function PlannerResultDisplay({ result, sourceInfo }: PlannerResultProps)
   const formatDateFull = (dateValue: string) => {
     if (!isNaN(Date.parse(dateValue))) {
       const date = new Date(dateValue);
-      return date.toLocaleDateString('ru-RU', { 
-        weekday: 'long', 
-        day: 'numeric', 
-        month: 'long',
-      }).replace(/^\w/, (c) => c.toUpperCase());
+      const dayNum = String(date.getDate()).padStart(2, '0');
+      const monthNum = String(date.getMonth() + 1).padStart(2, '0');
+      const weekdays = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+      const weekdayName = weekdays[date.getDay()];
+      return `${dayNum}.${monthNum} — ${weekdayName}`;
     }
     return dateValue === 'Unknown' ? 'Дата не определена' : dateValue;
   };
@@ -277,10 +302,25 @@ function PlanItemCard({
     }
   };
 
+  const getChannelLabel = (ch: string) => {
+    const key = ch.toLowerCase().trim();
+    if (NEWSLETTER_CHANNELS[key]) {
+      return NEWSLETTER_CHANNELS[key].label;
+    }
+    const defaultLabels: Record<string, string> = {
+      telegram: 'Telegram',
+      vk: 'VK',
+      email: 'Email',
+      youtube: 'YouTube',
+      linkedin: 'LinkedIn'
+    };
+    return defaultLabels[key] || ch;
+  };
+
   const channelConfig = {
     telegram: { 
         icon: Send, 
-        label: 'Telegram', 
+        label: getChannelLabel('telegram'), 
         color: '#3B82F6', 
         bg: 'bg-blue-50', 
         border: 'border-blue-100', 
@@ -290,7 +330,7 @@ function PlanItemCard({
     },
     vk: { 
         icon: MessageCircle, 
-        label: 'ВКонтакте', 
+        label: getChannelLabel('vk'), 
         color: '#0077FF', 
         bg: 'bg-blue-50', 
         border: 'border-blue-100', 
@@ -300,7 +340,7 @@ function PlanItemCard({
     },
     email: { 
         icon: Mail, 
-        label: 'Email', 
+        label: getChannelLabel('email'), 
         color: '#EA4335', 
         bg: 'bg-red-50', 
         border: 'border-red-100', 
@@ -310,7 +350,7 @@ function PlanItemCard({
     },
     youtube: { 
         icon: Youtube, 
-        label: 'YouTube', 
+        label: getChannelLabel('youtube'), 
         color: '#FF0000', 
         bg: 'bg-rose-50', 
         border: 'border-rose-100', 
@@ -320,7 +360,7 @@ function PlanItemCard({
     },
     linkedin: { 
         icon: Linkedin, 
-        label: 'LinkedIn', 
+        label: getChannelLabel('linkedin'), 
         color: '#0077B5', 
         bg: 'bg-indigo-50', 
         border: 'border-indigo-100', 
