@@ -443,6 +443,8 @@ export function CampaignResultDisplay({
 
                 {/* TABS */}
 
+                <div className="p-10 pb-0 border-b border-[#F3F4F6]">
+
                 <div className="
     flex
     items-center
@@ -589,7 +591,7 @@ export function CampaignResultDisplay({
                         )
                     )}
                 </div>
-        </div>
+                </div>
 
                 {/* BODY */ }
 
@@ -764,15 +766,14 @@ export function CampaignResultDisplay({
                 </div>
 
                 <div className={cn(
-
                     `
-    rounded-[2rem]
-    bg-white
-    border
-    border-[#E5E7EB]
-    overflow-hidden
-    relative
-    `,
+                    rounded-[2rem]
+                    bg-white
+                    border
+                    border-[#E5E7EB]
+                    overflow-hidden
+                    relative
+                    `,
 
                     activeChannel.id === 'telegram' &&
                     'aspect-[9/16]',
@@ -783,13 +784,6 @@ export function CampaignResultDisplay({
                     activeChannel.id === 'vk' &&
                     'aspect-square'
                 )}>
-                    rounded-[2rem]
-                    bg-white
-                    border
-                    border-[#E5E7EB]
-                    overflow-hidden
-                    relative
-                            ">
 
                     {imageUrls[
                         activeChannel.id
@@ -970,55 +964,55 @@ export function CampaignResultDisplay({
             </div>
         </div>
     </div>
-            </GlassCard >
+            </GlassCard>
 
-        {/* FOOTER */ }
+        {/* FOOTER */}
 
-        < div className = "
-    flex
-    items - center
-    justify - center
-    gap - 6
-    ">
+        <div className="
+            flex
+            items-center
+            justify-center
+            gap-6
+        ">
 
-        < Button
-    variant = "outline"
-    size = "xl"
+            <Button
+                variant="outline"
+                size="xl"
 
-    className = "
-    rounded - [2.5rem]
-    px - 12
-    gap - 3
-    border - [#E5E7EB]
-    h - 16
-    "
+                className="
+                    rounded-[2.5rem]
+                    px-12
+                    gap-3
+                    border-[#E5E7EB]
+                    h-16
+                "
 
-    onClick = { onRegenerate }
-        >
+                onClick={onRegenerate}
+            >
 
-        <RefreshCw size={24} />
+                <RefreshCw size={24} />
 
-                    Перегенерировать всё
-                </Button >
+                Перегенерировать всё
+            </Button>
 
-        <Button
-            size="xl"
+            <Button
+                size="xl"
 
-            className="
-                        rounded-[2.5rem]
-                        px-12
-                        gap-3
-                        h-16
-                    "
+                className="
+                    rounded-[2.5rem]
+                    px-12
+                    gap-3
+                    h-16
+                "
 
-            onClick={handleSave}
-        >
+                onClick={handleSave}
+            >
 
-            <Save size={24} />
+                <Save size={24} />
 
-            Сохранить в Workspace
-        </Button>
-            </div >
-        </div >
+                Сохранить в Workspace
+            </Button>
+        </div>
+    </div>
     );
 }
