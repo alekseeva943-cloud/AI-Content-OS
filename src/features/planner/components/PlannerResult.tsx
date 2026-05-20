@@ -1,53 +1,44 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { 
   Calendar, 
-  MapPin, 
   Clock, 
-  Send, 
-  Mail, 
-  Hash, 
-  Copy, 
-  Check,
-  ChevronRight,
-  Star,
-  RefreshCcw,
-  ArrowRight,
   Sparkles,
-  Settings,
-  ChevronDown,
-  ChevronUp,
-  Zap,
-  AlignLeft,
-  Smile,
-  Highlighter,
-  Feather,
-  BookOpen,
-  Type,
-  Youtube,
-  Linkedin,
-  Link,
-  MessageCircle
+  ArrowRight
 } from 'lucide-react';
 import { PlannerItem, PlannerResult, PostSettings } from '@/src/types/planner';
 import { GlassCard, Button } from '@/src/shared/components/UI';
 import { cn } from '@/src/lib/utils';
-import { generatePostText, regeneratePlannerItem } from '@/src/services/ai/client';
 import { useFavoritesStore } from '@/src/stores/favoritesStore';
 import { toast } from 'sonner';
-import { NEWSLETTER_CHANNELS } from '@/src/config/newsletterChannels';
 
-const VkIcon = ({ size = 24, ...props }: React.SVGProps<SVGSVGElement> & { size?: number }) => (
-  <svg 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
-    fill="currentColor" 
-    {...props}
-  >
-    <path d="M15.012 3h-6.024C5.116 3 3 5.116 3 8.988v6.024C3 18.884 5.116 21 8.988 21h6.024c3.872 0 5.988-2.116 5.988-5.988V8.988C21 5.116 18.884 3 15.012 3zm2.592 11.808h-1.128c-.804 0-1.164-.672-1.92-1.428-.684-.66-.996-.744-1.164-.744-.24 0-.312.072-.312.444v1.20c0 .336-.096.528-.864.528-1.284 0-2.712-.804-3.72-2.22-1.92-2.676-2.436-3.816-2.436-4.14 0-.216.084-.408.432-.408h1.128c.3 0 .42.144.528.444.6 1.416 1.452 2.724 1.836 2.724.144 0 .204-.06.204-.408V9.756c-.048-.792-.516-.864-.516-1.152 0-.144.12-.276.3-.276h1.776c.252 0 .348.132.348.42v2.244c0 .24.108.324.18.324.144 0 .252-.084.504-.336.876-1.056 1.44-2.304 1.44-2.304.084-.18.216-.324.528-.324h1.128c.336 0 .42.156.348.42-.144.6-1.44 2.376-1.44 2.376-.144.204-.204.288 0 .492 1.044 1.056 2.016 2.376 2.364 2.94.132.228-.024.432-.348.432z" />
-  </svg>
-);
+// Extracted utils, configs, hooks and components
+import { 
+  getItemsWithFallbackDates, 
+  groupItemsByDay, 
+  formatDateFull, 
+  formatDateLabelCard 
+} from './plannerDateUtils';
+
+import { 
+  channelConfig 
+} from './plannerChannelConfig';
+
+import { 
+  usePlannerCardActions 
+} from './usePlannerCardActions';
+
+import { 
+  PlannerCardSettings 
+} from './PlannerCardSettings';
+
+import { 
+  PlannerCardActions 
+} from './PlannerCardActions';
+
+import { 
+  GeneratedPostPreview 
+} from './GeneratedPostPreview';
 
 interface PlannerResultProps {
   result: PlannerResult;
@@ -78,40 +69,8 @@ export function PlannerResultDisplay({ result, sourceInfo }: PlannerResultProps)
   console.log('[PlannerResultDisplay] Rendering with result:', result);
 
   // Group items by day with defensive check and front-end date reconstruction fallback
-  const items = (result?.items ?? []).map((item, index) => {
-    if (!item) return item;
-    if (item.publishDate && !isNaN(Date.parse(item.publishDate))) {
-      return item;
-    }
-    // Fallback date generation if publishDate is missing
-    const baseDate = new Date();
-    const dayIdx = typeof item.dayIndex === 'number' ? item.dayIndex : index;
-    const itemDate = new Date(baseDate.getTime());
-    itemDate.setDate(baseDate.getDate() + dayIdx);
-    
-    const weekdaysRu = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
-    const weekday = weekdaysRu[itemDate.getDay()];
-    const yyyy = itemDate.getFullYear();
-    const mm = String(itemDate.getMonth() + 1).padStart(2, '0');
-    const dd = String(itemDate.getDate()).padStart(2, '0');
-    const fallbackPublishDate = `${yyyy}-${mm}-${dd}`;
-    
-    return {
-      ...item,
-      publishDate: fallbackPublishDate,
-      weekday,
-      day: item.day || `День ${dayIdx + 1}`
-    };
-  });
-  
-  const itemsByDay = items.reduce((acc, item) => {
-    if (!item) return acc;
-    // We strictly use publishDate for grouping now
-    const groupKey = item.publishDate || 'Unknown';
-    if (!acc[groupKey]) acc[groupKey] = [];
-    acc[groupKey].push(item);
-    return acc;
-  }, {} as Record<string, PlannerItem[]>);
+  const items = getItemsWithFallbackDates(result?.items ?? []);
+  const itemsByDay = groupItemsByDay(items);
 
   const days = Object.keys(itemsByDay).sort((a, b) => {
     // Sort by actual date
@@ -119,42 +78,6 @@ export function PlannerResultDisplay({ result, sourceInfo }: PlannerResultProps)
     const timeB = !isNaN(Date.parse(b)) ? new Date(b).getTime() : 0;
     return timeA - timeB;
   });
-
-  const formatDateFull = (dateValue: string) => {
-    const match = String(dateValue || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (match) {
-      const yyyy = match[1];
-      const mm = match[2];
-      const dd = match[3];
-
-      const y = parseInt(yyyy, 10);
-      const m = parseInt(mm, 10) - 1;
-      const d = parseInt(dd, 10);
-      const tempDate = new Date(y, m, d, 12, 0, 0);
-      const weekdays = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
-      const weekdayName = weekdays[tempDate.getDay()];
-      
-      return `${dd}.${mm} — ${weekdayName}`;
-    }
-    return dateValue === 'Unknown' ? 'Дата не определена' : dateValue;
-  };
-
-  const formatDateLabel = (dateValue?: string) => {
-    if (!dateValue) return null;
-    const match = String(dateValue).match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!match) return null;
-
-    const y = parseInt(match[1], 10);
-    const m = parseInt(match[2], 10) - 1;
-    const d = parseInt(match[3], 10);
-    const date = new Date(y, m, d, 12, 0, 0);
-
-    return date.toLocaleDateString('ru-RU', { 
-        weekday: 'short', 
-        day: 'numeric', 
-        month: 'short' 
-    }).replace(/^\w/, (c) => c.toUpperCase());
-  };
 
   if (items.length === 0) {
     return (
@@ -238,15 +161,9 @@ function PlanItemCard({
   key?: string; 
   sourceInfo?: { id?: string; module?: string; title?: string } | null;
 }) {
-  const [item, setItem] = useState(initialItem);
-  const [copied, setCopied] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isRegenerating, setIsRegenerating] = useState(false);
   const [showLocalSettings, setShowLocalSettings] = useState(false);
-  const [generatedText, setGeneratedText] = useState<string | null>(null);
-  const { addFavorite, removeFavorite, isFavorite } = useFavoritesStore();
   
-  const [localSettings, setLocalSettings] = useState<PostSettings>(item.aiSettings || {
+  const [localSettings, setLocalSettings] = useState<PostSettings>(initialItem.aiSettings || {
     tone: 'friendly',
     length: 'balanced',
     hookIntensity: 50,
@@ -258,171 +175,30 @@ function PlanItemCard({
     educationalDepth: 40,
   });
 
+  const {
+    item,
+    copied,
+    isGenerating,
+    isRegenerating,
+    generatedText,
+    activeFavorite,
+    toggleFavorite,
+    handleCopy,
+    handleGeneratePost,
+    handleRegenerate
+  } = usePlannerCardActions({
+    initialItem,
+    index,
+    localSettings,
+    sourceInfo
+  });
+
   const updateLocalSetting = (key: keyof PostSettings, value: any) => {
     setLocalSettings(prev => ({ ...prev, [key]: value }));
   };
 
-  const favoriteId = item.id || `${item.day}-${index}`;
-  const activeFavorite = isFavorite(favoriteId);
-
-  const toggleFavorite = () => {
-    if (activeFavorite) {
-      removeFavorite(favoriteId);
-      toast.error('Удалено из избранного');
-    } else {
-      addFavorite({
-        id: favoriteId,
-        moduleId: 'planner',
-        type: item.type || 'idea',
-        title: item.topic,
-        content: { ...item, aiSettings: localSettings },
-        metadata: {
-          day: item.day,
-          channel: item.channel,
-          time: item.time,
-          sourceId: sourceInfo?.id,
-          sourceModule: sourceInfo?.module
-        }
-      });
-      toast.success('Сохранено в избранное');
-    }
-  };
-
-  const handleCopy = (textToCopy?: string) => {
-    const text = textToCopy || `Тема: ${item.topic}\nОписание: ${item.description || ''}`;
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleGeneratePost = async () => {
-    if (isGenerating) return;
-    setIsGenerating(true);
-    try {
-      const itemWithSettings = { ...item, aiSettings: localSettings };
-      const text = await generatePostText(itemWithSettings);
-      setGeneratedText(text);
-      toast.success('Пост сгенерирован');
-    } catch (err) {
-      console.error(err);
-      toast.error('Ошибка генерации поста');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleRegenerate = async () => {
-    if (isRegenerating) return;
-    setIsRegenerating(true);
-    try {
-      const itemWithSettings = { ...item, aiSettings: localSettings };
-      const newItem = await regeneratePlannerItem(itemWithSettings);
-      setItem(newItem);
-      setGeneratedText(null); // Clear old post as content changed
-      toast.success('Идея пересобрана');
-    } catch (err) {
-      console.error(err);
-      toast.error('Ошибка регенерации идеи');
-    } finally {
-      setIsRegenerating(false);
-    }
-  };
-
-  const getChannelLabel = (ch: string) => {
-    const key = ch.toLowerCase().trim();
-    if (NEWSLETTER_CHANNELS[key]) {
-      return NEWSLETTER_CHANNELS[key].label;
-    }
-    const defaultLabels: Record<string, string> = {
-      telegram: 'Telegram',
-      vk: 'VK',
-      email: 'Email',
-      youtube: 'YouTube',
-      linkedin: 'LinkedIn'
-    };
-    return defaultLabels[key] || ch;
-  };
-
-  const channelConfig = {
-    telegram: { 
-        icon: Send, 
-        label: getChannelLabel('telegram'), 
-        color: '#0EA5E9', 
-        bg: 'bg-sky-50/70', 
-        border: 'border-sky-100', 
-        text: 'text-sky-600',
-        accentBg: 'bg-sky-500',
-        lightBg: 'bg-sky-500/10',
-        hoverBorder: 'hover:border-sky-300',
-        hoverBorderLeft: 'group-hover/card:border-l-sky-400',
-        hoverGradient: 'from-sky-500/5'
-    },
-    vk: { 
-        icon: VkIcon, 
-        label: getChannelLabel('vk'), 
-        color: '#0077FF', 
-        bg: 'bg-blue-50/70', 
-        border: 'border-blue-100', 
-        text: 'text-[#0077FF]', 
-        accentBg: 'bg-[#0077FF]',
-        lightBg: 'bg-[#0077FF]/10',
-        hoverBorder: 'hover:border-blue-300',
-        hoverBorderLeft: 'group-hover/card:border-l-blue-400',
-        hoverGradient: 'from-blue-500/5'
-    },
-    email: { 
-        icon: Mail, 
-        label: getChannelLabel('email'), 
-        color: '#10B981', 
-        bg: 'bg-emerald-50/70', 
-        border: 'border-emerald-100', 
-        text: 'text-emerald-600',
-        accentBg: 'bg-emerald-500',
-        lightBg: 'bg-emerald-500/10',
-        hoverBorder: 'hover:border-emerald-300',
-        hoverBorderLeft: 'group-hover/card:border-l-emerald-400',
-        hoverGradient: 'from-emerald-500/5'
-    },
-    youtube: { 
-        icon: Youtube, 
-        label: getChannelLabel('youtube'), 
-        color: '#EF4444', 
-        bg: 'bg-rose-50/70', 
-        border: 'border-rose-100', 
-        text: 'text-rose-600',
-        accentBg: 'bg-rose-600',
-        lightBg: 'bg-rose-600/10',
-        hoverBorder: 'hover:border-rose-300',
-        hoverBorderLeft: 'group-hover/card:border-l-rose-400',
-        hoverGradient: 'from-rose-500/5'
-    },
-    linkedin: { 
-        icon: Linkedin, 
-        label: getChannelLabel('linkedin'), 
-        color: '#0A66C2', 
-        bg: 'bg-indigo-50/70', 
-        border: 'border-indigo-100', 
-        text: 'text-[#0A66C2]',
-        accentBg: 'bg-[#0A66C2]',
-        lightBg: 'bg-[#0A66C2]/10',
-        hoverBorder: 'hover:border-indigo-300',
-        hoverBorderLeft: 'group-hover/card:border-l-indigo-400',
-        hoverGradient: 'from-indigo-500/5'
-    }
-  };
-
   const config = channelConfig[item.channel as keyof typeof channelConfig] || channelConfig.telegram;
   const Icon = config.icon;
-
-  const formatDateLabel = (dateValue?: string) => {
-    if (!dateValue || isNaN(Date.parse(dateValue))) return null;
-    const date = new Date(dateValue);
-    return date.toLocaleDateString('ru-RU', { 
-        weekday: 'short', 
-        day: 'numeric', 
-        month: 'short' 
-    }).replace(/^\w/, (c) => c.toUpperCase());
-  };
 
   return (
     <motion.div
@@ -474,7 +250,7 @@ function PlanItemCard({
                    </div>
                    <div className="flex items-center gap-2.5 text-[#6B7280]">
                       <Calendar size={14} strokeWidth={2.5} className="text-[#9CA3AF]" />
-                      <span className="text-[13px] font-bold leading-none">{formatDateLabel(item.publishDate) || item.day}</span>
+                      <span className="text-[13px] font-bold leading-none">{formatDateLabelCard(item.publishDate) || item.day}</span>
                       <div className="w-[3px] h-[3px] rounded-full bg-[#D1D5DB]" />
                       <Clock size={14} strokeWidth={2.5} className="text-[#9CA3AF]" />
                       <span className="text-[13px] font-bold leading-none">{item.time}</span>
@@ -498,32 +274,11 @@ function PlanItemCard({
             )}
           </div>
           
-          <AnimatePresence mode="wait">
-            {generatedText ? (
-              <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="relative group/post"
-              >
-                <div className="p-6 rounded-[1.5rem] bg-gray-50 border border-[#E5E7EB] text-[15px] text-[#374151] leading-relaxed font-medium whitespace-pre-wrap max-h-[300px] overflow-y-auto custom-scroll shadow-inner">
-                  {generatedText}
-                </div>
-                <button 
-                  onClick={() => handleCopy(generatedText)}
-                  className="absolute top-4 right-4 p-2 rounded-lg bg-white/80 backdrop-blur border border-[#E5E7EB] text-[#6B7280] hover:text-[#10B981] transition-all opacity-0 group-hover/post:opacity-100"
-                >
-                  <Copy size={14} />
-                </button>
-              </motion.div>
-            ) : (
-              item.description && (
-                  <p className="text-[16px] text-[#6B7280] leading-relaxed font-medium flex-1 pt-2">
-                      {item.description}
-                  </p>
-              )
-            )}
-          </AnimatePresence>
+          <GeneratedPostPreview 
+            generatedText={generatedText}
+            item={item}
+            handleCopy={handleCopy}
+          />
 
           {item.rationale && !generatedText && (
               <div className={cn(
@@ -549,224 +304,29 @@ function PlanItemCard({
           )}
 
           {/* Local Settings Toggle Section */}
-          <div className="pt-2">
-            <button 
-              onClick={() => setShowLocalSettings(!showLocalSettings)}
-              className={cn(
-                "flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider transition-all",
-                showLocalSettings ? config.text : "text-[#9CA3AF] hover:text-[#111827]"
-              )}
-            >
-              <Settings size={14} className={cn(showLocalSettings && "animate-spin-slow")} />
-              <span>Настройки генерации</span>
-              {showLocalSettings ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </button>
-            
-            <AnimatePresence>
-              {showLocalSettings && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="mt-4 p-5 rounded-2xl bg-[#F9FAFB] border border-[#E5E7EB] space-y-5">
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Tone & Length Overrides */}
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-[#9CA3AF] uppercase tracking-widest flex items-center gap-1.5">
-                          <Smile size={10} /> Тон
-                        </label>
-                        <select 
-                          value={localSettings.tone}
-                          onChange={(e) => updateLocalSetting('tone', e.target.value)}
-                          className="w-full bg-white border border-[#E5E7EB] rounded-lg px-2 py-1.5 text-[12px] font-bold text-[#111827] outline-none focus:border-[#10B981]/50"
-                        >
-                          <option value="friendly">Дружелюбный</option>
-                          <option value="professional">Профессиональный</option>
-                          <option value="ironic">Ироничный</option>
-                          <option value="provocative">Провокационный</option>
-                          <option value="minimalist">Минималистичный</option>
-                        </select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-[#9CA3AF] uppercase tracking-widest flex items-center gap-1.5">
-                          <AlignLeft size={10} /> Длина
-                        </label>
-                        <select 
-                          value={localSettings.length}
-                          onChange={(e) => updateLocalSetting('length', e.target.value)}
-                          className="w-full bg-white border border-[#E5E7EB] rounded-lg px-2 py-1.5 text-[12px] font-bold text-[#111827] outline-none focus:border-[#10B981]/50"
-                        >
-                          <option value="short">Короткий</option>
-                          <option value="balanced">Сбалансированный</option>
-                          <option value="long">Подробный</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      {/* Sliders for granular control */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                           <label className="text-[9px] font-black text-[#6B7280] uppercase tracking-wider flex items-center gap-1.5">
-                            <Zap size={10} className="text-[#EAB308]" /> Сила хука
-                           </label>
-                           <span className="text-[9px] font-bold text-[#10B981]">{localSettings.hookIntensity}%</span>
-                        </div>
-                        <input 
-                          type="range" min="0" max="100" 
-                          value={localSettings.hookIntensity}
-                          onChange={(e) => updateLocalSetting('hookIntensity', parseInt(e.target.value))}
-                          className={cn(
-                              "w-full h-1 bg-[#E5E7EB] rounded-lg appearance-none cursor-pointer",
-                              `accent-[${config.color}]`
-                          )}
-                        />
-                      </div>
- 
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                           <label className="text-[9px] font-black text-[#6B7280] uppercase tracking-wider flex items-center gap-1.5">
-                            <Highlighter size={10} className={config.text} /> Эмодзи
-                           </label>
-                           <span className={cn("text-[9px] font-bold", config.text)}>{localSettings.emojiDensity}%</span>
-                        </div>
-                        <input 
-                          type="range" min="0" max="100" 
-                          value={localSettings.emojiDensity}
-                          onChange={(e) => updateLocalSetting('emojiDensity', parseInt(e.target.value))}
-                          className={cn(
-                            "w-full h-1 bg-[#E5E7EB] rounded-lg appearance-none cursor-pointer",
-                            `accent-[${config.color}]`
-                          )}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                        <div className="space-y-2">
-                          <label className="text-[9px] font-black text-[#6B7280] uppercase tracking-wider flex items-center gap-1.5">
-                            <Feather size={10} /> Сторителлинг
-                          </label>
-                          <input 
-                            type="range" min="0" max="100" 
-                            value={localSettings.storytelling}
-                            onChange={(e) => updateLocalSetting('storytelling', parseInt(e.target.value))}
-                            className="w-full h-1 bg-[#E5E7EB] rounded-lg appearance-none cursor-pointer accent-[#111827]"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[9px] font-black text-[#6B7280] uppercase tracking-wider flex items-center gap-1.5">
-                            <BookOpen size={10} /> Польза
-                          </label>
-                          <input 
-                            type="range" min="0" max="100" 
-                            value={localSettings.educationalDepth}
-                            onChange={(e) => updateLocalSetting('educationalDepth', parseInt(e.target.value))}
-                            className="w-full h-1 bg-[#E5E7EB] rounded-lg appearance-none cursor-pointer accent-[#111827]"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-[#E5E7EB]">
-                       <div className="flex items-center gap-2 text-[9px] font-bold text-[#9CA3AF]">
-                          <Sparkles size={10} />
-                          <span>Настройки применятся только к этой карточке</span>
-                       </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          <PlannerCardSettings 
+            showLocalSettings={showLocalSettings}
+            setShowLocalSettings={setShowLocalSettings}
+            localSettings={localSettings}
+            updateLocalSetting={updateLocalSetting}
+            config={config}
+          />
         </div>
 
-        <div className="mt-10 pt-8 border-t border-[#F3F4F6] flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <ActionButton 
-                isActive={activeFavorite}
-                onClick={toggleFavorite}
-                icon={Star}
-                activeColor="#EAB308"
-                title="В избранное"
-              />
-              <button 
-                onClick={handleRegenerate}
-                disabled={isRegenerating}
-                className={cn(
-                  "p-3 rounded-2xl bg-white border border-[#E5E7EB] text-[#9CA3AF] hover:text-[#111827] hover:border-[#D1D5DB] transition-all shadow-sm active:scale-95",
-                  isRegenerating && "animate-pulse"
-                )}
-                title="Пересобрать"
-              >
-                <RefreshCcw size={18} className={cn(isRegenerating && "animate-spin")} />
-              </button>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={() => handleCopy(generatedText || undefined)}
-                className="p-3 rounded-2xl bg-white border border-[#E5E7EB] text-[#9CA3AF] hover:text-[#111827] hover:border-[#D1D5DB] transition-all shadow-sm active:scale-95"
-                title="Скопировать"
-              >
-                {copied ? <Check size={18} className="text-[#10B981]" /> : <Copy size={18} />}
-              </button>
-
-              <button 
-                onClick={handleGeneratePost}
-                disabled={isGenerating}
-                className={cn(
-                  "flex items-center gap-2.5 px-6 py-3 rounded-2xl text-white text-[13px] font-bold transition-all shadow-lg active:scale-95",
-                  isGenerating ? "bg-gray-400 cursor-not-allowed" : cn("bg-[#111827] transition-all", `hover:bg-[${config.color}]`)
-                )}
-              >
-                {isGenerating ? (
-                  <>
-                    <RefreshCcw size={14} className="animate-spin" />
-                    <span>Создаю...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>{generatedText ? 'Обновить' : 'Создать пост'}</span>
-                    <Sparkles size={14} />
-                  </>
-                )}
-              </button>
-           </div>
-        </div>
+        {/* Footer Actions Panel */}
+        <PlannerCardActions 
+          activeFavorite={activeFavorite}
+          toggleFavorite={toggleFavorite}
+          handleRegenerate={handleRegenerate}
+          isRegenerating={isRegenerating}
+          handleCopy={handleCopy}
+          copied={copied}
+          generatedText={generatedText}
+          handleGeneratePost={handleGeneratePost}
+          isGenerating={isGenerating}
+          config={config}
+        />
         </GlassCard>
     </motion.div>
   );
 }
-
-function ActionButton({ 
-  icon: Icon, 
-  onClick, 
-  isActive = false, 
-  activeColor = "#10B981", 
-  title
-}: { 
-  icon: any, 
-  onClick: () => void, 
-  isActive?: boolean,
-  activeColor?: string,
-  title?: string
-}) {
-  return (
-    <button 
-      onClick={onClick}
-      title={title}
-      className={cn(
-        "p-3 rounded-2xl border transition-all duration-300 shadow-sm active:scale-95",
-        isActive 
-          ? "border-transparent text-white" 
-          : "bg-white border-[#E5E7EB] text-[#9CA3AF] hover:text-[#111827] hover:border-[#D1D5DB]"
-      )}
-      style={isActive ? { backgroundColor: activeColor } : {}}
-    >
-      <Icon size={18} fill={isActive ? "currentColor" : "none"} />
-    </button>
-  );
-}
-
