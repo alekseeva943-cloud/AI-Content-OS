@@ -56,7 +56,28 @@ export function CampaignResultDisplay({
 
     const [imageUrls, setImageUrls] =
         useState<Record<string, string>>(
-            {}
+            () => {
+
+                const initialImages:
+                    Record<string, string> = {};
+
+                channels.forEach(
+                    (channel) => {
+
+                        if (
+                            channel.content?.imageUrl
+                        ) {
+
+                            initialImages[
+                                channel.id
+                            ] =
+                                channel.content.imageUrl;
+                        }
+                    }
+                );
+
+                return initialImages;
+            }
         );
 
     const [
@@ -161,7 +182,7 @@ export function CampaignResultDisplay({
 
             if (
                 isGeneratingImage[
-                    channelId
+                channelId
                 ]
             ) {
                 return;
@@ -515,7 +536,7 @@ export function CampaignResultDisplay({
                             {activeTab ===
                                 'email' && (
 
-                                <div className="
+                                    <div className="
                                     p-8
                                     rounded-[2rem]
                                     bg-[#F9FAFB]
@@ -524,56 +545,56 @@ export function CampaignResultDisplay({
                                     space-y-4
                                 ">
 
-                                    <div className="
+                                        <div className="
                                         flex
                                         items-center
                                         gap-6
                                         text-[13px]
                                     ">
 
-                                        <span className="
+                                            <span className="
                                             w-20
                                             font-bold
                                             text-[#9CA3AF]
                                             uppercase
                                         ">
-                                            Тема:
-                                        </span>
+                                                Тема:
+                                            </span>
 
-                                        <span className="
+                                            <span className="
                                             font-bold
                                             text-[#111827]
                                         ">
-                                            {activeChannel.content?.subject}
-                                        </span>
-                                    </div>
+                                                {activeChannel.content?.subject}
+                                            </span>
+                                        </div>
 
-                                    <div className="
+                                        <div className="
                                         flex
                                         items-center
                                         gap-6
                                         text-[13px]
                                     ">
 
-                                        <span className="
+                                            <span className="
                                             w-20
                                             font-bold
                                             text-[#9CA3AF]
                                             uppercase
                                         ">
-                                            Превью:
-                                        </span>
+                                                Превью:
+                                            </span>
 
-                                        <span className="
+                                            <span className="
                                             font-medium
                                             text-[#6B7280]
                                             italic
                                         ">
-                                            {activeChannel.content?.preheader}
-                                        </span>
+                                                {activeChannel.content?.preheader}
+                                            </span>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
                             <div className="
                                 prose
@@ -634,7 +655,7 @@ export function CampaignResultDisplay({
 
                                     disabled={
                                         isGeneratingImage[
-                                            activeChannel.id
+                                        activeChannel.id
                                         ]
                                     }
 
@@ -651,7 +672,7 @@ export function CampaignResultDisplay({
                                         size={14}
                                         className={cn(
                                             isGeneratingImage[
-                                                activeChannel.id
+                                            activeChannel.id
                                             ] &&
                                             'animate-spin'
                                         )}
@@ -676,7 +697,7 @@ export function CampaignResultDisplay({
                                     <img
                                         src={
                                             imageUrls[
-                                                activeChannel.id
+                                            activeChannel.id
                                             ]
                                         }
 
