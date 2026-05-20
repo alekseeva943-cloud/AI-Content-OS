@@ -173,7 +173,17 @@ export function ModulePage({ config }: ModulePageProps) {
         handleInputChange('channels', suggestedChannels);
       }
 
-      setModuleState(config.id, { requirements, builderStep: 'variables' });
+      setModuleState(
+        config.id,
+        {
+          requirements,
+
+          builderStep:
+            requirements.length > 0
+              ? 'variables'
+              : 'result'
+        }
+      );
       toast.info('AI проанализировал запрос и обнаружил важные переменные');
     } catch (err: any) {
       setError(err.message);
@@ -183,6 +193,54 @@ export function ModulePage({ config }: ModulePageProps) {
   };
 
   const handleGenerate = async () => {
+    // ============================================
+    // NEWSLETTER VARIABLE VALIDATION
+    // ============================================
+
+    if (
+      config.id === 'newsletters' &&
+      moduleState.builderStep === 'variables'
+    ) {
+
+      const criticalFields =
+        moduleState.requirements.filter(
+          (req) =>
+            req.importance ===
+            'critical'
+        );
+
+      const missingFields =
+        criticalFields.filter(
+          (req) => {
+
+            const value =
+              formValues
+                .variables?.[
+              req.id
+              ];
+
+            return (
+              value === undefined ||
+              value === null ||
+              String(value)
+                .trim() === ''
+            );
+          }
+        );
+
+      if (
+        missingFields.length > 0
+      ) {
+
+        toast.error(
+          `Заполните обязательные поля: ${missingFields
+            .map((f) => f.label)
+            .join(', ')}`
+        );
+
+        return;
+      }
+    }
     setIsCampaignLoading(true);
     setResult(null);
     setError(null);
