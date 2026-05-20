@@ -37,6 +37,18 @@ import { useFavoritesStore } from '@/src/stores/favoritesStore';
 import { toast } from 'sonner';
 import { NEWSLETTER_CHANNELS } from '@/src/config/newsletterChannels';
 
+const VkIcon = ({ size = 24, ...props }: React.SVGProps<SVGSVGElement> & { size?: number }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="currentColor" 
+    {...props}
+  >
+    <path d="M15.012 3h-6.024C5.116 3 3 5.116 3 8.988v6.024C3 18.884 5.116 21 8.988 21h6.024c3.872 0 5.988-2.116 5.988-5.988V8.988C21 5.116 18.884 3 15.012 3zm2.592 11.808h-1.128c-.804 0-1.164-.672-1.92-1.428-.684-.66-.996-.744-1.164-.744-.24 0-.312.072-.312.444v1.20c0 .336-.096.528-.864.528-1.284 0-2.712-.804-3.72-2.22-1.92-2.676-2.436-3.816-2.436-4.14 0-.216.084-.408.432-.408h1.128c.3 0 .42.144.528.444.6 1.416 1.452 2.724 1.836 2.724.144 0 .204-.06.204-.408V9.756c-.048-.792-.516-.864-.516-1.152 0-.144.12-.276.3-.276h1.776c.252 0 .348.132.348.42v2.244c0 .24.108.324.18.324.144 0 .252-.084.504-.336.876-1.056 1.44-2.304 1.44-2.304.084-.18.216-.324.528-.324h1.128c.336 0 .42.156.348.42-.144.6-1.44 2.376-1.44 2.376-.144.204-.204.288 0 .492 1.044 1.056 2.016 2.376 2.364 2.94.132.228-.024.432-.348.432z" />
+  </svg>
+);
+
 interface PlannerResultProps {
   result: PlannerResult;
   onSelect?: (item: PlannerItem) => void;
@@ -335,52 +347,67 @@ function PlanItemCard({
     telegram: { 
         icon: Send, 
         label: getChannelLabel('telegram'), 
-        color: '#3B82F6', 
-        bg: 'bg-blue-50', 
-        border: 'border-blue-100', 
-        text: 'text-blue-600',
-        accentBg: 'bg-blue-500',
-        lightBg: 'bg-blue-500/10'
+        color: '#0EA5E9', 
+        bg: 'bg-sky-50/70', 
+        border: 'border-sky-100', 
+        text: 'text-sky-600',
+        accentBg: 'bg-sky-500',
+        lightBg: 'bg-sky-500/10',
+        hoverBorder: 'hover:border-sky-300',
+        hoverBorderLeft: 'group-hover/card:border-l-sky-400',
+        hoverGradient: 'from-sky-500/5'
     },
     vk: { 
-        icon: MessageCircle, 
+        icon: VkIcon, 
         label: getChannelLabel('vk'), 
         color: '#0077FF', 
-        bg: 'bg-blue-50', 
+        bg: 'bg-blue-50/70', 
         border: 'border-blue-100', 
-        text: 'text-blue-700',
-        accentBg: 'bg-blue-600',
-        lightBg: 'bg-blue-600/10'
+        text: 'text-[#0077FF]', 
+        accentBg: 'bg-[#0077FF]',
+        lightBg: 'bg-[#0077FF]/10',
+        hoverBorder: 'hover:border-blue-300',
+        hoverBorderLeft: 'group-hover/card:border-l-blue-400',
+        hoverGradient: 'from-blue-500/5'
     },
     email: { 
         icon: Mail, 
         label: getChannelLabel('email'), 
-        color: '#EA4335', 
-        bg: 'bg-red-50', 
-        border: 'border-red-100', 
-        text: 'text-red-600',
-        accentBg: 'bg-red-500',
-        lightBg: 'bg-red-500/10'
+        color: '#10B981', 
+        bg: 'bg-emerald-50/70', 
+        border: 'border-emerald-100', 
+        text: 'text-emerald-600',
+        accentBg: 'bg-emerald-500',
+        lightBg: 'bg-emerald-500/10',
+        hoverBorder: 'hover:border-emerald-300',
+        hoverBorderLeft: 'group-hover/card:border-l-emerald-400',
+        hoverGradient: 'from-emerald-500/5'
     },
     youtube: { 
         icon: Youtube, 
         label: getChannelLabel('youtube'), 
-        color: '#FF0000', 
-        bg: 'bg-rose-50', 
+        color: '#EF4444', 
+        bg: 'bg-rose-50/70', 
         border: 'border-rose-100', 
         text: 'text-rose-600',
         accentBg: 'bg-rose-600',
-        lightBg: 'bg-rose-600/10'
+        lightBg: 'bg-rose-600/10',
+        hoverBorder: 'hover:border-rose-300',
+        hoverBorderLeft: 'group-hover/card:border-l-rose-400',
+        hoverGradient: 'from-rose-500/5'
     },
     linkedin: { 
         icon: Linkedin, 
         label: getChannelLabel('linkedin'), 
-        color: '#0077B5', 
-        bg: 'bg-indigo-50', 
+        color: '#0A66C2', 
+        bg: 'bg-indigo-50/70', 
         border: 'border-indigo-100', 
-        text: 'text-indigo-600',
-        accentBg: 'bg-indigo-600',
-        lightBg: 'bg-indigo-600/10'
+        text: 'text-[#0A66C2]',
+        accentBg: 'bg-[#0A66C2]',
+        lightBg: 'bg-[#0A66C2]/10',
+        hoverBorder: 'hover:border-indigo-300',
+        hoverBorderLeft: 'group-hover/card:border-l-indigo-400',
+        hoverGradient: 'from-indigo-500/5'
     }
   };
 
@@ -406,13 +433,11 @@ function PlanItemCard({
     >
         <GlassCard className={cn(
             "p-10 bg-white border-[#E5E7EB] transition-all duration-700 shadow-sm hover:shadow-2xl flex flex-col h-full rounded-[2.5rem] relative overflow-hidden",
-            `hover:border-[${config.color}]/50`
+            config.hoverBorder
         )}>
         <div 
-          className={cn(
-            "absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 -z-10",
-            `from-[${config.color}]/5`
-          )} 
+          style={{ background: `linear-gradient(225deg, ${config.color}0D, transparent)` }}
+          className="absolute top-0 right-0 w-32 h-32 opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 -z-10" 
         />
 
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-10">
@@ -422,7 +447,7 @@ function PlanItemCard({
                     "bg-[#F9FAFB] border-[#E5E7EB] text-[#9CA3AF]",
                     `group-hover/card:${config.text} group-hover/card:${config.lightBg} group-hover/card:${config.border} group-hover/card:scale-110`
                 )}>
-                    <Icon size={26} strokeWidth={2} />
+                    <Icon size={26} />
                 </div>
                 <div className="flex flex-col gap-2 min-w-0">
                    <div className="flex items-center gap-2 flex-wrap">
@@ -503,7 +528,7 @@ function PlanItemCard({
           {item.rationale && !generatedText && (
               <div className={cn(
                   "p-5 rounded-[1.5rem] bg-[#F9FAFB] border border-[#E5E7EB] border-l-4 shadow-sm transition-all duration-500",
-                  `group-hover/card:${config.border.replace('border-', 'border-l-')}`
+                  config.hoverBorderLeft
               )}>
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles size={14} className={cn(config.text)} />
