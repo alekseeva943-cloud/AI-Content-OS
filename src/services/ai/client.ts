@@ -187,40 +187,246 @@ export async function detectCampaignVariables(
       .getState()
       .addLog;
 
+  // ============================================
+  // REQUEST START
+  // ============================================
+
+  console.log(
+    '[DISCOVERY] START:',
+    req
+  );
+
   log({
     type: 'request',
 
     module:
-      'Discovery',
+      'AI Discovery',
 
     message:
-      `Analyzing campaign intent: ${req.topic}`
+      `Анализ кампании: ${req.topic}`,
+
+    data: {
+      topic:
+        req.topic,
+
+      context:
+        req.context
+    }
   });
 
-  const response =
-    await fetch(
-      '/api/campaign-detect',
-      {
-        method: 'POST',
+  try {
 
-        headers: {
-          'Content-Type':
-            'application/json'
-        },
+    // ============================================
+    // FETCH
+    // ============================================
 
-        body:
-          JSON.stringify(req),
+    const response =
+      await fetch(
+        '/api/campaign-detect',
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type':
+              'application/json'
+          },
+
+          body:
+            JSON.stringify(req),
+        }
+      );
+
+    console.log(
+      '[DISCOVERY] STATUS:',
+      response.status
+    );
+
+    // ============================================
+    // RAW RESPONSE
+    // ============================================
+
+    const rawText =
+      await response.text();
+
+    console.log(
+      '[DISCOVERY] RAW:',
+      rawText
+    );
+
+    log({
+      type: 'response',
+
+      module:
+        'AI Discovery',
+
+      message:
+        `Raw response received`,
+
+      data: {
+        status:
+          response.status,
+
+        raw:
+          rawText
       }
+    });
+
+    // ============================================
+    // ERROR
+    // ============================================
+
+    if (!response.ok) {
+
+      console.error(
+        '[DISCOVERY ERROR]',
+        rawText
+      );
+
+      log({
+        type: 'error',
+
+        module:
+          'AI Discovery',
+
+        message:
+          `Discovery failed`,
+
+        data: {
+          status:
+            response.status,
+
+          response:
+            rawText
+        }
+      });
+
+      throw new Error(
+        `Discovery failed: ${response.status}`
+      );
+    }
+
+    // ============================================
+    // PARSE JSON
+    // ============================================
+
+    let parsed: any = {};
+
+    try {
+
+      parsed =
+        JSON.parse(rawText);
+
+    } catch (err) {
+
+      console.error(
+        '[DISCOVERY PARSE ERROR]',
+        err
+      );
+
+      log({
+        type: 'error',
+
+        module:
+          'AI Discovery',
+
+        message:
+          'JSON parse failed',
+
+        data: {
+          raw:
+            rawText
+        }
+      });
+
+      throw new Error(
+        'Discovery JSON parse failed'
+      );
+    }
+
+    // ============================================
+    // NORMALIZE
+    // ============================================
+
+    const requirements =
+      Array.isArray(
+        parsed.requirements
+      )
+        ? parsed.requirements
+        : [];
+
+    const suggestedChannels =
+      Array.isArray(
+        parsed.suggestedChannels
+      )
+        ? parsed.suggestedChannels
+        : [];
+
+    // ============================================
+    // SUCCESS LOGS
+    // ============================================
+
+    console.log(
+      '[DISCOVERY] REQUIREMENTS:',
+      requirements
     );
 
-  if (!response.ok) {
-
-    throw new Error(
-      'Failed to analyze campaign'
+    console.log(
+      '[DISCOVERY] CHANNELS:',
+      suggestedChannels
     );
+
+    log({
+      type: 'response',
+
+      module:
+        'AI Discovery',
+
+      message:
+        `Discovery complete`,
+
+      data: {
+        requirementsCount:
+          requirements.length,
+
+        requirements,
+
+        suggestedChannels
+      }
+    });
+
+    // ============================================
+    // RETURN
+    // ============================================
+
+    return {
+      requirements,
+      suggestedChannels
+    };
+
+  } catch (err: any) {
+
+    console.error(
+      '[DISCOVERY FATAL ERROR]',
+      err
+    );
+
+    log({
+      type: 'error',
+
+      module:
+        'AI Discovery',
+
+      message:
+        err.message,
+
+      data: {
+        stack:
+          err.stack
+      }
+    });
+
+    throw err;
   }
-
-  return response.json();
 }
 
 // ============================================
