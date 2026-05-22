@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
+import JSZip from 'jszip';
 
-export function useCampaignExport(result: any, channels: any[]) {
+export function useCampaignExport(result: any, channels: any[], imageUrls: Record<string, string> = {}) {
     const [copied, setCopied] = useState<string | null>(null);
 
     const handleCopy = (content: string, type: string) => {
@@ -26,13 +27,47 @@ export function useCampaignExport(result: any, channels: any[]) {
         a.click();
     };
 
-    const exportAsMarkdown = (channelId: string, body: string) => {
-        const blob = new Blob([body], { type: 'text/markdown;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${channelId}-campaign.md`;
-        a.click();
+    const exportAsMarkdown = async (channelId: string, body: string) => {
+        const zip = new JSZip();
+
+        // 1. content.md
+        zip.file("content.md", body);
+
+        // 2. metadata.json
+        const metadata = {
+            channel: channelId,
+            createdAt: new Date().toISOString(),
+            campaignTitle: result?.name || 'Без названия'
+        };
+        zip.file("metadata.json", JSON.stringify(metadata, null, 2));
+
+        // 3. image.png
+        const imageUrl = imageUrls[channelId];
+        if (imageUrl) {
+            try {
+                const response = await fetch(imageUrl);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    zip.file("image.png", blob);
+                }
+            } catch (err) {
+                console.warn("Failed to fetch image for ZIP bundle:", err);
+            }
+        }
+
+        try {
+            const zipContent = await zip.generateAsync({ type: "blob" });
+            const url = URL.createObjectURL(zipContent);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${result?.name || 'campaign'}-${channelId}.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+            toast.success('ZIP-пакет успешно скачан');
+        } catch (error) {
+            console.error("ZIP generation error:", error);
+            toast.error('Не удалось создать ZIP-пакет');
+        }
     };
 
     return {

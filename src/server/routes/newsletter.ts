@@ -304,12 +304,22 @@ router.post("/api/newsletter", async (req, res) => {
               };
             }
 
+            let finalImagePrompt = c.imagePrompt || c.ImagePrompt || c.prompt || c.image_prompt || "";
+            if (!finalImagePrompt || typeof finalImagePrompt !== "string" || !finalImagePrompt.trim()) {
+              const fallbackPrompts: Record<string, string> = {
+                email: `Professional editorial email campaign visual about "${topic || "business concept"}", premium commercial newsletter aesthetic, sleek graphic design, clean layout, no text`,
+                telegram: `High-quality engaging cinematic visual for Telegram post about "${topic || "lifestyle and business"}", modern editorial photography, vibrant colors, no text, premium wallpaper`,
+                vk: `Friendly engaging storytelling visual for VKontakte post about "${topic || "events and community"}", warm atmosphere, interactive layout, realistic photography, no text`
+              };
+              finalImagePrompt = fallbackPrompts[requestedId] || `Professional high-quality digital illustration about "${topic || "news"}", premium artistic style, no text, no watermark`;
+            }
+
             // 4. Log: channel content generated
             console.log(`[Newsletter API] channel content generated for: ${requestedId}`, {
               subject: c.subject || "(No Subject)",
               preheader: c.preheader || "(No Preheader)",
               bodyLen: String(c.body || "").length,
-              imagePrompt: c.imagePrompt || "(No Image Prompt)",
+              imagePrompt: finalImagePrompt,
               cta: fixedCTA
             });
 
@@ -347,8 +357,7 @@ router.post("/api/newsletter", async (req, res) => {
                 },
 
                 imagePrompt:
-                  c.imagePrompt ||
-                  "",
+                  finalImagePrompt,
 
                 imageUrl:
                   finalImageUrl,

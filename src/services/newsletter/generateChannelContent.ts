@@ -222,5 +222,15 @@ ${tone || "Дружелюбный"}
     `[CONTENT] SUCCESS ${channel}`
   );
 
+  if (!parsed.imagePrompt || typeof parsed.imagePrompt !== "string" || !parsed.imagePrompt.trim()) {
+    const fallbackPrompts: Record<string, string> = {
+      email: `Professional editorial email campaign visual about "${topic || "business concept"}", premium commercial newsletter aesthetic, sleek graphic design, clean layout, no text`,
+      telegram: `High-quality engaging cinematic visual for Telegram post about "${topic || "lifestyle and business"}", modern editorial photography, vibrant colors, no text, premium wallpaper`,
+      vk: `Friendly engaging storytelling visual for VKontakte post about "${topic || "events and community"}", warm atmosphere, interactive layout, realistic photography, no text`
+    };
+    parsed.imagePrompt = fallbackPrompts[channel] || `Professional high-quality digital illustration about "${topic || "news"}", premium artistic style, no text, no watermark`;
+    console.log(`[CONTENT] Created fallback imagePrompt for ${channel}: ${parsed.imagePrompt}`);
+  }
+
   return parsed;
 }

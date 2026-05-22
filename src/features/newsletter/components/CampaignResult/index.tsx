@@ -50,7 +50,7 @@ export function CampaignResultDisplay({
         handleCopy,
         exportAsTxt,
         exportAsMarkdown
-    } = useCampaignExport(result, channels);
+    } = useCampaignExport(result, channels, imageUrls);
 
     const availableTabs = Object.values(NEWSLETTER_CHANNELS)
         .map((ch) => ({
