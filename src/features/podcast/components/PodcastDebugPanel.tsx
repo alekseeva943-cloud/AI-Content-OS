@@ -92,24 +92,72 @@ export function PodcastDebugPanel({ trace, isGenerating }: PodcastDebugPanelProp
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             {trace.stages.map((stage) => {
               const isSelected = stage.status === 'active';
+              const isError = stage.status === 'error';
+
               return (
                 <div 
                   key={stage.id} 
-                  className={`p-3.5 rounded-2xl border transition-all text-xs flex flex-col gap-1.5 justify-between ${getStatusBg(stage.status)}`}
+                  className={`p-3.5 rounded-2xl border transition-all text-xs flex flex-col gap-1.5 justify-between ${
+                    isError ? 'col-span-full md:col-span-2 lg:col-span-2 shadow-sm' : ''
+                  } ${getStatusBg(stage.status)}`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold tracking-tight">{stage.label}</span>
-                    {getStatusIcon(stage.status)}
+                  <div className="space-y-1.5 w-full">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold tracking-tight">{stage.label}</span>
+                      {getStatusIcon(stage.status)}
+                    </div>
+                    
+                    {stage.details && (
+                      <span className={`text-[10px] text-neutral-600 font-medium leading-normal block ${
+                        isError ? '' : 'line-clamp-2'
+                      }`}>
+                        {stage.details}
+                      </span>
+                    )}
+
+                    {/* Integrated error system within the card itself */}
+                    {isError && (
+                      <div className="mt-2 text-left rounded-xl bg-rose-100/40 border border-rose-200/60 p-3 space-y-2 font-mono text-[10px] text-rose-950">
+                        {trace.httpStatus !== undefined && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-sans font-bold text-[9px] uppercase tracking-wider bg-rose-200/80 px-1 py-0.5 rounded leading-none text-rose-900">HTTP Code:</span>
+                            <span className="font-black font-mono">{trace.httpStatus}</span>
+                          </div>
+                        )}
+                        {trace.parsingErrorDetails && (
+                          <div className="space-y-0.5">
+                            <div className="font-sans font-bold text-[9px] uppercase tracking-wider text-rose-800 leading-none">Parser Issue:</div>
+                            <div className="text-[9.5px] leading-tight text-rose-950 whitespace-pre-wrap">{trace.parsingErrorDetails}</div>
+                          </div>
+                        )}
+                        {stage.error && (
+                          <div className="space-y-0.5">
+                            <div className="font-sans font-bold text-[9px] uppercase tracking-wider text-rose-800 leading-none">Pipeline Error:</div>
+                            <div className="text-[9.5px] leading-relaxed text-rose-900 whitespace-pre-wrap">{stage.error}</div>
+                          </div>
+                        )}
+                        {trace.rawError && (
+                          <div className="space-y-1">
+                            <div className="font-sans font-bold text-[9px] uppercase tracking-wider text-rose-800 leading-none">Stack Trace:</div>
+                            <pre className="p-2 bg-neutral-900 text-rose-300 font-mono text-[9px] overflow-auto max-h-32 rounded-lg border border-neutral-850 whitespace-pre scrollbar-thin">
+                              {trace.rawError}
+                            </pre>
+                          </div>
+                        )}
+                        {trace.aiRawResponse && (
+                          <div className="space-y-1">
+                            <div className="font-sans font-bold text-[9px] uppercase tracking-wider text-rose-800 leading-none">Raw Server Body:</div>
+                            <pre className="p-2 bg-neutral-900 text-cyan-400 font-mono text-[9px] overflow-auto max-h-32 rounded-lg border border-neutral-850 whitespace-pre scrollbar-thin">
+                              {trace.aiRawResponse}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  
-                  {stage.details && (
-                    <span className="text-[10px] text-neutral-500 font-medium leading-snug line-clamp-2">
-                      {stage.details}
-                    </span>
-                  )}
 
                   {stage.durationMs !== undefined && (
-                    <span className="text-[9px] font-bold text-neutral-450 self-end">
+                    <span className="text-[9px] font-bold text-neutral-450 self-end mt-1.5">
                       +{stage.durationMs}ms
                     </span>
                   )}
@@ -203,30 +251,6 @@ export function PodcastDebugPanel({ trace, isGenerating }: PodcastDebugPanelProp
             </div>
 
           </div>
-
-          {/* Detailed Error Inspector */}
-          {trace.rawError && (
-            <div className="bg-rose-50 border border-rose-200/60 p-5 rounded-2xl space-y-3">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="text-rose-600" size={16} />
-                <h5 className="text-xs font-black text-rose-950 uppercase tracking-wider">
-                  План падения и системный стек-трейс ошибки:
-                </h5>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowErrorStack(!showErrorStack)}
-                className="text-[11px] font-bold text-rose-800 hover:text-rose-900 underline block"
-              >
-                {showErrorStack ? 'Скрыть подробный стек-трейс' : 'Показать подробный стек-трейс'}
-              </button>
-              {showErrorStack && (
-                <pre className="p-3 bg-neutral-900 text-rose-300 border border-neutral-800 font-mono text-[10px] overflow-auto rounded-xl max-h-48 leading-relaxed">
-                  {trace.rawError}
-                </pre>
-              )}
-            </div>
-          )}
         </div>
       )}
     </div>

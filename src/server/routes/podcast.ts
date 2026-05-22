@@ -28,12 +28,13 @@ router.post("/api/podcast/generate", async (req, res) => {
   console.log(`[SERVER PODCAST ROUTE] [1/5] Incoming request at ${new Date().toISOString()}`);
   console.log(`[SERVER PODCAST ROUTE] Body configurations -> Topic: "${req.body.topic}", Duration: ${req.body.durationMinutes} mins, Guest: ${req.body.guestEnabled}`);
 
+  let outputText: string | undefined = undefined;
   try {
     const { topic, durationMinutes, guestEnabled, guest } = req.body;
 
     if (!topic) {
       console.warn("[SERVER PODCAST ROUTE] High-level Validation Failure: topic missing.");
-      return res.status(400).json({ error: "Тема подкаста обязательна" });
+      return res.status(400).json({ status: 400, success: false, stage: "collect_config", error: "Тема подкаста обязательна" });
     }
 
     const ai = getAI();
@@ -142,7 +143,7 @@ ${guestEnabled && guest ? `Информация о госте: Имя "${guest.n
       throw providerErr;
     }
 
-    const outputText = response.text;
+    outputText = response.text;
     console.log(`[SERVER PODCAST ROUTE] [3/5] Gemini Provider response received in ${Date.now() - reqStart}ms.`);
     console.log(`[SERVER PODCAST ROUTE] Output text length: ${outputText ? outputText.length : 0} bytes.`);
 
@@ -193,9 +194,13 @@ ${guestEnabled && guest ? `Информация о госте: Имя "${guest.n
     console.error(`[SERVER PODCAST ROUTE] Custom response dispatched with status ${statusCode}. Error: "${finalErrorMessage}"`);
 
     res.status(statusCode).json({ 
+      success: false,
+      status: statusCode,
+      stage: err instanceof SyntaxError ? "parse_structure" : "wait_response",
       error: finalErrorMessage,
       details: errorDetails,
-      originalMessage: err.message
+      rawResponse: outputText || undefined,
+      stack: err.stack || err.toString()
     });
   }
 });
