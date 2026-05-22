@@ -75,7 +75,26 @@ export interface DebugTraceState {
   rawError?: string;
   aiPayload?: string;
   aiResponse?: string;
+  aiRawResponse?: string;
+  httpStatus?: number;
+  parsingErrorDetails?: string;
   synthesisLog?: string[];
   lastUpdated: number;
+}
+
+export class PodcastPipelineError extends Error {
+  status?: number;
+  rawResponse?: string;
+  stageId?: DebugStageId;
+  details?: string;
+
+  constructor(message: string, options?: { status?: number; rawResponse?: string; stageId?: DebugStageId; details?: string }) {
+    super(message);
+    this.name = 'PodcastPipelineError';
+    this.status = options?.status;
+    this.rawResponse = options?.rawResponse;
+    this.stageId = options?.stageId;
+    this.details = options?.details;
+  }
 }
 

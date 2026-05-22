@@ -137,7 +137,11 @@ export function usePodcastGeneration() {
       updateStage('wait_response', { 
         status: 'success',
         details: `Статус: 200 OK. Время ответа: ${(responseDuration / 1000).toFixed(1)} сек`
-      }, { aiResponse: JSON.stringify(podcastResult, null, 2) });
+      }, { 
+        aiResponse: JSON.stringify(podcastResult, null, 2),
+        aiRawResponse: JSON.stringify(podcastResult, null, 2),
+        httpStatus: 200
+      });
 
       // Stage 5: Parse structure
       activeStageId = 'parse_structure';
@@ -189,7 +193,8 @@ export function usePodcastGeneration() {
       return podcastResult;
 
     } catch (err: any) {
-      console.error('[PODCAST TRACE] Pipeline Error occurred during stage:', activeStageId, err);
+      const errorStage = err.stageId || activeStageId;
+      console.error(`[PODCAST TRACE] Pipeline Error occurred during stage: "${errorStage}"`, err);
       const msg = err.message || 'Ошибка генерации сценария подкаста';
       setError(msg);
       toast.error(msg);
@@ -197,20 +202,22 @@ export function usePodcastGeneration() {
       // Single-pass atomic state update to prevent stale state issues and batching races
       setDebugTrace(prev => {
         const updatedStages = prev.stages.map(s => {
-          if (s.id === activeStageId) {
+          if (s.id === errorStage) {
             const start = s.startedAt || startTime;
             return {
               ...s,
               status: 'error' as DebugStatus,
               error: msg,
-              details: `Пайплайн упал на этапе "${s.label}". Ошибка: ${msg}`,
+              details: err.details 
+                ? `Детали: ${err.details}` 
+                : `Пайплайн упал на этапе "${s.label}". Ошибка: ${msg}`,
               durationMs: Date.now() - start
             };
           }
           if (s.status === 'pending' || s.status === 'active') {
             return {
               ...s,
-              status: 'pending' as DebugStatus, // keep status as pending visually, but updated description
+              status: 'pending' as DebugStatus,
               details: 'Отменено из-за ошибки в пайплайне'
             };
           }
@@ -221,7 +228,10 @@ export function usePodcastGeneration() {
           ...prev,
           stages: updatedStages,
           lastUpdated: Date.now(),
-          rawError: err.stack || err.toString(),
+          rawError: `${err.name || 'Error'}: ${msg}\n${err.stack || ''}`,
+          aiRawResponse: err.rawResponse || undefined,
+          httpStatus: err.status !== undefined ? err.status : undefined,
+          parsingErrorDetails: err.details || undefined,
           totalDurationMs: Date.now() - startTime
         };
       });

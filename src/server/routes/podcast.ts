@@ -24,10 +24,15 @@ function getAI() {
 }
 
 router.post("/api/podcast/generate", async (req, res) => {
+  const reqStart = Date.now();
+  console.log(`[SERVER PODCAST ROUTE] [1/5] Incoming request at ${new Date().toISOString()}`);
+  console.log(`[SERVER PODCAST ROUTE] Body configurations -> Topic: "${req.body.topic}", Duration: ${req.body.durationMinutes} mins, Guest: ${req.body.guestEnabled}`);
+
   try {
     const { topic, durationMinutes, guestEnabled, guest } = req.body;
 
     if (!topic) {
+      console.warn("[SERVER PODCAST ROUTE] High-level Validation Failure: topic missing.");
       return res.status(400).json({ error: "Тема подкаста обязательна" });
     }
 
@@ -66,81 +71,132 @@ ${guestEnabled && guest ? `Информация о госте: Имя "${guest.n
 Гость: ${guestEnabled && guest ? `${guest.name} (${guest.expertise})` : "нет гостя, одиночный выпуск ведущего"}.
 Целевая длительность выпуска: ${durationMinutes} мин.`;
 
-    console.log(`[PODCAST ROUTE] Generating podcast script for topic: "${topic}", duration: ${durationMinutes} mins.`);
+    console.log(`[SERVER PODCAST ROUTE] [2/5] Dispatching Gemini-3.5-Flash generateContent API request...`);
+    console.log(`[SERVER PODCAST ROUTE] System Instruction Wordcount: ${sysMessage.split(' ').length}, User Prompt Length: ${userPrompt.length}`);
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
-      contents: userPrompt,
-      config: {
-        systemInstruction: sysMessage,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            title: {
-              type: Type.STRING,
-              description: "Привлекательное название выпуска подкаста"
-            },
-            description: {
-              type: Type.STRING,
-              description: "Краткое описание выпуска для слушателей"
-            },
-            summary: {
-              type: Type.STRING,
-              description: "Главный вывод или суть этой дискуссии"
-            },
-            script: {
-              type: Type.ARRAY,
-              description: "Последовательные смысловые сегменты подкаста",
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.STRING },
-                  type: {
-                    type: Type.STRING,
-                    description: "Тип сегмента: 'hook', 'intro', 'discussion', 'transition', 'question', 'outro', 'cta'"
+    let response;
+    try {
+      response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: userPrompt,
+        config: {
+          systemInstruction: sysMessage,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              title: {
+                type: Type.STRING,
+                description: "Привлекательное название выпуска подкаста"
+              },
+              description: {
+                type: Type.STRING,
+                description: "Краткое описание выпуска для слушателей"
+              },
+              summary: {
+                type: Type.STRING,
+                description: "Главный вывод или суть этой дискуссии"
+              },
+              script: {
+                type: Type.ARRAY,
+                description: "Последовательные смысловые сегменты подкаста",
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    id: { type: Type.STRING },
+                    type: {
+                      type: Type.STRING,
+                      description: "Тип сегмента: 'hook', 'intro', 'discussion', 'transition', 'question', 'outro', 'cta'"
+                    },
+                    speaker: {
+                      type: Type.STRING,
+                      description: "Кто говорит: 'host' или 'guest'"
+                    },
+                    speakerName: {
+                      type: Type.STRING,
+                      description: "Отображаемое имя говорящего (например, Ведущий или имя Гостя)"
+                    },
+                    title: {
+                      type: Type.STRING,
+                      description: "Короткое название этой сцены/части"
+                    },
+                    text: {
+                      type: Type.STRING,
+                      description: "Полная реплика спикера для озвучки. Текст должен быть естественным, живым, без разметки и без скобочек"
+                    },
+                    durationSeconds: {
+                      type: Type.INTEGER,
+                      description: "Длительность реплики в секундах"
+                    }
                   },
-                  speaker: {
-                    type: Type.STRING,
-                    description: "Кто говорит: 'host' или 'guest'"
-                  },
-                  speakerName: {
-                    type: Type.STRING,
-                    description: "Отображаемое имя говорящего (например, Ведущий или имя Гостя)"
-                  },
-                  title: {
-                    type: Type.STRING,
-                    description: "Короткое название этой сцены/части"
-                  },
-                  text: {
-                    type: Type.STRING,
-                    description: "Полная реплика спикера для озвучки. Текст должен быть естественным, живым, без разметки и без скобочек"
-                  },
-                  durationSeconds: {
-                    type: Type.INTEGER,
-                    description: "Длительность реплики в секундах"
-                  }
-                },
-                required: ["id", "type", "speaker", "speakerName", "title", "text", "durationSeconds"]
+                  required: ["id", "type", "speaker", "speakerName", "title", "text", "durationSeconds"]
+                }
               }
-            }
-          },
-          required: ["title", "description", "summary", "script"]
+            },
+            required: ["title", "description", "summary", "script"]
+          }
         }
-      }
-    });
-
-    const outputText = response.text;
-    if (!outputText) {
-      throw new Error("Empty AI response generated for podcast script");
+      });
+    } catch (providerErr: any) {
+      console.error("[SERVER PODCAST ROUTE] [PROVIDER ERROR] Gemini Request Rejected:", providerErr);
+      throw providerErr;
     }
 
-    const parsed = JSON.parse(outputText);
-    res.json(parsed);
+    const outputText = response.text;
+    console.log(`[SERVER PODCAST ROUTE] [3/5] Gemini Provider response received in ${Date.now() - reqStart}ms.`);
+    console.log(`[SERVER PODCAST ROUTE] Output text length: ${outputText ? outputText.length : 0} bytes.`);
+
+    if (!outputText) {
+      console.error("[SERVER PODCAST ROUTE] Provider empty response detected!");
+      throw new Error("Empty AI response generated for podcast script (Empty Raw Response)");
+    }
+
+    console.log(`[SERVER PODCAST ROUTE] [4/5] Parsing returned raw output text via JSON.parse ...`);
+    let parsedJson;
+    try {
+      parsedJson = JSON.parse(outputText);
+      console.log(`[SERVER PODCAST ROUTE] [5/5] Parsing successful! Dispatched script elements: ${parsedJson.script?.length || 0}`);
+    } catch (parseSyntaxErr: any) {
+      console.error("[SERVER PODCAST ROUTE] Syntax JSON parsing exception on text:", outputText);
+      throw parseSyntaxErr;
+    }
+
+    res.json(parsedJson);
 
   } catch (err: any) {
-    console.error("[PODCAST GENERATE ERROR]", err);
-    res.status(500).json({ error: err.message || "Ошибка генерации куска сценария" });
+    console.error("[SERVER PODCAST ROUTE] Thrown global exception caught:", err);
+    
+    let statusCode = 500;
+    let finalErrorMessage = err.message || "Ошибка генерации куска сценария подкаста";
+    let errorDetails = err.stack || err.toString();
+
+    const lowerMsg = (err.message || "").toLowerCase();
+
+    // Trace error classification & categorization
+    if (lowerMsg.includes("api_key") || lowerMsg.includes("api key") || lowerMsg.includes("unauthorized") || lowerMsg.includes("401")) {
+      statusCode = 401;
+      finalErrorMessage = "401 Unauthorized API Key: Ошибка авторизации Gemini API. Убедитесь, что ваш GEMINI_API_KEY настроен правильно на сервере.";
+    } else if (lowerMsg.includes("quota") || lowerMsg.includes("429") || lowerMsg.includes("resource_exhausted") || lowerMsg.includes("rate limit")) {
+      statusCode = 429;
+      finalErrorMessage = "429 Rate Limit Exceeded / Overloaded: Достигнут лимит запросов или квота Gemini API. Попробуйте еще раз позже.";
+    } else if (lowerMsg.includes("overloaded") || lowerMsg.includes("503") || lowerMsg.includes("unavailable") || lowerMsg.includes("timeout")) {
+      statusCode = 503;
+      finalErrorMessage = "503 Gemini Service Unavailable / Timeout: ИИ-провайдер временно перегружен или таймаут ожидания. Пожалуйста, отправьте запрос повторно через несколько секунд.";
+    } else if (err instanceof SyntaxError) {
+      statusCode = 422;
+      finalErrorMessage = `MALFORMED_JSON (Unexpected token in JSON): Ошибка разбора возвращенного ИИ результата. ИИ сгенерировал невалидный JSON: ${err.message}`;
+    } else if (lowerMsg.includes("empty ai response")) {
+      statusCode = 502;
+      finalErrorMessage = "Empty AI response: Провайдер вернул пустую строку в качестве результата сценария подкаста.";
+    }
+
+    console.error(`[SERVER PODCAST ROUTE] Custom response dispatched with status ${statusCode}. Error: "${finalErrorMessage}"`);
+
+    res.status(statusCode).json({ 
+      error: finalErrorMessage,
+      details: errorDetails,
+      originalMessage: err.message
+    });
   }
 });
 

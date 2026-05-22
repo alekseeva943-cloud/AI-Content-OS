@@ -23,6 +23,7 @@ export function PodcastDebugPanel({ trace, isGenerating }: PodcastDebugPanelProp
   const [isOpen, setIsOpen] = useState(true);
   const [showPayload, setShowPayload] = useState(false);
   const [showResponse, setShowResponse] = useState(false);
+  const [showRawResponse, setShowRawResponse] = useState(false);
   const [showErrorStack, setShowErrorStack] = useState(false);
 
   const getStatusIcon = (status: DebugStatus) => {
@@ -118,7 +119,7 @@ export function PodcastDebugPanel({ trace, isGenerating }: PodcastDebugPanelProp
           </div>
 
           {/* Collapsible Source Payload Inspection views */}
-          <div className="border-t border-neutral-100 pt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="border-t border-neutral-100 pt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
             
             {/* Payload Button & Block */}
             <div className="space-y-2">
@@ -163,6 +164,44 @@ export function PodcastDebugPanel({ trace, isGenerating }: PodcastDebugPanelProp
                 </pre>
               )}
             </div>
+
+            {/* AI Raw Response Button & Block */}
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setShowRawResponse(!showRawResponse)}
+                disabled={!trace.aiRawResponse}
+                className={`w-full px-4 py-2.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider flex items-center justify-between transition-all ${
+                  trace.aiRawResponse
+                    ? 'bg-neutral-50 hover:bg-neutral-100 text-neutral-700 border-neutral-200 ring-2 ring-emerald-500/20'
+                    : 'bg-neutral-50 border-neutral-100 text-neutral-300 cursor-not-allowed'
+                }`}
+              >
+                <span className="flex items-center gap-1.5"><Activity size={13} /> AI Raw Response (HTML/Text)</span>
+                {showRawResponse ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+              {showRawResponse && trace.aiRawResponse && (
+                <div className="space-y-1">
+                  {trace.httpStatus !== undefined && (
+                    <div className="flex items-center gap-2 text-[9px] font-bold text-neutral-500 font-mono px-1">
+                      <span>HTTP STATUS:</span>
+                      <span className={`px-1.5 py-0.5 rounded ${trace.httpStatus === 200 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                        {trace.httpStatus} {trace.httpStatus === 200 ? 'OK' : 'ERROR'}
+                      </span>
+                    </div>
+                  )}
+                  {trace.parsingErrorDetails && (
+                    <div className="text-[9px] font-bold text-rose-600 font-mono px-1 leading-tight">
+                      PARSER: {trace.parsingErrorDetails}
+                    </div>
+                  )}
+                  <pre className="p-4 rounded-xl bg-neutral-900 text-cyan-400 font-mono text-[10px] overflow-auto max-h-52 leading-relaxed text-left border border-neutral-800">
+                    {trace.aiRawResponse}
+                  </pre>
+                </div>
+              )}
+            </div>
+
           </div>
 
           {/* Detailed Error Inspector */}
