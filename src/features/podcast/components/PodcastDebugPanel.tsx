@@ -55,7 +55,7 @@ export function PodcastDebugPanel({ trace, isGenerating }: PodcastDebugPanelProp
 
   const hasActiveOrCompleted = trace.stages.some(s => s.status !== 'pending');
 
-  if (!hasActiveOrCompleted) return null;
+  if (!hasActiveOrCompleted && !isGenerating) return null;
 
   return (
     <div className="border border-neutral-150 rounded-[2.5rem] bg-white shadow-md overflow-hidden text-left transition-all duration-300">
