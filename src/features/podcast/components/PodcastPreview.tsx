@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { PodcastResult, VoiceSelection } from '../types/podcast.types';
 import { PodcastAudioPlayer } from './PodcastAudioPlayer';
 import { PodcastVoiceSelector } from './PodcastVoiceSelector';
 import { PodcastTimeline } from './PodcastTimeline';
 import { usePodcastAudio } from '../hooks/usePodcastAudio';
-import { ArrowLeft, RefreshCw, Sparkles, Check, Bookmark, Mic, Play, Settings } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Sparkles, Check, Bookmark, Mic, Settings } from 'lucide-react';
 import { GlassCard, Button } from '@/src/shared/components/UI';
 import { useFavoritesStore } from '@/src/stores/favoritesStore';
 import { toast } from 'sonner';
@@ -17,20 +17,28 @@ interface PodcastPreviewProps {
 
 export function PodcastPreview({ result, onBack, guestEnabled }: PodcastPreviewProps) {
   const addFavorite = useFavoritesStore((state) => state.addFavorite);
-  const {
-    synthesizedUrls,
-    synthesizingId,
-    playingId,
-    togglePlaySegment,
-    downloadSegmentMp3,
-    stopCurrentAudio
-  } = usePodcastAudio();
-
-  // Voice configurations
+  
+  // Voice configurations state
   const [voiceSelection, setVoiceSelection] = useState<VoiceSelection>({
     hostVoiceId: 'pNInz6obpgdq5TaqLwtY', // Adam
     guestVoiceId: 'ErXwobaYiN019PkySvjV', // Antoni
   });
+
+  const {
+    audioCache,
+    synthesizingId,
+    playingId,
+    togglePlaySegment,
+    downloadSegmentMp3,
+    stopCurrentAudio,
+    
+    // Full Episode Support
+    isSynthesizingFull,
+    fullProgress,
+    fullEpisodeUrl,
+    synthesizeAndMergeFullEpisode,
+    downloadFullEpisode
+  } = usePodcastAudio();
 
   const handleSaveToFavorites = () => {
     addFavorite({
@@ -48,7 +56,21 @@ export function PodcastPreview({ result, onBack, guestEnabled }: PodcastPreviewP
     toast.success('Сценарий и конфигурация сохранены в Избранное');
   };
 
-  const totalLoaded = Object.keys(synthesizedUrls).length;
+  // Compute active synthesized URLs based on CURRENT voice selections dynamically (fixing global voice selection synchronization)
+  const currentSynthesizedUrls = useMemo(() => {
+    const urls: Record<string, string> = {};
+    result.script.forEach((segment) => {
+      const isHost = segment.speaker === 'host';
+      const voiceId = isHost ? voiceSelection.hostVoiceId : (voiceSelection.guestVoiceId || 'pNInz6obpgdq5TaqLwtY');
+      const cacheKey = `${segment.id}_${voiceId}_1.0_neutral`;
+      if (audioCache[cacheKey]) {
+        urls[segment.id] = audioCache[cacheKey].url;
+      }
+    });
+    return urls;
+  }, [audioCache, result.script, voiceSelection]);
+
+  const totalLoaded = Object.keys(currentSynthesizedUrls).length;
   const isAllSynthesized = totalLoaded >= result.script.length;
 
   return (
@@ -85,8 +107,15 @@ export function PodcastPreview({ result, onBack, guestEnabled }: PodcastPreviewP
         title={result.title}
         description={result.description}
         script={result.script}
-        synthesizedUrls={synthesizedUrls}
+        synthesizedUrls={currentSynthesizedUrls}
         onSaveToFavorites={handleSaveToFavorites}
+        voiceSelection={voiceSelection}
+        // Expose deep compiler controls safely
+        isSynthesizingFull={isSynthesizingFull}
+        fullProgress={fullProgress}
+        fullEpisodeUrl={fullEpisodeUrl}
+        onSynthesizeFull={() => synthesizeAndMergeFullEpisode(result.script, voiceSelection)}
+        onDownloadFull={() => downloadFullEpisode(`${result.title.replace(/\s+/g, '_')}_episode.mp3`)}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -113,7 +142,7 @@ export function PodcastPreview({ result, onBack, guestEnabled }: PodcastPreviewP
                 <span className="font-bold text-neutral-800">{result.script.length} реплик(и)</span>
               </div>
               <div className="flex justify-between">
-                <span>Озвучено сегментов:</span>
+                <span>Озвучено сегментов (активный голос):</span>
                 <span className="font-bold text-[#10B981]">{totalLoaded} / {result.script.length}</span>
               </div>
               <div className="flex justify-between">
@@ -126,7 +155,7 @@ export function PodcastPreview({ result, onBack, guestEnabled }: PodcastPreviewP
 
             {/* Hint Box */}
             <p className="text-[11px] text-neutral-400 leading-normal border-t border-neutral-200 pt-3">
-              💡 Чтобы озвучить реплику голосом ElevenLabs или услышать встроенный синтезатор браузера, нажмите кнопку проигрывания на таймлайне справа.
+              💡 Вы можете переключать голоса ведущего и гостя на лету. Озвученные реплики кэшируются автоматически, чтобы повторно не расходовать кредиты ElevenLabs.
             </p>
           </div>
         </div>
@@ -137,7 +166,7 @@ export function PodcastPreview({ result, onBack, guestEnabled }: PodcastPreviewP
             script={result.script}
             voiceSelection={voiceSelection}
             playingId={playingId}
-            synthesizedUrls={synthesizedUrls}
+            synthesizedUrls={currentSynthesizedUrls}
             synthesizingId={synthesizingId}
             onTogglePlay={togglePlaySegment}
             onDownloadMp3={downloadSegmentMp3}
