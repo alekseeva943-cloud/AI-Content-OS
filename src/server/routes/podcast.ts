@@ -140,6 +140,60 @@ ${guestEnabled && guest ? `Информация о госте: Имя "${guest.n
       throw parseSyntaxErr;
     }
 
+    const duration = Date.now() - reqStart;
+    const promptLength = sysMessage.length + userPrompt.length;
+    const responseLength = outputText ? outputText.length : 0;
+
+    const promptTokens = response?.usage?.prompt_tokens || Math.ceil(promptLength * 0.45);
+    const completionTokens = response?.usage?.completion_tokens || Math.ceil(responseLength * 0.45);
+    const totalTokens = response?.usage?.total_tokens || (promptTokens + completionTokens);
+    const estimatedCost = (promptTokens * 0.0000025) + (completionTokens * 0.0000100);
+
+    const trigger = req.body.trigger || "manual_generate";
+    const sessionId = req.body.sessionId || "podcast_studio";
+    
+    // Pure checksum of request content as request hash
+    let requestHash = "unknown";
+    try {
+      const crypto = require("crypto");
+      requestHash = crypto.createHash("md5")
+        .update(`${topic}-${durationMinutes}-${guestEnabled}-${JSON.stringify(guest || {})}`)
+        .digest("hex")
+        .substring(0, 12);
+    } catch {
+      requestHash = String(topic.length) + String(durationMinutes);
+    }
+
+    console.log(`
+┌────────────────────────────────────────────────────────┐
+│ [OPENAI REQUEST]
+├────────────────────────────────────────────────────────┤
+│ route:             /api/podcast/generate
+│ model:             gpt-4o
+│ inputTokens:       ${promptTokens}
+│ outputTokens:      ${completionTokens}
+│ totalTokens:       ${totalTokens}
+│ estimatedCost:     $${estimatedCost.toFixed(5)}
+│ duration:          ${duration}ms
+│ trigger:           ${trigger}
+│ requestHash:       ${requestHash}
+│ session:           ${sessionId}
+└────────────────────────────────────────────────────────┘
+    `);
+
+    if (parsedJson && typeof parsedJson === "object") {
+      parsedJson.usage = {
+        prompt_tokens: promptTokens,
+        completion_tokens: completionTokens,
+        total_tokens: totalTokens,
+        estimatedCost: estimatedCost,
+        durationMs: duration,
+        requestHash: requestHash,
+        requestId: "req_" + Math.random().toString(36).substring(2, 11),
+        timestamp: new Date().toLocaleTimeString('ru-RU')
+      };
+    }
+
     res.json(parsedJson);
 
   } catch (err: any) {

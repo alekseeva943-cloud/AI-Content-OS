@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PodcastConfig, PodcastResult, DebugTraceState, DebugStageLog, DebugStageId, DebugStatus } from '../types/podcast.types';
+import { PodcastConfig, PodcastResult, DebugTraceState, DebugStageLog, DebugStageId, DebugStatus, TelemetryLog, SessionStats } from '../types/podcast.types';
 import { generatePodcast } from '../services/generatePodcast';
 import { toast } from 'sonner';
 
@@ -13,6 +13,19 @@ const INITIAL_STAGES: DebugStageLog[] = [
   { id: 'prepare_audio', label: '[7] Preparing audio synthesis', status: 'pending' },
   { id: 'finalize_episode', label: '[8] Finalizing episode', status: 'pending' }
 ];
+
+// Persistent session statistics that survive component unmounts during the active user session
+let sessionRequestsCount = 0;
+let sessionTokensSum = 0;
+let sessionCostSum = 0;
+let sessionDurations: number[] = [];
+let totalSessionGenerations = 0;
+let retrySessionCount = 0;
+
+let lastRequestPayload: string | null = null;
+let lastRequestTime = 0;
+const callsWindowTimestamps: number[] = []; // track calls for rate limiting per minute
+const SESSION_ID = "session_" + Math.random().toString(36).substring(2, 11);
 
 export function usePodcastGeneration() {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -65,7 +78,71 @@ export function usePodcastGeneration() {
     });
   };
 
-  const generate = async (config: PodcastConfig) => {
+  const generate = async (config: PodcastConfig, triggerReason = 'manual button click') => {
+    const configHash = JSON.stringify(config);
+    const now = Date.now();
+    
+    // 1. GLOBAL MUTEX LOCK
+    if (isGenerating) {
+      console.warn('[COST GUARD] Ignored duplicate generate request as another is currently active.');
+      return null;
+    }
+    
+    // 2. REQUEST DEBOUNCE (MINIMUM 1500MS)
+    if (now - lastRequestTime < 1500) {
+      const warningMsg = 'Пожалуйста, подождите. Будет обработано предыдущее действие.';
+      toast.warning(warningMsg);
+      console.warn('[COST GUARD] Debounced request:', warningMsg);
+      return null;
+    }
+
+    // 3. LOOP DETECTION LAYER (Storm / useEffect Sync protection)
+    
+    // Check for rapid double-call (within 3 seconds)
+    if (now - lastRequestTime < 3000) {
+      const errStr = 'Potential rapid regeneration loop detected. Request blocked.';
+      console.error('[COST CONTROL SYSTEM] [BLOCKED]', errStr);
+      setError('Обнаружено циклическое дублирование запросов. Генерация заблокирована для экономии токенов.');
+      toast.error('Обнаружен зацикленный вызов генератора! Выполнение прервано.');
+      return null;
+    }
+
+    // Check for repeated identical request within 15 seconds (unless intentional retry)
+    if (configHash === lastRequestPayload && now - lastRequestTime < 15000 && triggerReason !== 'retry') {
+      const errStr = 'Potential identical state-trigger loop detected (identical parameters within 15s). Request blocked.';
+      console.error('[COST CONTROL SYSTEM] [BLOCKED]', errStr);
+      setError('Обнаружен повторный идентичный вызов! Если это не повторная отправка вручную, проверьте useEffect зависимости.');
+      toast.error('Предупреждение: Обнаружен зацикленный вызов с теми же параметрами!');
+      return null;
+    }
+
+    // Check for generations per minute limit (Max 5 per minute)
+    const oneMinuteAgo = now - 60000;
+    while (callsWindowTimestamps.length > 0 && callsWindowTimestamps[0] < oneMinuteAgo) {
+      callsWindowTimestamps.shift();
+    }
+    if (callsWindowTimestamps.length >= 5) {
+      const errStr = 'Safety cost guard activated: Превышен лимит (5) генераций в минуту. Попробуйте позже.';
+      console.error('[COST CONTROL SYSTEM] [BLOCKED]', errStr);
+      setError('Активирован предохранитель стоимости: слишком много генераций за минуту (лимит 5/мин).');
+      toast.error('Режим экономии токенов: Превышена частота запросов.');
+      return null;
+    }
+
+    // Check for session limit (Max 15 requests per session)
+    if (sessionRequestsCount >= 15) {
+      const errStr = 'Safety cost guard activated: Достигнут жесткий лимит сессии на 15 генераций подкастов.';
+      console.error('[COST CONTROL SYSTEM] [BLOCKED]', errStr);
+      setError('Предохранитель стоимости: лимит сессии исчерпан (максимум 15 генераций за сессию).');
+      toast.error(errStr);
+      return null;
+    }
+
+    // Update track parameters for next guard pass
+    lastRequestPayload = configHash;
+    lastRequestTime = now;
+    callsWindowTimestamps.push(now);
+
     setIsGenerating(true);
     setError(null);
     resetStages();
@@ -75,6 +152,10 @@ export function usePodcastGeneration() {
     
     console.log('[PODCAST TRACE] [Stage 1/8] Starting validation and config collection. Payload:', config);
     
+    if (triggerReason === 'retry') {
+      retrySessionCount++;
+    }
+
     // Stage 1: Collect Config
     updateStage('collect_config', { 
       status: 'active', 
@@ -125,10 +206,24 @@ export function usePodcastGeneration() {
 
     try {
       const responseStart = Date.now();
-      const payloadString = JSON.stringify(config, null, 2);
       
-      console.log('[PODCAST TRACE] Fetching API route "/api/podcast/generate" with payload:', config);
-      const podcastResult = await generatePodcast(config);
+      // Clean config clone to pass exactly the prompt inputs without pollution
+      const sanitizedPayload = {
+        topic: config.topic,
+        durationMinutes: config.durationMinutes,
+        guestEnabled: config.guestEnabled,
+        guest: config.guestEnabled ? {
+          name: config.guest?.name || "",
+          expertise: config.guest?.expertise || "",
+          speakingStyle: config.guest?.speakingStyle || "",
+          energyLevel: config.guest?.energyLevel || 5
+        } : undefined
+      };
+
+      const payloadString = JSON.stringify(sanitizedPayload, null, 2);
+      
+      console.log('[PODCAST TRACE] Fetching API route "/api/podcast/generate" with payload:', sanitizedPayload);
+      const podcastResult = await generatePodcast(sanitizedPayload, triggerReason, SESSION_ID);
       const responseDuration = Date.now() - responseStart;
       
       console.log(`[PODCAST TRACE] [Stage 4/8] Received AI response in ${responseDuration}ms.`, podcastResult);
@@ -183,10 +278,52 @@ export function usePodcastGeneration() {
       activeStageId = 'finalize_episode';
       const totalTime = Date.now() - startTime;
       console.log(`[PODCAST TRACE] [Stage 8/8] Generation pipeline fully completed in ${(totalTime / 1000).toFixed(1)}s!`);
+      
+      // Update persistent session usage values
+      sessionRequestsCount++;
+      totalSessionGenerations++;
+      sessionDurations.push(totalTime);
+      
+      const usage = (podcastResult as any).usage || {};
+      const ptTokens = usage.prompt_tokens || Math.ceil((payloadString.length + 8000) * 0.45);
+      const cpTokens = usage.completion_tokens || Math.ceil(JSON.stringify(podcastResult).length * 0.45);
+      const totalTk = usage.total_tokens || (ptTokens + cpTokens);
+      const estCst = usage.estimatedCost || (ptTokens * 0.0000025 + cpTokens * 0.0000100);
+
+      sessionTokensSum += totalTk;
+      sessionCostSum += estCst;
+
+      const telemetryObj: TelemetryLog = {
+        provider: 'OpenAI',
+        model: 'gpt-4o',
+        inputTokens: ptTokens,
+        outputTokens: cpTokens,
+        totalTokens: totalTk,
+        estimatedCost: estCst,
+        durationMs: totalTime,
+        retryCount: retrySessionCount,
+        generationCount: totalSessionGenerations,
+        cacheHitOrMiss: 'Cache Miss',
+        requestId: usage.requestId || `req_${Math.random().toString(36).substring(2, 11)}`,
+        timestamp: usage.timestamp || new Date().toLocaleTimeString('ru-RU'),
+        triggerReason: triggerReason
+      };
+
+      const sessionStatsObj: SessionStats = {
+        requestsThisSession: sessionRequestsCount,
+        tokensThisSession: sessionTokensSum,
+        estimatedSessionCost: sessionCostSum,
+        averageResponseTimeMs: Math.round(sessionDurations.reduce((a, b) => a + b, 0) / sessionDurations.length)
+      };
+
       updateStage('finalize_episode', { 
         status: 'success',
         details: `Успех! Общее время генерации: ${(totalTime / 1000).toFixed(1)} сек`
-      }, { totalDurationMs: totalTime });
+      }, { 
+        totalDurationMs: totalTime,
+        telemetry: telemetryObj,
+        sessionStats: sessionStatsObj
+      });
 
       setResult(podcastResult);
       toast.success('Сценарий подкаста успешно создан!');
@@ -198,6 +335,41 @@ export function usePodcastGeneration() {
       const msg = err.message || 'Ошибка генерации сценария подкаста';
       setError(msg);
       toast.error(msg);
+
+      // Track the request on error as well for session analytics consistency
+      sessionRequestsCount++;
+      const ptTokens = Math.ceil((config.topic.length + 8000) * 0.45);
+      const cpTokens = 0;
+      const totalTk = ptTokens + cpTokens;
+      const estCst = ptTokens * 0.0000025;
+
+      sessionTokensSum += totalTk;
+      sessionCostSum += estCst;
+      const totalTime = Date.now() - startTime;
+      sessionDurations.push(totalTime);
+
+      const telemetryObj: TelemetryLog = {
+        provider: 'OpenAI',
+        model: 'gpt-4o',
+        inputTokens: ptTokens,
+        outputTokens: cpTokens,
+        totalTokens: totalTk,
+        estimatedCost: estCst,
+        durationMs: totalTime,
+        retryCount: retrySessionCount,
+        generationCount: totalSessionGenerations,
+        cacheHitOrMiss: 'Cache Miss',
+        requestId: `req_fail_${Math.random().toString(36).substring(2, 11)}`,
+        timestamp: new Date().toLocaleTimeString('ru-RU'),
+        triggerReason: triggerReason
+      };
+
+      const sessionStatsObj: SessionStats = {
+        requestsThisSession: sessionRequestsCount,
+        tokensThisSession: sessionTokensSum,
+        estimatedSessionCost: sessionCostSum,
+        averageResponseTimeMs: Math.round(sessionDurations.reduce((a, b) => a + b, 0) / sessionDurations.length)
+      };
 
       // Single-pass atomic state update to prevent stale state issues and batching races
       setDebugTrace(prev => {
@@ -232,7 +404,9 @@ export function usePodcastGeneration() {
           aiRawResponse: err.rawResponse || undefined,
           httpStatus: err.status !== undefined ? err.status : undefined,
           parsingErrorDetails: err.details || undefined,
-          totalDurationMs: Date.now() - startTime
+          totalDurationMs: Date.now() - startTime,
+          telemetry: telemetryObj,
+          sessionStats: sessionStatsObj
         };
       });
 

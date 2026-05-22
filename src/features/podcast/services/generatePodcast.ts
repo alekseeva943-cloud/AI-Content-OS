@@ -1,6 +1,6 @@
 import { PodcastConfig, PodcastResult, PodcastPipelineError } from '../types/podcast.types';
 
-export async function generatePodcast(config: PodcastConfig): Promise<PodcastResult> {
+export async function generatePodcast(config: PodcastConfig, trigger?: string, sessionId?: string): Promise<PodcastResult> {
   const url = '/api/podcast/generate';
   console.log(`[PODCAST FETCH START] POST -> "${url}" with payload:`, config);
   
@@ -11,7 +11,11 @@ export async function generatePodcast(config: PodcastConfig): Promise<PodcastRes
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(config),
+      body: JSON.stringify({
+        ...config,
+        trigger: trigger || 'manual_generate',
+        sessionId: sessionId || 'podcast_studio'
+      }),
     });
   } catch (networkErr: any) {
     console.error('[PODCAST FETCH NETWORK ERROR]:', networkErr);

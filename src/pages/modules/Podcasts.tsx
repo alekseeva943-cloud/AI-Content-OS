@@ -10,10 +10,10 @@ export function Podcasts() {
   const [guestEnabled, setGuestEnabled] = useState(true);
   const [lastConfig, setLastConfig] = useState<any>(null);
 
-  const handleGenerate = async (config: any) => {
+  const handleGenerate = async (config: any, trigger = 'manual button click') => {
     setLastConfig(config);
     setGuestEnabled(config.guestEnabled);
-    await generate(config);
+    await generate(config, trigger);
   };
 
   return (
@@ -47,7 +47,7 @@ export function Podcasts() {
           </div>
           {lastConfig && (
             <button
-              onClick={() => handleGenerate(lastConfig)}
+              onClick={() => handleGenerate(lastConfig, 'retry')}
               disabled={isGenerating}
               className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-xs font-bold transition-all shrink-0 shadow-md shadow-rose-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center gap-1.5 self-start sm:self-auto"
             >

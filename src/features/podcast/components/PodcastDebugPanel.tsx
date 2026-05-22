@@ -100,6 +100,158 @@ export function PodcastDebugPanel({ trace, isGenerating }: PodcastDebugPanelProp
             </div>
           </div>
 
+          {/* AI Usage Telemetry Panel (Requirement 1, 9) */}
+          {trace.telemetry && (
+            <div className="p-5 rounded-[1.75rem] border border-neutral-150 bg-neutral-50/60 space-y-4">
+              <div className="flex items-center justify-between border-b border-neutral-100 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-lg bg-[#10B981] text-white flex items-center justify-center font-black">
+                    T
+                  </div>
+                  <span className="text-xs font-black text-neutral-800 uppercase tracking-wider font-display">
+                    AI Usage Telemetry
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-bold text-neutral-400 font-mono">
+                    REQUEST ID: {trace.telemetry.requestId}
+                  </span>
+                  <span className="text-[9px] font-bold text-[#10B981] font-mono bg-[#10B981]/10 px-1.5 py-0.5 rounded">
+                    {trace.telemetry.timestamp}
+                  </span>
+                </div>
+              </div>
+
+              {/* Grid of values */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 text-left">
+                <div className="space-y-1">
+                  <span className="text-[9px] font-extrabold uppercase text-neutral-400 tracking-wider">Provider / Model</span>
+                  <span className="text-xs font-black text-neutral-800 block font-mono">
+                    {trace.telemetry.provider} ({trace.telemetry.model})
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[9px] font-extrabold uppercase text-neutral-400 tracking-wider">Estimated Input</span>
+                  <span className="text-xs font-black text-neutral-800 block font-mono">
+                    {trace.telemetry.inputTokens.toLocaleString('ru-RU')} tk
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[9px] font-extrabold uppercase text-neutral-400 tracking-wider">Estimated Output</span>
+                  <span className="text-xs font-black text-neutral-800 block font-mono">
+                    {trace.telemetry.outputTokens.toLocaleString('ru-RU')} tk
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[9px] font-extrabold uppercase text-neutral-400 tracking-wider">Total Tokens</span>
+                  <span className="text-xs font-black text-neutral-800 block font-mono">
+                    {trace.telemetry.totalTokens.toLocaleString('ru-RU')} tk
+                  </span>
+                </div>
+
+                {/* Color-coded cost indicator */}
+                <div className="space-y-1 p-2 bg-white rounded-xl border border-neutral-150 relative overflow-hidden">
+                  <div className={`absolute top-0 right-0 w-1.5 h-full ${
+                    trace.telemetry.estimatedCost < 0.04
+                      ? 'bg-emerald-500'
+                      : trace.telemetry.estimatedCost < 0.10
+                      ? 'bg-amber-500'
+                      : 'bg-rose-500'
+                  }`} />
+                  <span className="text-[9px] font-extrabold uppercase text-neutral-400 tracking-wider block">Est. Cost</span>
+                  <span className={`text-xs font-black font-mono block ${
+                    trace.telemetry.estimatedCost < 0.04
+                      ? 'text-emerald-700'
+                      : trace.telemetry.estimatedCost < 0.10
+                      ? 'text-amber-700'
+                      : 'text-rose-700'
+                  }`}>
+                    ${trace.telemetry.estimatedCost.toFixed(5)}
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[9px] font-extrabold uppercase text-neutral-400 tracking-wider">Duration</span>
+                  <span className="text-xs font-black text-neutral-800 block font-mono">
+                    {(trace.telemetry.durationMs / 1000).toFixed(2)}s
+                  </span>
+                </div>
+              </div>
+
+              {/* Sub-row with cache, triggers and counts */}
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[10px] uppercase font-black text-neutral-600 border-t border-neutral-100 pt-3">
+                <div>
+                  <span className="text-neutral-400">Trigger:</span>{' '}
+                  <span className="text-[#10B981] font-mono">
+                    {trace.telemetry.triggerReason}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-neutral-400">Cache:</span>{' '}
+                  <span className="text-neutral-700 font-mono">
+                    {trace.telemetry.cacheHitOrMiss}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-neutral-400">Generations:</span>{' '}
+                  <span className="text-neutral-700 font-mono">
+                    {trace.telemetry.generationCount}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-neutral-400">Retries:</span>{' '}
+                  <span className="text-neutral-700 font-mono">
+                    {trace.telemetry.retryCount}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Why was this request triggered explanation (Requirement 8) */}
+          {trace.telemetry && (
+            <div className="p-3 bg-neutral-50 border border-neutral-150 rounded-2xl text-xs text-neutral-600 flex flex-col md:flex-row md:items-center gap-2 leading-relaxed">
+              <span className="font-extrabold text-[#10B981] uppercase tracking-wider text-[10px] shrink-0 font-sans border-r border-neutral-200 pr-2">
+                Why was this request triggered?
+              </span>
+              <span>
+                {trace.telemetry.triggerReason === 'manual button click' && 'Пользователь вручную нажал кнопку "Создать сценарий" на панели настроек подкаста.'}
+                {trace.telemetry.triggerReason === 'retry' && 'Пользователь вручную нажал кнопку повтора запроса после сбоя или ошибки сети.'}
+                {trace.telemetry.triggerReason === 'auto-refresh' && 'Система выполнила авто-обновление.'}
+                {trace.telemetry.triggerReason === 'voice change' && 'Был изменен голос ведущего или гостя, потребовавший пересборки сценария.'}
+                {trace.telemetry.triggerReason === 'timeline rebuild' && 'Пересборка таймлайна в студии.'}
+                {trace.telemetry.triggerReason === 'useEffect sync' && 'Вызвано автоматической реактивной синхронизацией useEffect.'}
+                {trace.telemetry.triggerReason === 'cache miss' && 'Вызвано локальным промахом кэша.'}
+                {!['manual button click', 'retry', 'auto-refresh', 'voice change', 'timeline rebuild', 'useEffect sync', 'cache miss'].includes(trace.telemetry.triggerReason) && 'Запрос инициирован действием пользователя или программным триггером.'}
+              </span>
+            </div>
+          )}
+
+          {/* Session Cumulative Analytics (Requirement 9) */}
+          {trace.sessionStats && (
+            <div className="p-5 rounded-[1.75rem] border border-emerald-100 bg-emerald-50/20 grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold text-[#047857] uppercase tracking-wider block">Requests this Session</span>
+                <span className="text-xl font-black text-neutral-800 font-mono leading-none block">{trace.sessionStats.requestsThisSession}</span>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold text-[#047857] uppercase tracking-wider block">Tokens this Session</span>
+                <span className="text-xl font-black text-neutral-800 font-mono leading-none block">{trace.sessionStats.tokensThisSession.toLocaleString('ru-RU')}</span>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold text-[#047857] uppercase tracking-wider block">Est. Session Cost</span>
+                <span className="text-xl font-black text-emerald-800 font-mono leading-none block">${trace.sessionStats.estimatedSessionCost.toFixed(5)}</span>
+              </div>
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold text-[#047857] uppercase tracking-wider block">Avg Resp. Time</span>
+                <span className="text-xl font-black text-neutral-800 font-mono leading-none block">{(trace.sessionStats.averageResponseTimeMs / 1000).toFixed(2)}s</span>
+              </div>
+            </div>
+          )}
+
           {/* Main Pipeline Step-by-Step UI */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             {trace.stages.map((stage) => {

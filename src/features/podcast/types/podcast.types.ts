@@ -69,6 +69,29 @@ export interface DebugStageLog {
   details?: string;
 }
 
+export interface TelemetryLog {
+  provider: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  estimatedCost: number;
+  durationMs: number;
+  retryCount: number;
+  generationCount: number;
+  cacheHitOrMiss: 'Cache Hit' | 'Cache Miss';
+  requestId: string;
+  timestamp: string;
+  triggerReason: string;
+}
+
+export interface SessionStats {
+  requestsThisSession: number;
+  tokensThisSession: number;
+  estimatedSessionCost: number;
+  averageResponseTimeMs: number;
+}
+
 export interface DebugTraceState {
   stages: DebugStageLog[];
   totalDurationMs?: number;
@@ -80,6 +103,8 @@ export interface DebugTraceState {
   parsingErrorDetails?: string;
   synthesisLog?: string[];
   lastUpdated: number;
+  telemetry?: TelemetryLog;
+  sessionStats?: SessionStats;
 }
 
 export class PodcastPipelineError extends Error {
