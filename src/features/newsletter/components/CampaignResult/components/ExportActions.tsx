@@ -65,7 +65,7 @@ export function ExportActions({
                     onClick={() => exportAsMarkdown(activeChannel.id, activeChannel.content?.body || '')}
                 >
                     <Download size={16} className="mr-2" />
-                    .MD
+                    ПРОЕКТ
                 </Button>
             </div>
         </div>

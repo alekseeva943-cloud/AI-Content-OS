@@ -33,6 +33,9 @@ export function useCampaignExport(result: any, channels: any[], imageUrls: Recor
         // 1. content.md
         zip.file("content.md", body);
 
+        // 1.5. content.txt
+        zip.file("content.txt", body);
+
         // 2. metadata.json
         const metadata = {
             channel: channelId,

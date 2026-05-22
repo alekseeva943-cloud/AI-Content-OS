@@ -82,7 +82,8 @@ export function ImagePanel({
                         className="
                             w-full
                             h-full
-                            object-cover
+                            object-contain
+                            bg-neutral-50
                         "
                     />
                 ) : (
