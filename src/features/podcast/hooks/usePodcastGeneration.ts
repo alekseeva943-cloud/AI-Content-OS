@@ -97,10 +97,10 @@ export function usePodcastGeneration() {
 
     // Stage 2: Build prompt
     activeStageId = 'build_prompt';
-    console.log('[PODCAST TRACE] [Stage 2/8] Generating Gemini Structured API constraints and context models.');
+    console.log('[PODCAST TRACE] [Stage 2/8] Generating OpenAI Structured API constraints and context models (Provider: OpenAI GPT-4o).');
     updateStage('build_prompt', { 
       status: 'active',
-      details: `Сборка роли для Gemini 3.5 Flash: JSON Schema, 7 сегментов для ${config.durationMinutes} минут`
+      details: `Сборка роли для GPT-4o: JSON Schema, 7 сегментов для ${config.durationMinutes} минут`
     });
 
     await new Promise(r => setTimeout(r, 600));
@@ -114,13 +114,13 @@ export function usePodcastGeneration() {
 
     // Stage 3 & 4: Sending and waiting AI response
     activeStageId = 'send_request';
-    console.log('[PODCAST TRACE] [Stage 3/8] Sending payload to server route /api/podcast/generate ...');
+    console.log('[PODCAST TRACE] [Stage 3/8] Sending payload to server route /api/podcast/generate (Model: GPT-4o)...');
     updateStage('send_request', { 
       status: 'active', 
       details: `Вызов POST /api/podcast/generate с темой: ${config.topic.substring(0, 30)}...`
     });
     
-    updateStage('wait_response', { status: 'active', details: 'Ожидание ответа от модели Gemini-3.5-Flash...' });
+    updateStage('wait_response', { status: 'active', details: 'Ожидание ответа от модели OpenAI GPT-4o...' });
     activeStageId = 'wait_response';
 
     try {
