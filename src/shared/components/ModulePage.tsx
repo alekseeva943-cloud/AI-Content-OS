@@ -30,7 +30,7 @@ import { GlassCard, Button } from '@/src/shared/components/UI';
 import { EmptyResultState, GenerationLoader } from '@/src/shared/components/ResultPanel';
 import { AIField, AIInput, AITextarea, AISelect, AIToggleGroup, AIPillSelector, AIDateInput } from './forms/FormComponents';
 import { ModuleConfig } from '@/src/config/modules';
-import { detectCampaignVariables, generateCampaign, generateContentPlan, generateLongread, generatePodcast, generateVideoAvatar } from '@/src/services/ai/client';
+import { detectCampaignVariables, generateCampaign, generateContentPlan, generateLongread, generateVideoAvatar } from '@/src/services/ai/client';
 import { useMemoryStore } from '@/src/stores/memoryStore';
 import { useFavoritesStore } from '@/src/stores/favoritesStore';
 import { useWorkspaceStore } from '@/src/stores/workspaceStore';
@@ -39,7 +39,6 @@ import { toast } from 'sonner';
 import { PlannerResultDisplay } from '@/src/features/planner/components/PlannerResult';
 import { CampaignResultDisplay } from '@/src/features/newsletter/components/CampaignResult';
 import { LongreadResultDisplay } from '@/src/features/longreads/components/LongreadResult';
-import { PodcastResultDisplay } from '@/src/features/podcasts/components/PodcastResult';
 import { VideoAvatarResultDisplay } from '@/src/features/videoAvatar/components/VideoAvatarResult';
 import { VariableRequirement } from '@/src/types/newsletter';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -433,14 +432,6 @@ export function ModulePage({ config }: ModulePageProps) {
         const data = await generateLongread(request);
         setResult(data);
         addGeneration({ type: 'longread', data, metadata: { topic: request.topic } });
-      } else if (config.id === 'podcasts') {
-        const request = {
-          topic: formValues.guest || formValues.topic,
-          context: formValues.theme || formValues.context
-        };
-        const data = await generatePodcast(request);
-        setResult(data);
-        addGeneration({ type: 'podcast', data, metadata: { topic: request.topic } });
       } else if (config.id === 'avatars') {
         const request = {
           topic: formValues.style || formValues.topic,
@@ -1037,8 +1028,6 @@ export function ModulePage({ config }: ModulePageProps) {
                     />
                   ) : config.id === 'longreads' ? (
                     <LongreadResultDisplay result={result} sourceInfo={sourceInfo} onRegenerate={handleGenerate} />
-                  ) : config.id === 'podcasts' ? (
-                    <PodcastResultDisplay result={result} sourceInfo={sourceInfo} onRegenerate={handleGenerate} />
                   ) : config.id === 'avatars' ? (
                     <VideoAvatarResultDisplay result={result} sourceInfo={sourceInfo} onRegenerate={handleGenerate} />
                   ) : (
