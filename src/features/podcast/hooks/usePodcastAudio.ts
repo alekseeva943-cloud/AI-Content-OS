@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSettingsStore } from '@/src/stores/useSettingsStore';
-import { ScriptSegment, VoiceSelection } from '../types/podcast.types';
+import { ScriptSegment, VoiceSelection, VoiceDiagnostic } from '../types/podcast.types';
 import { HUMAN_VOICE_LIBRARY } from '../constants/voices';
 import { VoiceAudioSettings } from '../components/PodcastVoiceSelector';
 import { toast } from 'sonner';
@@ -11,8 +11,8 @@ export interface AudioCacheEntry {
   voiceId: string;
 }
 
-// 10. Humanization Engine (Preprocesses text and inserts conversational cadence, breaths and pauses to minimize robotic delivery)
-function applySpeechRhythm(text: string, settings?: VoiceAudioSettings): string {
+// 10. Humanization Engine v2 (Preprocesses text, injects conversational cadence, breath cues and personality-based fillers to break synthetic monotony)
+export function applySpeechRhythm(text: string, settings?: VoiceAudioSettings, voiceId?: string): string {
   if (!text) return text;
   
   let processed = text;
@@ -20,47 +20,93 @@ function applySpeechRhythm(text: string, settings?: VoiceAudioSettings): string 
   // Clean up punctuation and standardise
   processed = processed.replace(/["\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
 
-  const energy = settings?.energy ?? 50;
-  const speed = settings?.speed ?? 1.0;
+  // Load voice profile defaults
+  const voiceInfo = voiceId ? HUMAN_VOICE_LIBRARY[voiceId] : null;
+  const profile = voiceInfo?.voiceProfile;
 
-  // ElevenLabs responds to commas as natural brief breaks, and ellipsis (...) as distinct organic pause & breathe cues
-  if (speed < 0.95) {
-    // Slow tempo dialogue -> deep breathing breaks, deliberate rhythm
+  // Read combined metrics (prioritize UI slider values if available, else fall back to voiceProfile)
+  const stability = settings ? settings.stability : (profile ? profile.stability : 45);
+  const similarity_boost = settings ? settings.similarity_boost : (profile ? profile.similarity_boost : 75);
+  const style = settings ? settings.style : (profile ? profile.style : 45);
+  const energy = settings ? settings.energy : (profile ? profile.emotionality : 50);
+  const speed = settings ? settings.speed : (profile ? profile.rate : 1.0);
+
+  // 1. Sentence pacing and dynamic pause insertion
+  // We use " ... " for organic breathing breaks.
+  if (speed < 0.90) {
+    // Slow, deep, deliberate talking mode
     processed = processed.replace(/, /g, ', ... ');
     processed = processed.replace(/\. /g, '. ... ... ');
     processed = processed.replace(/\? /g, '? ... ... ');
-    processed = processed.replace(/\! /g, '! ... — ');
-  } else if (speed > 1.1) {
-    // Snappy, fast delivery pacing -> tight, compressed pause cues
-    processed = processed.replace(/, /g, ', ... ');
+    processed = processed.replace(/\! /g, '! ... ... ');
+  } else if (speed > 1.15) {
+    // Snappy, fast delivery, tight gaps
+    processed = processed.replace(/, /g, ', ');
     processed = processed.replace(/\. /g, '. ... ');
     processed = processed.replace(/\? /g, '? ... ');
+    processed = processed.replace(/\! /g, '! ... ');
   } else {
-    // Normal organic rate
+    // Standard human tempo, balanced breaths
     processed = processed.replace(/, /g, ', ... ');
     processed = processed.replace(/\. /g, '. ... ... ');
-    processed = processed.replace(/\! /g, '! ... — ');
+    processed = processed.replace(/\? /g, '? ... ... ');
+    processed = processed.replace(/\! /g, '! ... ');
     processed = processed.replace(/ - /g, ' — ... ');
     processed = processed.replace(/ – /g, ' — ... ');
   }
 
-  // Energy dictates tone markers (style amplification)
-  if (energy > 75) {
-    // High energy -> exclamation emphasis, strong emotional pacing
+  // 2. Style & Emotional cadence amplification (modifying text based on style/energy settings)
+  if (style > 70 || energy > 75) {
+    // High emotional resonance -> add expressive punctuation shaping
     processed = processed.replace(/\. \.\.\./g, '! ...');
-    if (!processed.endsWith('!') && !processed.endsWith('?')) {
-      processed += '!';
+    processed = processed.replace(/\? \.\.\./g, '?! ...');
+    
+    // Inject dynamic conversational fillers based on character role/archetype to convey emotional cadence
+    if (voiceId) {
+      if (profile?.cadence === 'rapid' || profile?.cadence === 'conversational') {
+        const energeticFillers = ['Слушайте, это... ', 'Просто вау! ', 'Серьёзно, ', 'Представьте себе, '];
+        const randomFiller = energeticFillers[Math.floor(Math.random() * energeticFillers.length)];
+        if (Math.random() > 0.45) {
+          processed = randomFiller + processed;
+        }
+      } else if (profile?.cadence === 'deep' || profile?.cadence === 'steady') {
+        const deepFillers = ['Но погодите... ', 'Задумайтесь на миг: ', 'Собственно говоря, ', 'И это поразительно... '];
+        const randomFiller = deepFillers[Math.floor(Math.random() * deepFillers.length)];
+        if (Math.random() > 0.45) {
+          processed = randomFiller + processed;
+        }
+      } else {
+        const warmFillers = ['Знаете... ', 'Это действительно... ', 'Интересно, что ', 'Ой, ну надо же... '];
+        const randomFiller = warmFillers[Math.floor(Math.random() * warmFillers.length)];
+        if (Math.random() > 0.45) {
+          processed = randomFiller + processed;
+        }
+      }
     }
-  } else if (energy < 30) {
-    // Soft, academic whispering tempo -> gentle decay with double pause brackets
+  } else if (style < 35 || energy < 30) {
+    // Whispering, flat, or relaxed docu style -> soft punctuation behavior & decay
     processed = processed.replace(/!/g, '.');
     processed = processed.replace(/\. \.\.\./g, '... ...');
+    
+    if (voiceId && (profile?.cadence === 'deep' || profile?.cadence === 'steady')) {
+      const slowFillers = ['Видите ли... ', 'Если подумать... ', 'Так сказать... '];
+      const randomFiller = slowFillers[Math.floor(Math.random() * slowFillers.length)];
+      if (Math.random() > 0.5) {
+        processed = randomFiller + processed;
+      }
+    }
   }
 
-  // Standardize any spacing issues created by replacement loops
+  // Clean punctuation clumps
   processed = processed.replace(/\s+/g, ' ');
   processed = processed.replace(/\.\.\.\s*\.\.\./g, '...');
+  processed = processed.replace(/\.\.\.\s*,/g, '...');
+  processed = processed.replace(/,\s*\.\.\./g, ', ...');
   
+  if (processed.endsWith('... ...')) {
+    processed = processed.substring(0, processed.length - 4);
+  }
+
   return processed;
 }
 
@@ -76,6 +122,7 @@ export function usePodcastAudio(
   
   const [synthesizingId, setSynthesizingId] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [lastSynthesisDiagnostic, setLastSynthesisDiagnostic] = useState<VoiceDiagnostic | null>(null);
   
   // Full Episode States
   const [isSynthesizingFull, setIsSynthesizingFull] = useState(false);
@@ -219,8 +266,10 @@ export function usePodcastAudio(
       throw new Error('ElevenLabs key not configured');
     }
 
+    const startMs = Date.now();
+
     // Apply speech rhythm engine BEFORE sending text to Elevenlabs as requested by Requirement 10
-    const enhancedText = applySpeechRhythm(text, activeSettings);
+    const enhancedText = applySpeechRhythm(text, activeSettings, voiceId);
 
     const voiceInfo = HUMAN_VOICE_LIBRARY[voiceId] || HUMAN_VOICE_LIBRARY['pNInz6obpgdq5TaqLwtY'];
     
@@ -256,11 +305,35 @@ export function usePodcastAudio(
       throw new Error(errorText || 'Failed to synthesize segment audio');
     }
 
+    const durationMs = Date.now() - startMs;
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const entry = { url, blob, voiceId };
 
     console.log(`[VOICE STATUS] Elevenlabs Synthesis Success. Key cached: "${key}"`);
+
+    // Update diagnosis
+    const profile = voiceInfo?.voiceProfile;
+    setLastSynthesisDiagnostic({
+      voiceId,
+      voiceName: voiceInfo?.name || 'Unknown',
+      modelId: payload.modelId,
+      stability: activeSettings?.stability ?? 45,
+      similarity_boost: activeSettings?.similarity_boost ?? 75,
+      style: activeSettings?.style ?? 45,
+      speed: activeSettings?.speed ?? 1.0,
+      energy: activeSettings?.energy ?? 50,
+      cacheHit: false,
+      durationMs,
+      rawPayload: payload,
+      textRef: text,
+      pitch: profile?.pitch ?? 1.0,
+      energy_curve: profile?.energy_curve ?? 'dynamic',
+      punctuation_behavior: profile?.punctuation_behavior ?? 'natural',
+      pause_density: profile?.pause_density ?? 'medium',
+      emotionality: profile?.emotionality ?? 50,
+      cadence: profile?.cadence ?? 'steady'
+    });
 
     // Update state cache immediately
     setAudioCache(prev => ({ ...prev, [key]: entry }));
@@ -275,20 +348,48 @@ export function usePodcastAudio(
       stopCurrentAudio();
     } else {
       const key = getCacheKey(
-        segmentId,
-        voiceId,
-        activeSettings?.stability,
-        activeSettings?.similarity_boost,
-        activeSettings?.style,
-        activeSettings?.energy,
-        activeSettings?.speed,
-        activeSettings?.use_speaker_boost,
-        activeSettings?.modelId
+         segmentId,
+         voiceId,
+         activeSettings?.stability,
+         activeSettings?.similarity_boost,
+         activeSettings?.style,
+         activeSettings?.energy,
+         activeSettings?.speed,
+         activeSettings?.use_speaker_boost,
+         activeSettings?.modelId
       );
       const cached = audioCache[key];
 
       if (cached) {
         console.log(`[VOICE PLAY] Playing from audio cache key: "${key}"`);
+        const voiceInfo = HUMAN_VOICE_LIBRARY[voiceId] || HUMAN_VOICE_LIBRARY['pNInz6obpgdq5TaqLwtY'];
+        const profile = voiceInfo?.voiceProfile;
+        
+        setLastSynthesisDiagnostic({
+          voiceId,
+          voiceName: voiceInfo?.name || 'Unknown',
+          modelId: activeSettings?.modelId || 'eleven_multilingual_v2',
+          stability: activeSettings?.stability ?? 45,
+          similarity_boost: activeSettings?.similarity_boost ?? 75,
+          style: activeSettings?.style ?? 45,
+          speed: activeSettings?.speed ?? 1.0,
+          energy: activeSettings?.energy ?? 50,
+          cacheHit: true,
+          durationMs: 0,
+          rawPayload: {
+            text: "... (cached stream reference) ...",
+            voiceId,
+            modelId: activeSettings?.modelId || 'eleven_multilingual_v2'
+          },
+          textRef: text,
+          pitch: profile?.pitch ?? 1.0,
+          energy_curve: profile?.energy_curve ?? 'dynamic',
+          punctuation_behavior: profile?.punctuation_behavior ?? 'natural',
+          pause_density: profile?.pause_density ?? 'medium',
+          emotionality: profile?.emotionality ?? 50,
+          cadence: profile?.cadence ?? 'steady'
+        });
+
         playUrl(cached.url, segmentId, isHost);
       } else {
         if (!elevenlabsKey) {
@@ -477,6 +578,7 @@ export function usePodcastAudio(
     audioCache,
     synthesizingId,
     playingId,
+    lastSynthesisDiagnostic,
     togglePlaySegment,
     downloadSegmentMp3,
     stopCurrentAudio,

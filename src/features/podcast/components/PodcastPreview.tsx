@@ -118,6 +118,7 @@ Active segments will be re-rendered and synthesized live with these settings on 
     audioCache,
     synthesizingId,
     playingId,
+    lastSynthesisDiagnostic,
     togglePlaySegment,
     downloadSegmentMp3,
     stopCurrentAudio,
@@ -269,16 +270,16 @@ Active segments will be re-rendered and synthesized live with these settings on 
           </div>
 
           {/* ==================================== */}
-          {/* LIVE VOICE DEBUG PANEL (Requirement 10) */}
+          {/* LIVE VOICE DIAGNOSTICS CONSOLE (Requirement 9 & 10) */}
           {/* ==================================== */}
-          <div className="bg-[#121315] border border-neutral-800 p-6 rounded-[2.5rem] space-y-4 text-left">
+          <div className="bg-[#0f1115] border border-neutral-800 p-6 rounded-[2.5rem] space-y-4 text-left shadow-xl">
             <h4 className="text-xs font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
               <Terminal size={13} className="animate-pulse" />
               VOICE ENGINE LIVE CONSOLE
             </h4>
             
             <div className="space-y-3 font-mono text-[10px] text-neutral-400">
-              <div className="flex justify-between items-center border-b border-neutral-800 pb-1.5">
+              <div className="flex justify-between items-center border-b border-neutral-800 pb-2">
                 <span>ACTIVE PROVIDER:</span>
                 <span className="text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">elevenlabs.io</span>
               </div>
@@ -335,24 +336,97 @@ Active segments will be re-rendered and synthesized live with these settings on 
                 </div>
               )}
 
-              {/* Active Pipeline Feed */}
-              <div className="space-y-1 pt-1.5 border-t border-neutral-800">
-                <span className="text-neutral-500 font-bold uppercase block">[CACHE ENG STATUS]</span>
-                <div className="pl-2 space-y-0.5 border-l border-[#10B981]">
-                  <div className="flex justify-between">
-                    <span>CACHE HIT RATIO:</span>
-                    <span className="text-emerald-400 font-bold">
-                      {result.script.length > 0 ? `${Math.round((totalLoaded / result.script.length) * 100)}%` : '0%'}
+              {/* ================================== */}
+              {/* REALTIME TRANSACTION DIAGNOSTICS   */}
+              {/* ================================== */}
+              {lastSynthesisDiagnostic ? (
+                <div className="space-y-2 pt-2 border-t border-neutral-800">
+                  <div className="flex justify-between items-center">
+                    <span className="text-amber-400 font-bold uppercase">[LAST CALL TELEMETRY]</span>
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
+                      lastSynthesisDiagnostic.cacheHit 
+                        ? 'bg-emerald-500/20 text-emerald-400' 
+                        : 'bg-amber-500/20 text-amber-300 animate-pulse'
+                    }`}>
+                      {lastSynthesisDiagnostic.cacheHit ? 'CACHE HIT (0ms)' : 'CACHE MISS'}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>ACTIVE TRACK:</span>
-                    <span className="text-amber-400 truncate max-w-[150px] font-bold">
-                      {currentActiveSpeaker ? `[${currentActiveSpeaker.speaker.toUpperCase()}] ${currentActiveSpeaker.name}` : 'IDLE'}
-                    </span>
+
+                  <div className="pl-2 space-y-0.5 border-l border-amber-500/40 text-[9.5px]">
+                    <div className="flex justify-between">
+                      <span>TARGET VOICE ID:</span>
+                      <span className="text-neutral-200">{lastSynthesisDiagnostic.voiceId} ({lastSynthesisDiagnostic.voiceName})</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>MODEL EMPLOYED:</span>
+                      <span className="text-neutral-200">{lastSynthesisDiagnostic.modelId}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>STAB/WARM/ENERGY:</span>
+                      <span className="text-neutral-200">
+                        {lastSynthesisDiagnostic.stability}% / {lastSynthesisDiagnostic.similarity_boost}% / {lastSynthesisDiagnostic.energy}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>SYNTH DURATION:</span>
+                      <span className="text-emerald-400 font-extrabold">
+                        {lastSynthesisDiagnostic.cacheHit ? '0 ms' : `${(lastSynthesisDiagnostic.durationMs / 1000).toFixed(2)}s (${lastSynthesisDiagnostic.durationMs}ms)`}
+                      </span>
+                    </div>
+                    
+                    {/* Active Rhythm Profile Metrics */}
+                    <div className="pt-1.5 border-t border-neutral-800/60 mt-1 space-y-0.5">
+                      <span className="text-neutral-500 font-bold uppercase block text-[8px]">[ACTIVE RHYTHM PROFILE]</span>
+                      <div className="flex justify-between">
+                        <span>ENERGY CURVE:</span>
+                        <span className="text-neutral-300 uppercase">{lastSynthesisDiagnostic.energy_curve}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>PUNCTUATION OPT:</span>
+                        <span className="text-neutral-300 uppercase">{lastSynthesisDiagnostic.punctuation_behavior}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>PAUSE DENSITY:</span>
+                        <span className="text-neutral-300 uppercase">{lastSynthesisDiagnostic.pause_density}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>EMOTIONALITY / tempo:</span>
+                        <span className="text-[#10B981] font-bold">{lastSynthesisDiagnostic.emotionality}% / {lastSynthesisDiagnostic.cadence}</span>
+                      </div>
+                    </div>
+
+                    {/* Collapsible raw json payload */}
+                    <div className="pt-2">
+                      <details className="group cursor-pointer">
+                        <summary className="text-[8.5px] font-black text-neutral-500 uppercase flex items-center gap-1 hover:text-neutral-300 transition-colors">
+                          <span>[+] VIEW RAW ELEVENLABS PAYLOAD</span>
+                        </summary>
+                        <div className="mt-2 p-3 rounded-lg bg-black border border-neutral-950 font-mono text-[9px] text-emerald-400 overflow-x-auto select-text leading-tight max-h-[160px] scrollbar-thin">
+                          {JSON.stringify(lastSynthesisDiagnostic.rawPayload, null, 2)}
+                        </div>
+                      </details>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-1 pt-1.5 border-t border-neutral-800">
+                  <span className="text-neutral-500 font-bold uppercase block">[CACHE ENG STATUS]</span>
+                  <div className="pl-2 space-y-0.5 border-l border-[#10B981]">
+                    <div className="flex justify-between">
+                      <span>CACHE HIT RATIO:</span>
+                      <span className="text-emerald-400 font-bold">
+                        {result.script.length > 0 ? `${Math.round((totalLoaded / result.script.length) * 100)}%` : '0%'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>ACTIVE TRACK:</span>
+                      <span className="text-amber-400 truncate max-w-[150px] font-bold">
+                        {currentActiveSpeaker ? `[${currentActiveSpeaker.speaker.toUpperCase()}] ${currentActiveSpeaker.name}` : 'IDLE'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

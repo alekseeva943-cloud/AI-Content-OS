@@ -4,6 +4,7 @@ import { Play, Pause, Loader2, Radio, Mic, User, Volume2, Settings, Sliders, Shi
 import { useSettingsStore } from '@/src/stores/useSettingsStore';
 import { HUMAN_VOICE_LIBRARY, HOST_VOICE_IDS, GUEST_VOICE_IDS } from '../constants/voices';
 import { toast } from 'sonner';
+import { applySpeechRhythm } from '../hooks/usePodcastAudio';
 
 export interface VoiceAudioSettings {
   stability: number; // 0-100
@@ -13,59 +14,6 @@ export interface VoiceAudioSettings {
   speed: number; // 0.8 - 1.3
   use_speaker_boost: boolean;
   modelId: string;
-}
-
-// 10. Humanization Engine (Preprocesses text and inserts conversational cadence, breaths and pauses to minimize robotic delivery)
-function applySpeechRhythm(text: string, settings?: VoiceAudioSettings): string {
-  if (!text) return text;
-  
-  let processed = text;
-  
-  // Clean up punctuation and standardise
-  processed = processed.replace(/["\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
-
-  const energy = settings?.energy ?? 50;
-  const speed = settings?.speed ?? 1.0;
-
-  // ElevenLabs responds to commas as natural brief breaks, and ellipsis (...) as distinct organic pause & breathe cues
-  if (speed < 0.95) {
-    // Slow tempo dialogue -> deep breathing breaks, deliberate rhythm
-    processed = processed.replace(/, /g, ', ... ');
-    processed = processed.replace(/\. /g, '. ... ... ');
-    processed = processed.replace(/\? /g, '? ... ... ');
-    processed = processed.replace(/\! /g, '! ... — ');
-  } else if (speed > 1.1) {
-    // Snappy, fast delivery pacing -> tight, compressed pause cues
-    processed = processed.replace(/, /g, ', ... ');
-    processed = processed.replace(/\. /g, '. ... ');
-    processed = processed.replace(/\? /g, '? ... ');
-  } else {
-    // Normal organic rate
-    processed = processed.replace(/, /g, ', ... ');
-    processed = processed.replace(/\. /g, '. ... ... ');
-    processed = processed.replace(/\! /g, '! ... — ');
-    processed = processed.replace(/ - /g, ' — ... ');
-    processed = processed.replace(/ – /g, ' — ... ');
-  }
-
-  // Energy dictates tone markers (style amplification)
-  if (energy > 75) {
-    // High energy -> exclamation emphasis, strong emotional pacing
-    processed = processed.replace(/\. \.\.\./g, '! ...');
-    if (!processed.endsWith('!') && !processed.endsWith('?')) {
-      processed += '!';
-    }
-  } else if (energy < 30) {
-    // Soft, academic whispering tempo -> gentle decay with double pause brackets
-    processed = processed.replace(/!/g, '.');
-    processed = processed.replace(/\. \.\.\./g, '... ...');
-  }
-
-  // Standardize any spacing issues created by replacement loops
-  processed = processed.replace(/\s+/g, ' ');
-  processed = processed.replace(/\.\.\.\s*\.\.\./g, '...');
-  
-  return processed;
 }
 
 // Core helper to determine if current configuration is modified from factory default settings and needs the "LIVE" badge
@@ -155,9 +103,11 @@ export function PodcastVoiceSelector({
     stopCurrentPreview();
 
     const voice = HUMAN_VOICE_LIBRARY[voiceId];
-    const sampleText = voice?.previewText || (voiceGender === 'male'
+    // Apply highly dynamic spacer noise sequence to bypass ElevenLabs server-side completion cache
+    const randomSpaceSeed = Math.random() > 0.5 ? " " : "  ";
+    const sampleText = (voice?.previewText || (voiceGender === 'male'
       ? `Привет! Я с удовольствием озвучу ваш подкаст на русском языке. Как вам пример звучания?`
-      : `Здравствуйте! Буду рада принять участие в записи вашего выпуска. Давайте создадим отличный диалог!`);
+      : `Здравствуйте! Буду рада принять участие в записи вашего выпуска. Давайте создадим отличный диалог!`)) + randomSpaceSeed;
 
     const isHost = HOST_VOICE_IDS.includes(voiceId);
     const activeSettings = isHost ? hostSettings : guestSettings;
@@ -177,7 +127,7 @@ export function PodcastVoiceSelector({
       setIsPreviewLoading(voiceId);
 
       try {
-        const enhancedText = applySpeechRhythm(sampleText, activeSettings);
+        const enhancedText = applySpeechRhythm(sampleText, activeSettings, voiceId);
 
         const response = await fetch('/api/podcast/synthesize', {
           method: 'POST',

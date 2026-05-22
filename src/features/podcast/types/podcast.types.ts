@@ -92,6 +92,27 @@ export interface SessionStats {
   averageResponseTimeMs: number;
 }
 
+export interface VoiceDiagnostic {
+  voiceId: string;
+  voiceName: string;
+  modelId: string;
+  stability: number;
+  similarity_boost: number;
+  style: number;
+  speed: number;
+  energy: number;
+  cacheHit: boolean;
+  durationMs: number;
+  rawPayload: any;
+  textRef: string;
+  pitch: number;
+  energy_curve: string;
+  punctuation_behavior: string;
+  pause_density: string;
+  emotionality: number;
+  cadence: string;
+}
+
 export interface DebugTraceState {
   stages: DebugStageLog[];
   totalDurationMs?: number;
