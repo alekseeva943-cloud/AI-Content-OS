@@ -61,6 +61,9 @@ ${guestEnabled && guest ? `Информация о госте: Имя "${guest.n
 - Каждая реплика/сегмент должна иметь спикера: 'host' (ведущий) или 'guest' (гость, если включен).
 - Каждая часть должна содержать интересную, глубокую и содержательную информацию на тему "${topic}".
 - Длина сценария, глубина проработки и количество диалогов должны ЧЕТКО масштабироваться на ${durationMinutes} минут выпуска. Чем больше минут, тем глубже и длиннее раскрываются темы в сценарии.
+- Сценарий должен быть СВЕРХ-ЕСТЕСТВЕННЫМ и ЖИВЫМ. Это устная речь, а не учебник! Пожалуйста, используй живой разговорный русский язык (conversational Russian), короткие паузы ("...", "—"), уместные перебивания и незаконченные мысли.
+- Обязательно добавляй маркеры устной речи и реакции: "угу", "слушай", "хм...", "слушай, а ведь интересно", "да-да, абсолютно", "вот это важно!", "смотри", "погоди, но ведь...". Сделай так, чтобы диалог звучал как беседа двух по-настоящему увлеченных людей, а не роботов.
+- Избегай академической сухости, канцелярского стиля и шаблонного обмена длинными идеальными абзацами.
 - Верни ответ СТРОГО в формате JSON. Все текстовые поля заполняй на русском языке.
 
 Схема JSON, которую ТЫ ДОЛЖЕН СТРОГО вернуть:
@@ -168,7 +171,7 @@ ${guestEnabled && guest ? `Информация о госте: Имя "${guest.n
 
 router.post("/api/podcast/synthesize", async (req, res) => {
   try {
-    const { text, voiceId, apiKey } = req.body;
+    const { text, voiceId, apiKey, modelId, voiceSettings, speaker, voiceName } = req.body;
 
     if (!text || !voiceId) {
       return res.status(400).json({ error: "Missing required text or voiceId parameters" });
@@ -178,7 +181,32 @@ router.post("/api/podcast/synthesize", async (req, res) => {
       return res.status(400).json({ error: "Адресный ключ ElevenLabs API не найден или пуст" });
     }
 
-    console.log(`[PODCAST ROUTE] Proxying ElevenLabs synthesis for voice ID: ${voiceId}`);
+    const finalModelId = modelId || 'eleven_multilingual_v2';
+    const finalSettings = {
+      stability: typeof voiceSettings?.stability === 'number' ? voiceSettings.stability : 0.45,
+      similarity_boost: typeof voiceSettings?.similarity_boost === 'number' ? voiceSettings.similarity_boost : 0.75,
+      style: typeof voiceSettings?.style === 'number' ? voiceSettings.style : 0.45,
+      use_speaker_boost: typeof voiceSettings?.use_speaker_boost === 'boolean' 
+        ? voiceSettings.use_speaker_boost 
+        : (typeof voiceSettings?.speaker_boost === 'boolean' ? voiceSettings.speaker_boost : true)
+    };
+
+    // Deep diagnostics logging block as requested by Requirement 1 and 4
+    console.log(`
+┌────────────────────────────────────────────────────────┐
+│ [VOICE ENGINE] Proxying ElevenLabs synthesis
+├────────────────────────────────────────────────────────┤
+│ Speaker:          ${speaker || 'unknown'}
+│ Voice Name:       ${voiceName || 'unknown'}
+│ Voice ID:         ${voiceId}
+│ Model ID:         ${finalModelId}
+│ Stability:        ${finalSettings.stability}
+│ Similarity Boost: ${finalSettings.similarity_boost}
+│ Style:            ${finalSettings.style}
+│ Speaker Boost:    ${finalSettings.use_speaker_boost}
+│ Text length:      ${text.length} characters
+└────────────────────────────────────────────────────────┘
+    `);
 
     const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
@@ -188,11 +216,8 @@ router.post("/api/podcast/synthesize", async (req, res) => {
       },
       body: JSON.stringify({
         text: text,
-        model_id: 'eleven_multilingual_v2',
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-        }
+        model_id: finalModelId,
+        voice_settings: finalSettings
       })
     });
 
