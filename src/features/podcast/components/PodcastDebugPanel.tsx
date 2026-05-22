@@ -88,6 +88,18 @@ export function PodcastDebugPanel({ trace, isGenerating }: PodcastDebugPanelProp
 
       {isOpen && (
         <div className="p-6 md:p-8 space-y-6">
+          {/* Active Model / TTS Indicators */}
+          <div className="flex flex-wrap items-center gap-3 pb-3 border-b border-neutral-100 text-[10px] tracking-wider uppercase font-extrabold text-neutral-500">
+            <div className="flex items-center gap-2 bg-neutral-100 text-neutral-700 px-3 py-1.5 rounded-xl border border-neutral-200">
+              <Cpu size={12} className="text-[#10B981] animate-pulse" />
+              <span>ACTIVE MODEL: <span className="font-sans font-black text-neutral-900 text-[11px]">GPT-4o</span></span>
+            </div>
+            <div className="flex items-center gap-2 bg-neutral-100 text-neutral-700 px-3 py-1.5 rounded-xl border border-neutral-200">
+              <Activity size={12} className="text-[#10B981]" />
+              <span>ACTIVE TTS: <span className="font-sans font-black text-neutral-900 text-[11px]">ElevenLabs Multilingual v2</span></span>
+            </div>
+          </div>
+
           {/* Main Pipeline Step-by-Step UI */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             {trace.stages.map((stage) => {

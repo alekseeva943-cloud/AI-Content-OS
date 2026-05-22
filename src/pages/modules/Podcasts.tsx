@@ -8,8 +8,10 @@ import { Mic, Radio, Sparkles, AlertCircle } from 'lucide-react';
 export function Podcasts() {
   const { isGenerating, error, result, debugTrace, generate, clearResult } = usePodcastGeneration();
   const [guestEnabled, setGuestEnabled] = useState(true);
+  const [lastConfig, setLastConfig] = useState<any>(null);
 
   const handleGenerate = async (config: any) => {
+    setLastConfig(config);
     setGuestEnabled(config.guestEnabled);
     await generate(config);
   };
@@ -35,9 +37,24 @@ export function Podcasts() {
       </div>
 
       {error && (
-        <div className="p-4 bg-rose-50 border border-rose-100 text-rose-800 rounded-2xl text-xs font-medium flex items-center gap-2.5 text-left animate-in fade-in duration-300">
-          <AlertCircle size={16} className="text-rose-600 shrink-0" />
-          <span>{error}</span>
+        <div className="p-5 bg-rose-50 border border-rose-100 text-rose-800 rounded-[1.5rem] text-sm font-medium flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left animate-in fade-in duration-300">
+          <div className="flex items-start sm:items-center gap-3">
+            <AlertCircle size={18} className="text-rose-600 shrink-0 mt-0.5 sm:mt-0" />
+            <div className="space-y-0.5">
+              <span className="font-extrabold text-neutral-800 block">Ошибка генерации сценария</span>
+              <span className="text-xs text-rose-700 block leading-relaxed">{error}</span>
+            </div>
+          </div>
+          {lastConfig && (
+            <button
+              onClick={() => handleGenerate(lastConfig)}
+              disabled={isGenerating}
+              className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-xs font-bold transition-all shrink-0 shadow-md shadow-rose-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center gap-1.5 self-start sm:self-auto"
+            >
+              <Sparkles size={14} className={isGenerating ? 'animate-spin' : ''} />
+              {isGenerating ? 'Ожидание повторного ответа...' : 'Повторить запрос'}
+            </button>
+          )}
         </div>
       )}
 

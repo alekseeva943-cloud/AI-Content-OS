@@ -88,6 +88,12 @@ ${guestEnabled && guest ? `Информация о госте: Имя "${guest.n
 Гость: ${guestEnabled && guest ? `${guest.name} (${guest.expertise})` : "нет гостя, одиночный выпуск ведущего"}.
 Целевая длительность выпуска: ${durationMinutes} мин.`;
 
+    console.log("[OPENAI CONFIG]");
+    console.log({
+      hasKey: !!process.env.OPENAI_API_KEY,
+      keyPrefix: process.env.OPENAI_API_KEY?.slice(0, 7),
+    });
+
     console.log(`[SERVER PODCAST ROUTE] [2/5] Dispatching OpenAI Chat Completion (GPT-4o) request...`);
     console.log(`[SERVER PODCAST ROUTE] System Instruction Wordcount: ${sysMessage.split(' ').length}, User Prompt Length: ${userPrompt.length}`);
 
@@ -104,6 +110,14 @@ ${guestEnabled && guest ? `Информация о госте: Имя "${guest.n
       });
     } catch (providerErr: any) {
       console.error("[SERVER PODCAST ROUTE] [PROVIDER ERROR] OpenAI Request Rejected:", providerErr);
+      console.error({
+        status: providerErr?.status,
+        statusCode: providerErr?.statusCode,
+        code: providerErr?.code,
+        type: providerErr?.type,
+        message: providerErr?.message,
+        headers: providerErr?.headers || providerErr?.response?.headers
+      });
       throw providerErr;
     }
 
@@ -141,9 +155,26 @@ ${guestEnabled && guest ? `Информация о госте: Имя "${guest.n
     if (lowerMsg.includes("api_key") || lowerMsg.includes("api key") || lowerMsg.includes("unauthorized") || lowerMsg.includes("401")) {
       statusCode = 401;
       finalErrorMessage = "401 Unauthorized API Key: Ошибка авторизации OpenAI API. Убедитесь, что ваш OPENAI_API_KEY настроен правильно на сервере.";
-    } else if (lowerMsg.includes("quota") || lowerMsg.includes("429") || lowerMsg.includes("resource_exhausted") || lowerMsg.includes("rate limit")) {
+    } else if (
+      err.status === 429 || 
+      err.statusCode === 429 || 
+      err.code === "insufficient_quota" || 
+      err.type === "insufficient_quota" || 
+      lowerMsg.includes("insufficient_quota") || 
+      lowerMsg.includes("quota_exceeded") || 
+      lowerMsg.includes("quota exceeded")
+    ) {
       statusCode = 429;
-      finalErrorMessage = "429 Rate Limit Exceeded / Overloaded: Достигнут лимит запросов или квота OpenAI API. Попробуйте еще раз позже.";
+      finalErrorMessage = "Баланс OpenAI API исчерпан";
+    } else if (
+      lowerMsg.includes("rate_limit") || 
+      lowerMsg.includes("rate limit") || 
+      err.code === "rate_limit_exceeded" || 
+      lowerMsg.includes("429") || 
+      lowerMsg.includes("resource_exhausted")
+    ) {
+      statusCode = 429;
+      finalErrorMessage = "Слишком много запросов, попробуйте через несколько секунд";
     } else if (lowerMsg.includes("overloaded") || lowerMsg.includes("503") || lowerMsg.includes("unavailable") || lowerMsg.includes("timeout")) {
       statusCode = 503;
       finalErrorMessage = "503 OpenAI Service Unavailable / Timeout: ИИ-провайдер временно перегружен или таймаут ожидания. Пожалуйста, отправьте запрос повторно через несколько секунд.";
@@ -238,6 +269,77 @@ router.post("/api/podcast/synthesize", async (req, res) => {
     console.error("[PODCAST SYNTHESIZE ERROR]", err);
     res.status(500).json({ error: err.message || "Synthesis error occurred" });
   }
+});
+
+router.get("/api/system/health", async (req, res) => {
+  let openaiStatus = "unknown";
+  let elevenlabsStatus = "unknown";
+  let podcastApiStatus = "ok";
+  
+  // 1. Check OpenAI
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey) {
+    openaiStatus = "missing_key";
+  } else {
+    try {
+      const ai = getOpenAI();
+      // Simple models.list to check authentication and quota
+      await ai.models.list();
+      openaiStatus = "ok";
+    } catch (err: any) {
+      console.error("[HEALTH CHECK] OpenAI error:", err);
+      const lower = (err.message || "").toLowerCase();
+      if (err.status === 429 || lower.includes("quota") || lower.includes("limit")) {
+        openaiStatus = "quota_exceeded";
+      } else if (err.status === 401 || lower.includes("auth") || lower.includes("key")) {
+        openaiStatus = "invalid_key";
+      } else {
+        openaiStatus = "error: " + (err.message || "Unknown error");
+      }
+    }
+  }
+
+  // 2. Check ElevenLabs
+  // ElevenLabs key is usually passed from frontend settings store to /api/podcast/synthesize.
+  // We check if it is explicitly configured in process.env or passed as query param, or check domain reachability.
+  const xiKey = process.env.ELEVENLABS_API_KEY || (req.query.apiKey as string) || "";
+  if (!xiKey) {
+    // If no key is set yet, verify connectivity to the endpoint
+    try {
+      const resp = await fetch(`https://api.elevenlabs.io/v1/voices`);
+      if (resp.status === 200 || resp.status === 401) {
+        elevenlabsStatus = "missing_key_but_api_reachable";
+      } else {
+        elevenlabsStatus = "endpoint_error_code_" + resp.status;
+      }
+    } catch (err: any) {
+      elevenlabsStatus = "unreachable: " + (err.message || "Network error");
+    }
+  } else {
+    try {
+      const resp = await fetch("https://api.elevenlabs.io/v1/models", {
+        headers: { "xi-api-key": xiKey }
+      });
+      if (resp.ok) {
+        elevenlabsStatus = "ok";
+      } else {
+        const text = await resp.text();
+        if (resp.status === 401) {
+          elevenlabsStatus = "invalid_key";
+        } else {
+          elevenlabsStatus = `error_code_${resp.status}: ${text.substring(0, 100)}`;
+        }
+      }
+    } catch (err: any) {
+      elevenlabsStatus = "unreachable: " + (err.message || "Network error");
+    }
+  }
+
+  res.json({
+    openai: openaiStatus,
+    elevenlabs: elevenlabsStatus,
+    podcast_api: podcastApiStatus
+  });
 });
 
 export default router;
