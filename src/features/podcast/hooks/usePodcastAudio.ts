@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { generatePodcastAudio } from '../services/generatePodcastAudio';
 import { useSettingsStore } from '@/src/stores/useSettingsStore';
 import { ScriptSegment, VoiceSelection } from '../types/podcast.types';
+import { CENTRAL_VOICES } from '../constants/voices';
 import { toast } from 'sonner';
 
 export interface AudioCacheEntry {
@@ -49,7 +50,7 @@ export function usePodcastAudio() {
     return `${segmentId}_${voiceId}_${speed}_${emotion}`;
   };
 
-  const playLocalSpeech = (text: string, isGuest: boolean, segmentId: string) => {
+  const playLocalSpeech = (text: string, voiceId: string, segmentId: string) => {
     if (!window.speechSynthesis) {
       toast.error('Веб-озвучка не поддерживается вашим браузером');
       return;
@@ -57,23 +58,48 @@ export function usePodcastAudio() {
 
     try {
       window.speechSynthesis.cancel();
+      const voiceInfo = CENTRAL_VOICES[voiceId] || CENTRAL_VOICES['pNInz6obpgdq5TaqLwtY'];
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'ru-RU';
       
       const voices = window.speechSynthesis.getVoices();
-      const ruVoices = voices.filter(v => v.lang.startsWith('ru'));
+      const ruVoices = voices.filter(v => v.lang.startsWith('ru') || v.lang.startsWith('ru-RU'));
       
-      if (isGuest) {
-        const femaleVoice = ruVoices.find(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('milena'));
-        if (femaleVoice) utterance.voice = femaleVoice;
-        utterance.pitch = 1.12;
-        utterance.rate = 1.05;
+      console.log(`[VOICE PLAYLOCAL] Voice ID chosen: ${voiceId} (${voiceInfo?.name || 'Unknown'})`);
+      console.log(`[VOICE DETAILS] Gender: ${voiceInfo?.gender}, System voices found: ${ruVoices.length}`);
+
+      const isFemale = voiceInfo?.gender === 'female';
+      if (isFemale) {
+        const femaleVoice = ruVoices.find(v => 
+          v.name.toLowerCase().includes('female') || 
+          v.name.toLowerCase().includes('google') || 
+          v.name.toLowerCase().includes('milena') || 
+          v.name.toLowerCase().includes('irina')
+        );
+        if (femaleVoice) {
+          utterance.voice = femaleVoice;
+        } else if (ruVoices.length > 0) {
+          utterance.voice = ruVoices[0];
+        }
       } else {
-        const maleVoice = ruVoices.find(v => v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('yuri') || v.name.toLowerCase().includes('microsoft') || v.name.toLowerCase().includes('pavel'));
-        if (maleVoice) utterance.voice = maleVoice;
-        utterance.pitch = 0.9;
-        utterance.rate = 1.0;
+        const maleVoice = ruVoices.find(v => 
+          v.name.toLowerCase().includes('male') || 
+          v.name.toLowerCase().includes('yuri') || 
+          v.name.toLowerCase().includes('microsoft') || 
+          v.name.toLowerCase().includes('pavel') || 
+          v.name.toLowerCase().includes('alexander')
+        );
+        if (maleVoice) {
+          utterance.voice = maleVoice;
+        } else if (ruVoices.length > 0) {
+          utterance.voice = ruVoices[0];
+        }
       }
+
+      utterance.pitch = voiceInfo?.fallbackPitch ?? 1.0;
+      utterance.rate = voiceInfo?.fallbackRate ?? 1.0;
+
+      console.log(`[VOICE TTS PARAM] Speaking, pitch=${utterance.pitch}, rate=${utterance.rate}`);
 
       utterance.onstart = () => {
         setPlayingId(segmentId);
@@ -91,7 +117,7 @@ export function usePodcastAudio() {
       window.speechSynthesis.speak(utterance);
 
     } catch (err) {
-      console.error(err);
+      console.error('[VOICE TTS EXCEPTION]', err);
       toast.error('Ошибка встроенного воспроизведения');
     }
   };
@@ -101,12 +127,22 @@ export function usePodcastAudio() {
     
     // Check cache
     if (audioCache[key]) {
+      console.log(`[VOICE STATUS] Cache HIT for key="${key}"`);
       return audioCache[key];
     }
 
     if (!elevenlabsKey) {
       throw new Error('ElevenLabs key not configured');
     }
+
+    const voiceInfo = CENTRAL_VOICES[voiceId] || CENTRAL_VOICES['pNInz6obpgdq5TaqLwtY'];
+    console.log(`[VOICE TRANSIT] Triggering Voice Synthesis Pipeline:
+      - segmentId: ${segmentId}
+      - voice: ${voiceInfo?.name}
+      - voiceId: ${voiceId}
+      - gender: ${voiceInfo?.gender}
+      - proxy: /api/podcast/synthesize
+      - text length: ${text.length} chars`);
 
     // Call synthesizer backend
     const response = await fetch('/api/podcast/synthesize', {
@@ -123,12 +159,15 @@ export function usePodcastAudio() {
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`[VOICE STATUS] Elevenlabs Synthesis HTTP Failure:`, errorText);
       throw new Error(errorText || 'Failed to synthesize segment audio');
     }
 
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const entry = { url, blob, voiceId };
+
+    console.log(`[VOICE STATUS] Elevenlabs Synthesis Success. Key cached: "${key}"`);
 
     // Update state cache immediately
     setAudioCache(prev => ({ ...prev, [key]: entry }));
@@ -143,26 +182,27 @@ export function usePodcastAudio() {
       const cached = audioCache[key];
 
       if (cached) {
+        console.log(`[VOICE PLAY] Playing from audio cache key: "${key}"`);
         playUrl(cached.url, segmentId);
       } else {
         if (!elevenlabsKey) {
+          console.warn(`[VOICE PLAY] No Elevenlabs Key or missing configuration. Using native browser speech synthesis for voiceId=${voiceId}`);
           toast.warning('ElevenLabs API-ключ не настроен. Используем локальный синтезатор...');
-          playLocalSpeech(text, voiceId.includes('guest') || voiceId === 'ErXwobaYiN019PkySvjV' || voiceId === 'AZnzlk1XvdvUeBnXmlld' || voiceId === 'EXAVITQu4vr4xnSDxMaL', segmentId);
+          playLocalSpeech(text, voiceId, segmentId);
           return;
         }
 
         setSynthesizingId(segmentId);
         try {
           const entry = await synthesizeSegmentDirectly(segmentId, text, voiceId);
-          toast.success('Сегмент успешно озвучен в ElevenLabs!');
           // Invalidate merged full episode if a segment gets regenerated
           setFullEpisodeUrl(null);
           setFullEpisodeBlob(null);
           playUrl(entry.url, segmentId);
         } catch (err: any) {
-          console.error(err);
+          console.error(`[VOICE ERROR] Synthesis failed, falling back to WebSpeechTTS:`, err);
           toast.error(`Ошибка ElevenLabs: ${err.message || 'Связь прервана'}. Используем локальный синтезатор...`);
-          playLocalSpeech(text, voiceId.includes('guest') || voiceId === 'ErXwobaYiN019PkySvjV' || voiceId === 'AZnzlk1XvdvUeBnXmlld' || voiceId === 'EXAVITQu4vr4xnSDxMaL', segmentId);
+          playLocalSpeech(text, voiceId, segmentId);
         } finally {
           setSynthesizingId(null);
         }

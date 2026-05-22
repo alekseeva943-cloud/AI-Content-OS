@@ -1,68 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { PodcastVoice, VoiceSelection } from '../types/podcast.types';
-import { Check, User, Sparkles, Play, Pause, Loader2, Headphones, Radio, Mic } from 'lucide-react';
+import { Play, Pause, Loader2, Radio, Mic, User, Volume2 } from 'lucide-react';
 import { useSettingsStore } from '@/src/stores/useSettingsStore';
+import { CENTRAL_VOICES, HOST_VOICE_IDS, GUEST_VOICE_IDS } from '../constants/voices';
 import { toast } from 'sonner';
-
-// Redefined structural preset options with specific, highly targeted characteristics
-interface RedesignedPodcastVoice extends PodcastVoice {
-  tags: string[];
-  shortDesc: string;
-}
-
-const HOST_VOICES: RedesignedPodcastVoice[] = [
-  { 
-    id: 'pNInz6obpgdq5TaqLwtY', 
-    name: 'Adam', 
-    gender: 'male', 
-    tags: ['Business', 'Premium', 'Deep'], 
-    shortDesc: 'Размеренная, авторитетная речь для ведения бизнес-подкастов.',
-    description: ''
-  },
-  { 
-    id: 'TxGEqn7nUaNZTRmsh7M3', 
-    name: 'Josh', 
-    gender: 'male', 
-    tags: ['Calm', 'Energetic', 'Friendly'], 
-    shortDesc: 'Харизматичный собеседник со свободной, непринужденной подачей.',
-    description: ''
-  },
-  { 
-    id: '21m00Tcm4TlvDq8ikWAM', 
-    name: 'Rachel', 
-    gender: 'female', 
-    tags: ['Calm', 'Premium', 'Expert'], 
-    shortDesc: 'Эрудированный, доверительный женский тембр.',
-    description: ''
-  }
-];
-
-const GUEST_VOICES: RedesignedPodcastVoice[] = [
-  { 
-    id: 'ErXwobaYiN019PkySvjV', 
-    name: 'Antoni', 
-    gender: 'male', 
-    tags: ['Storytelling', 'Deep', 'Friendly'], 
-    shortDesc: 'Приятный обволакивающий голос мастера сторителлинга.',
-    description: ''
-  },
-  { 
-    id: 'AZnzlk1XvdvUeBnXmlld', 
-    name: 'Domi', 
-    gender: 'female', 
-    tags: ['Expert', 'Calm'], 
-    shortDesc: 'Сдержанный академический голос для глубоких интервью и разборов.',
-    description: ''
-  },
-  { 
-    id: 'EXAVITQu4vr4xnSDxMaL', 
-    name: 'Bella', 
-    gender: 'female', 
-    tags: ['Friendly', 'Energetic'], 
-    shortDesc: 'Мелодичный, позитивный, открытый к диалогу тембр.',
-    description: ''
-  }
-];
 
 interface PodcastVoiceSelectorProps {
   selection: VoiceSelection;
@@ -108,32 +49,35 @@ export function PodcastVoiceSelector({ selection, onChange, guestEnabled, guestN
     setIsPreviewLoading(null);
   };
 
-  const playPreview = async (e: React.MouseEvent, voice: PodcastVoice) => {
-    e.stopPropagation(); // Prevent card selection from firing
+  const playPreview = async (e: React.MouseEvent, voiceId: string, voiceGender: 'male' | 'female', voiceName: string) => {
+    e.stopPropagation(); // Prevent select click on the card
 
-    if (currentPreviewVoiceId === voice.id) {
+    if (currentPreviewVoiceId === voiceId) {
       stopCurrentPreview();
       return;
     }
 
     stopCurrentPreview();
 
-    const sampleText = voice.gender === 'male'
+    const sampleText = voiceGender === 'male'
       ? `Привет! Я с удовольствием озвучу ваш подкаст на русском языке. Как вам пример звучания?`
       : `Здравствуйте! Буду рада принять участие в записи вашего выпуска. Давайте создадим отличный диалог!`;
 
+    console.log(`[VOICE PREVIEW] Play preview triggered for voiceId=${voiceId} (${voiceName})`);
+
     // 1. Check if ElevenLabs key is present for premium synthesis
     if (elevenlabsKey) {
-      setIsPreviewLoading(voice.id);
+      setIsPreviewLoading(voiceId);
       
       // Use cached URL if exists
-      if (previewUrls[voice.id]) {
+      if (previewUrls[voiceId]) {
         setIsPreviewLoading(null);
-        setCurrentPreviewVoiceId(voice.id);
-        const audio = new Audio(previewUrls[voice.id]);
+        setCurrentPreviewVoiceId(voiceId);
+        const audio = new Audio(previewUrls[voiceId]);
         audioRef.current = audio;
         audio.onended = () => setCurrentPreviewVoiceId(null);
-        audio.onerror = () => {
+        audio.onerror = (err) => {
+          console.error('[VOICE PREVIEW API ERROR]', err);
           toast.error('Ошибка воспроизведения превью');
           stopCurrentPreview();
         };
@@ -149,7 +93,7 @@ export function PodcastVoiceSelector({ selection, onChange, guestEnabled, guestN
           },
           body: JSON.stringify({
             text: sampleText,
-            voiceId: voice.id,
+            voiceId: voiceId,
             apiKey: elevenlabsKey
           })
         });
@@ -162,9 +106,9 @@ export function PodcastVoiceSelector({ selection, onChange, guestEnabled, guestN
         const url = URL.createObjectURL(blob);
         
         // Cache the preview url
-        setPreviewUrls(prev => ({ ...prev, [voice.id]: url }));
+        setPreviewUrls(prev => ({ ...prev, [voiceId]: url }));
         setIsPreviewLoading(null);
-        setCurrentPreviewVoiceId(voice.id);
+        setCurrentPreviewVoiceId(voiceId);
 
         const audio = new Audio(url);
         audioRef.current = audio;
@@ -175,42 +119,54 @@ export function PodcastVoiceSelector({ selection, onChange, guestEnabled, guestN
         };
         audio.play();
       } catch (err) {
-        console.error('[VOICE PREVIEW] ElevenLabs preview error:', err);
+        console.error('[VOICE PREVIEW] ElevenLabs preview error, falling back to WebTTS:', err);
         setIsPreviewLoading(null);
         toast.warning('ElevenLabs превью недоступно. Используем системный синтезатор речи...');
-        triggerSpeechSynthesis(sampleText, voice);
+        triggerSpeechSynthesis(sampleText, voiceId);
       }
     } else {
       // 2. Fallback to Browser native speech synthesis
-      triggerSpeechSynthesis(sampleText, voice);
+      triggerSpeechSynthesis(sampleText, voiceId);
     }
   };
 
-  const triggerSpeechSynthesis = (text: string, voice: PodcastVoice) => {
+  const triggerSpeechSynthesis = (text: string, voiceId: string) => {
     if (!window.speechSynthesis) {
       toast.error('Ваш браузер не поддерживает синтез речи');
       return;
     }
 
     try {
-      setCurrentPreviewVoiceId(voice.id);
+      setCurrentPreviewVoiceId(voiceId);
+      const voiceInfo = CENTRAL_VOICES[voiceId] || CENTRAL_VOICES['pNInz6obpgdq5TaqLwtY'];
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'ru-RU';
       
       const voices = window.speechSynthesis.getVoices();
-      const ruVoices = voices.filter(v => v.lang.startsWith('ru'));
+      const ruVoices = voices.filter(v => v.lang.startsWith('ru') || v.lang.startsWith('ru-RU'));
       
-      if (voice.gender === 'female') {
-        const fVoice = ruVoices.find(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('google'));
+      const isFemale = voiceInfo?.gender === 'female';
+      if (isFemale) {
+        const fVoice = ruVoices.find(v => 
+          v.name.toLowerCase().includes('female') || 
+          v.name.toLowerCase().includes('google') || 
+          v.name.toLowerCase().includes('milena') || 
+          v.name.toLowerCase().includes('irina')
+        );
         if (fVoice) utterance.voice = fVoice;
-        utterance.pitch = 1.15;
-        utterance.rate = 1.0;
       } else {
-        const mVoice = ruVoices.find(v => v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('yuri'));
+        const mVoice = ruVoices.find(v => 
+          v.name.toLowerCase().includes('male') || 
+          v.name.toLowerCase().includes('yuri') || 
+          v.name.toLowerCase().includes('microsoft') || 
+          v.name.toLowerCase().includes('pavel') || 
+          v.name.toLowerCase().includes('alexander')
+        );
         if (mVoice) utterance.voice = mVoice;
-        utterance.pitch = 0.9;
-        utterance.rate = 1.05;
       }
+
+      utterance.pitch = voiceInfo?.fallbackPitch ?? 1.0;
+      utterance.rate = voiceInfo?.fallbackRate ?? 1.0;
 
       utterance.onend = () => setCurrentPreviewVoiceId(null);
       utterance.onerror = () => setCurrentPreviewVoiceId(null);
@@ -224,143 +180,109 @@ export function PodcastVoiceSelector({ selection, onChange, guestEnabled, guestN
   };
 
   return (
-    <div className="space-y-8 select-none">
+    <div className="space-y-6 select-none text-left">
       {/* Module Title Header Banner */}
-      <div className="flex items-center justify-between pb-3.5 border-b border-neutral-100">
+      <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-[#10B981]/10 text-[#10B981] rounded-lg flex items-center justify-center">
+          <div className="w-7 h-7 bg-[#10B981]/10 text-[#10B981] rounded-lg flex items-center justify-center shrink-0">
             <Radio size={14} className="animate-pulse" />
           </div>
           <h3 className="text-xs font-black text-neutral-800 uppercase tracking-widest leading-none">
-            АКТИВНЫЕ ГОЛОСА PODCAST STUDIO
+            Голосовая Студия
           </h3>
         </div>
-        <span className="text-[10px] text-neutral-400 font-bold tracking-wider">[ElevenLabs PRO]</span>
+        <span className="text-[10px] text-neutral-400 font-bold tracking-wider">[ElevenLabs API]</span>
       </div>
 
-      <div className="space-y-10">
+      <div className="space-y-6">
         
         {/* ==================================== */}
-        {/* STEP 1: HOST VOICE CONFIGURATION (EMERALD ACCENTS) */}
+        {/* HOST VOICE CONFIGURATION (EMERALD ACCENTS) */}
         {/* ==================================== */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] bg-emerald-500 text-white font-extrabold px-1.5 py-0.5 rounded-md">
-                ШАГ 1
-              </span>
-              <label className="text-xs font-black text-neutral-800 uppercase tracking-wider flex items-center gap-1.5 leading-none">
-                <Mic size={13} className="text-emerald-500" />
-                Голос ведущего подкаста
-              </label>
-            </div>
-            <span className="text-[10px] text-emerald-650 font-extrabold uppercase tracking-widest bg-emerald-100/40 px-2 py-0.5 rounded-full">
-              Host Identity
+            <label className="text-xs font-black text-neutral-800 uppercase tracking-wider flex items-center gap-1.5 leading-none">
+              <Mic size={13} className="text-[#10B981]" />
+              Ведущий подкаста
+            </label>
+            <span className="text-[9px] text-[#10B981] font-black uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100/50">
+              Host
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {HOST_VOICES.map((voice) => {
-              const isSelected = selection.hostVoiceId === voice.id;
-              const isPlaying = currentPreviewVoiceId === voice.id;
-              const isLoading = isPreviewLoading === voice.id;
+          <div className="space-y-2">
+            {HOST_VOICE_IDS.map((id) => {
+              const voice = CENTRAL_VOICES[id];
+              const isSelected = selection.hostVoiceId === id;
+              const isPlaying = currentPreviewVoiceId === id;
+              const isLoading = isPreviewLoading === id;
 
               return (
                 <div
-                  key={voice.id}
-                  onClick={() => handleHostVoiceSelect(voice.id)}
-                  className={`p-4 rounded-3xl border transition-all duration-300 cursor-pointer text-left flex flex-col justify-between relative group select-none min-h-[160px] ${
+                  key={id}
+                  onClick={() => handleHostVoiceSelect(id)}
+                  className={`p-3 rounded-2xl border transition-all duration-300 cursor-pointer flex items-center justify-between gap-3 relative select-none ${
                     isSelected
-                      ? 'bg-emerald-50/50 border-emerald-500 ring-4 ring-emerald-500/10 shadow-lg shadow-emerald-500/[0.04] scale-[1.01]'
-                      : 'bg-white border-neutral-200 hover:border-emerald-300 hover:shadow-md hover:-translate-y-0.5'
+                      ? 'bg-emerald-50/40 border-[#10B981] ring-2 ring-emerald-500/10 shadow-sm shadow-emerald-500/[0.02]'
+                      : 'bg-white border-neutral-150 hover:border-emerald-255 hover:-translate-y-0.2 hover:shadow-sm'
                   }`}
                 >
-                  {/* Glowing active animation element inside active card */}
-                  {isSelected && (
-                    <span className="absolute top-3 right-3 flex h-2.5 w-2.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                    </span>
-                  )}
-
-                  {/* Top content */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center shrink-0 ${
-                        isSelected ? 'bg-emerald-500 text-white' : 'bg-neutral-100 text-neutral-600'
-                      }`}>
-                        {voice.name[0]}
-                      </div>
-                      
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1">
-                          <span className="font-extrabold text-sm text-neutral-900 leading-none">{voice.name}</span>
-                          <span className="text-[9px] bg-neutral-100 text-neutral-500 px-1 py-0.2 rounded font-bold uppercase tracking-widest scale-90">
-                            {voice.gender === 'male' ? 'М' : 'Ж'}
-                          </span>
-                        </div>
-                        {/* Selected label indicator */}
+                  {/* Avatar, name and tag info */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className={`w-9 h-9 rounded-xl font-bold text-xs flex items-center justify-center shrink-0 relative transition-all ${
+                      isSelected 
+                        ? 'bg-[#10B981] text-white shadow-sm shadow-emerald-500/20' 
+                        : 'bg-neutral-100 text-neutral-600'
+                    }`}>
+                      {voice.name[0]}
+                      {isPlaying && (
+                        <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center border-2 border-white scale-90">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                          <span className="relative w-1.5 h-1.5 rounded-full bg-white"></span>
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="min-w-0 flex-1 text-left">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-sm text-neutral-850 leading-tight">{voice.name}</span>
+                        <span className="text-[8px] bg-neutral-100 font-bold text-neutral-500 px-1 py-0.3 rounded scale-90">
+                          {voice.gender === 'male' ? 'М' : 'Ж'}
+                        </span>
+                        {/* Selected Indicator */}
                         {isSelected && (
-                          <span className="text-[9px] text-emerald-600 font-extrabold uppercase tracking-widest mt-0.5 block">
-                            ✓ Активный Ведущий
-                          </span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
                         )}
                       </div>
+                      
+                      {/* Compact tag and desc line */}
+                      <p className="text-[11px] text-neutral-400 font-medium truncate mt-0.5">
+                        <span className="text-[#10B981] font-bold mr-1">{voice.tags[0]}</span> • {voice.shortDesc}
+                      </p>
                     </div>
-
-                    <p className="text-[11px] text-neutral-500 leading-normal min-h-[40px] lines-clamp-3">
-                      {voice.shortDesc}
-                    </p>
                   </div>
 
-                  {/* Wave effect when playing inside card */}
-                  {isPlaying && (
-                    <div className="flex items-center gap-0.5 h-3 justify-start py-1">
-                      <div className="w-1 bg-emerald-500 h-2 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                      <div className="w-1 bg-emerald-500 h-3 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
-                      <div className="w-1 bg-emerald-500 h-1 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
-                    </div>
-                  )}
-
-                  {/* Bottom footer bar with presets and floating button */}
-                  <div className="mt-3.5 pt-3.5 border-t border-neutral-100/80 flex items-center justify-between gap-2">
-                    <div className="flex flex-wrap gap-1.5 max-w-[70%]">
-                      {voice.tags.map((tag) => (
-                        <span 
-                          key={tag} 
-                          className={`text-[9px] rounded-md px-1.5 py-0.5 font-bold uppercase tracking-wider ${
-                            isSelected 
-                              ? 'bg-emerald-100/50 text-emerald-700' 
-                              : 'bg-neutral-100 text-neutral-500'
-                          }`}
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Unified Floating Action Button (Fulfills Req 1, 5) */}
-                    <button
-                      type="button"
-                      onClick={(e) => playPreview(e, voice)}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm shrink-0 border outline-none ${
-                        isPlaying
-                          ? 'bg-rose-100 border-rose-250 text-rose-600 hover:bg-rose-200'
-                          : isSelected
-                            ? 'bg-emerald-500 border-emerald-400 text-white hover:bg-emerald-600'
-                            : 'bg-neutral-50 border-neutral-200 text-neutral-600 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-600'
-                      }`}
-                      title={isPlaying ? 'Остановить воспроизведение' : 'Прослушать пример голоса'}
-                    >
-                      {isLoading ? (
-                        <Loader2 size={12} className="animate-spin" />
-                      ) : isPlaying ? (
-                        <Pause size={11} fill="currentColor" />
-                      ) : (
-                        <Play size={11} fill="currentColor" className="ml-0.5" />
-                      )}
-                    </button>
-                  </div>
+                  {/* Unified play preview trigger on the right */}
+                  <button
+                    type="button"
+                    onClick={(e) => playPreview(e, id, voice.gender, voice.name)}
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-all shrink-0 outline-none ${
+                      isPlaying
+                        ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100'
+                        : isSelected
+                          ? 'bg-emerald-100/50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
+                          : 'bg-neutral-50 border-neutral-200 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700'
+                    }`}
+                    title={isPlaying ? 'Остановить' : 'Прослушать голос'}
+                  >
+                    {isLoading ? (
+                      <Loader2 size={13} className="animate-spin text-[#10B981]" />
+                    ) : isPlaying ? (
+                      <Pause size={11} fill="currentColor" />
+                    ) : (
+                      <Play size={11} fill="currentColor" className="ml-0.5" />
+                    )}
+                  </button>
                 </div>
               );
             })}
@@ -368,139 +290,104 @@ export function PodcastVoiceSelector({ selection, onChange, guestEnabled, guestN
         </div>
 
         {/* ==================================== */}
-        {/* STEP 2: GUEST VOICE CONFIGURATION (PURPLE ACCENTS) */}
+        {/* GUEST VOICE CONFIGURATION (VIOLET ACCENTS) */}
         {/* ==================================== */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] bg-purple-500 text-white font-extrabold px-1.5 py-0.5 rounded-md">
-                ШАГ 2
-              </span>
-              <label className="text-xs font-black text-neutral-800 uppercase tracking-wider flex items-center gap-1.5 leading-none">
-                <User size={13} className="text-purple-500" />
-                Голос приглашенного гостя ({guestName})
-              </label>
-            </div>
+            <label className="text-xs font-black text-neutral-800 uppercase tracking-wider flex items-center gap-1.5 leading-none">
+              <User size={13} className="text-violet-500" />
+              Гость подкаста ({guestName})
+            </label>
             {guestEnabled && (
-              <span className="text-[10px] text-purple-650 font-extrabold uppercase tracking-widest bg-purple-100/40 px-2 py-0.5 rounded-full">
-                Guest Identity
+              <span className="text-[9px] text-violet-600 font-black uppercase tracking-wider bg-violet-50 px-2 py-0.5 rounded-full border border-violet-100/50">
+                Guest
               </span>
             )}
           </div>
 
           {guestEnabled ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {GUEST_VOICES.map((voice) => {
-                const isSelected = selection.guestVoiceId === voice.id;
-                const isPlaying = currentPreviewVoiceId === voice.id;
-                const isLoading = isPreviewLoading === voice.id;
+            <div className="space-y-2">
+              {GUEST_VOICE_IDS.map((id) => {
+                const voice = CENTRAL_VOICES[id];
+                const isSelected = selection.guestVoiceId === id;
+                const isPlaying = currentPreviewVoiceId === id;
+                const isLoading = isPreviewLoading === id;
 
                 return (
                   <div
-                    key={voice.id}
-                    onClick={() => handleGuestVoiceSelect(voice.id)}
-                    className={`p-4 rounded-3xl border transition-all duration-300 cursor-pointer text-left flex flex-col justify-between relative group select-none min-h-[160px] ${
+                    key={id}
+                    onClick={() => handleGuestVoiceSelect(id)}
+                    className={`p-3 rounded-2xl border transition-all duration-300 cursor-pointer flex items-center justify-between gap-3 relative select-none ${
                       isSelected
-                        ? 'bg-purple-50/50 border-purple-500 ring-4 ring-purple-500/10 shadow-lg shadow-purple-500/[0.04] scale-[1.01]'
-                        : 'bg-white border-neutral-200 hover:border-purple-300 hover:shadow-md hover:-translate-y-0.5'
+                        ? 'bg-violet-50/40 border-violet-500 ring-2 ring-violet-500/10 shadow-sm shadow-violet-500/[0.02]'
+                        : 'bg-white border-neutral-150 hover:border-violet-250 hover:-translate-y-0.2 hover:shadow-sm'
                     }`}
                   >
-                    {/* Glowing active animation element for active guest card */}
-                    {isSelected && (
-                      <span className="absolute top-3 right-3 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-500"></span>
-                      </span>
-                    )}
-
-                    {/* Top content */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center shrink-0 ${
-                          isSelected ? 'bg-purple-500 text-white' : 'bg-neutral-100 text-neutral-600'
-                        }`}>
-                          {voice.name[0]}
-                        </div>
-                        
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1">
-                            <span className="font-extrabold text-sm text-neutral-900 leading-none">{voice.name}</span>
-                            <span className="text-[9px] bg-neutral-100 text-neutral-500 px-1 py-0.2 rounded font-bold uppercase tracking-widest scale-90">
-                              {voice.gender === 'male' ? 'М' : 'Ж'}
-                            </span>
-                          </div>
-                          {/* Selected label indicator */}
+                    {/* Avatar, name and tag info */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className={`w-9 h-9 rounded-xl font-bold text-xs flex items-center justify-center shrink-0 relative transition-all ${
+                        isSelected 
+                          ? 'bg-violet-500 text-white shadow-sm shadow-violet-500/20' 
+                          : 'bg-neutral-100 text-neutral-600'
+                      }`}>
+                        {voice.name[0]}
+                        {isPlaying && (
+                          <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center border-2 border-white scale-90">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                            <span className="relative w-1.5 h-1.5 rounded-full bg-white"></span>
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="min-w-0 flex-1 text-left">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-extrabold text-sm text-neutral-850 leading-tight">{voice.name}</span>
+                          <span className="text-[8px] bg-neutral-100 font-bold text-neutral-500 px-1 py-0.3 rounded scale-90">
+                            {voice.gender === 'male' ? 'М' : 'Ж'}
+                          </span>
+                          {/* Selected Indicator */}
                           {isSelected && (
-                            <span className="text-[9px] text-purple-600 font-extrabold uppercase tracking-widest mt-0.5 block">
-                              ✓ Активный Гость
-                            </span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
                           )}
                         </div>
+                        
+                        {/* Compact tag and desc line */}
+                        <p className="text-[11px] text-neutral-400 font-medium truncate mt-0.5">
+                          <span className="text-violet-500 font-bold mr-1">{voice.tags[0]}</span> • {voice.shortDesc}
+                        </p>
                       </div>
-
-                      <p className="text-[11px] text-neutral-500 leading-normal min-h-[40px] lines-clamp-3">
-                        {voice.shortDesc}
-                      </p>
                     </div>
 
-                    {/* Wave effect when playing inside card */}
-                    {isPlaying && (
-                      <div className="flex items-center gap-0.5 h-3 justify-start py-1">
-                        <div className="w-1 bg-purple-500 h-2 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                        <div className="w-1 bg-purple-500 h-3 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
-                        <div className="w-1 bg-purple-500 h-1 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
-                      </div>
-                    )}
-
-                    {/* Bottom footer bar with presets and floating button */}
-                    <div className="mt-3.5 pt-3.5 border-t border-neutral-100/80 flex items-center justify-between gap-2">
-                      <div className="flex flex-wrap gap-1.5 max-w-[70%]">
-                        {voice.tags.map((tag) => (
-                          <span 
-                            key={tag} 
-                            className={`text-[9px] rounded-md px-1.5 py-0.5 font-bold uppercase tracking-wider ${
-                              isSelected 
-                                ? 'bg-purple-100/50 text-purple-700' 
-                                : 'bg-neutral-100 text-neutral-500'
-                            }`}
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-
-                      {/* Unified Floating Action Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => playPreview(e, voice)}
-                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-sm shrink-0 border outline-none ${
-                          isPlaying
-                            ? 'bg-rose-100 border-rose-250 text-rose-600 hover:bg-rose-200'
-                            : isSelected
-                              ? 'bg-purple-500 border-purple-400 text-white hover:bg-purple-600'
-                              : 'bg-neutral-50 border-neutral-200 text-neutral-600 hover:bg-purple-50 hover:border-purple-200 hover:text-purple-600'
-                        }`}
-                        title={isPlaying ? 'Остановить воспроизведение' : 'Прослушать пример голоса'}
-                      >
-                        {isLoading ? (
-                          <Loader2 size={12} className="animate-spin" />
-                        ) : isPlaying ? (
-                          <Pause size={11} fill="currentColor" />
-                        ) : (
-                          <Play size={11} fill="currentColor" className="ml-0.5" />
-                        )}
-                      </button>
-                    </div>
+                    {/* Unified play preview trigger on the right */}
+                    <button
+                      type="button"
+                      onClick={(e) => playPreview(e, id, voice.gender, voice.name)}
+                      className={`w-8 h-8 rounded-xl flex items-center justify-center border transition-all shrink-0 outline-none ${
+                        isPlaying
+                          ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100'
+                          : isSelected
+                            ? 'bg-violet-100/50 border-violet-200 text-violet-850 hover:bg-violet-100'
+                            : 'bg-neutral-50 border-neutral-200 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700'
+                      }`}
+                      title={isPlaying ? 'Остановить' : 'Прослушать голос'}
+                    >
+                      {isLoading ? (
+                        <Loader2 size={13} className="animate-spin text-violet-500" />
+                      ) : isPlaying ? (
+                        <Pause size={11} fill="currentColor" />
+                      ) : (
+                        <Play size={11} fill="currentColor" className="ml-0.5" />
+                      )}
+                    </button>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center p-8 border border-dashed border-neutral-200 rounded-[2rem] bg-neutral-50/50 text-center animate-pulse">
-              <Headphones size={28} className="text-neutral-300 mb-2.5" />
-              <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest">Гость не задействован в сценарии</p>
-              <p className="text-xs text-neutral-400 mt-1 max-w-[280px] leading-relaxed mx-auto">
-                Оптимизирована озвучка для одиночного ведущего (Host Only). Сценарий будет озвучен целиком выбранным голосом Adam/Josh/Rachel.
+            <div className="flex flex-col items-center justify-center p-5 border border-dashed border-neutral-200 rounded-2xl bg-neutral-55/35 text-center">
+              <span className="text-[10px] uppercase font-black text-neutral-400 tracking-wider">Одиночное Вещание</span>
+              <p className="text-[11px] text-neutral-400 mt-1 leading-normal max-w-[220px]">
+                Вся дорожка озвучивается выбранным ведущим.
               </p>
             </div>
           )}
