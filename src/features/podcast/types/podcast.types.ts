@@ -46,3 +46,36 @@ export interface VoiceSelection {
   hostVoiceId: string;
   guestVoiceId?: string;
 }
+
+export type DebugStageId = 
+  | 'collect_config'
+  | 'build_prompt'
+  | 'send_request'
+  | 'wait_response'
+  | 'parse_structure'
+  | 'build_timeline'
+  | 'prepare_audio'
+  | 'finalize_episode';
+
+export type DebugStatus = 'pending' | 'active' | 'success' | 'error';
+
+export interface DebugStageLog {
+  id: DebugStageId;
+  label: string;
+  status: DebugStatus;
+  startedAt?: number;
+  durationMs?: number;
+  error?: string;
+  details?: string;
+}
+
+export interface DebugTraceState {
+  stages: DebugStageLog[];
+  totalDurationMs?: number;
+  rawError?: string;
+  aiPayload?: string;
+  aiResponse?: string;
+  synthesisLog?: string[];
+  lastUpdated: number;
+}
+

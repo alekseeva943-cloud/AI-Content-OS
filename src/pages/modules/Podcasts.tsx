@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { PodcastConfigurator } from '@/src/features/podcast/components/PodcastConfigurator';
 import { PodcastPreview } from '@/src/features/podcast/components/PodcastPreview';
+import { PodcastDebugPanel } from '@/src/features/podcast/components/PodcastDebugPanel';
 import { usePodcastGeneration } from '@/src/features/podcast/hooks/usePodcastGeneration';
 import { Mic, Radio, Sparkles, AlertCircle } from 'lucide-react';
 
 export function Podcasts() {
-  const { isGenerating, error, result, generate, clearResult } = usePodcastGeneration();
+  const { isGenerating, error, result, debugTrace, generate, clearResult } = usePodcastGeneration();
   const [guestEnabled, setGuestEnabled] = useState(true);
 
   const handleGenerate = async (config: any) => {
@@ -42,18 +43,24 @@ export function Podcasts() {
 
       {/* Main content display */}
       {!result ? (
-        <div className="max-w-3xl mx-auto py-4">
+        <div className="max-w-3xl mx-auto py-4 space-y-8">
           <PodcastConfigurator
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
           />
+          
+          <PodcastDebugPanel trace={debugTrace} isGenerating={isGenerating} />
         </div>
       ) : (
-        <PodcastPreview
-          result={result}
-          onBack={clearResult}
-          guestEnabled={guestEnabled}
-        />
+        <div className="space-y-8">
+          <PodcastPreview
+            result={result}
+            onBack={clearResult}
+            guestEnabled={guestEnabled}
+          />
+
+          <PodcastDebugPanel trace={debugTrace} isGenerating={isGenerating} />
+        </div>
       )}
     </div>
   );
