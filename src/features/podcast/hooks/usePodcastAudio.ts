@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { generatePodcastAudio } from '../services/generatePodcastAudio';
 import { useSettingsStore } from '@/src/stores/useSettingsStore';
 import { ScriptSegment, VoiceSelection } from '../types/podcast.types';
 import { HUMAN_VOICE_LIBRARY } from '../constants/voices';
@@ -12,20 +11,53 @@ export interface AudioCacheEntry {
   voiceId: string;
 }
 
-// 6. Speech Rhythm Engine (Enhances punctuation and breathing moments for human feel)
-function applySpeechRhythm(text: string): string {
+// 10. Humanization Engine (Preprocesses text and inserts conversational cadence, breaths and pauses to minimize robotic delivery)
+function applySpeechRhythm(text: string, settings?: VoiceAudioSettings): string {
   if (!text) return text;
   
   let processed = text;
   
-  // Add deliberate short ellipsis and em-dashes for organic pacing and natural breathing breaks
-  processed = processed.replace(/, /g, ', ... ');
-  processed = processed.replace(/\? /g, '? ... ');
-  processed = processed.replace(/\! /g, '! ... — ');
-  processed = processed.replace(/ - /g, ' — ... ');
-  processed = processed.replace(/ – /g, ' — ... ');
-  
-  // Clean up any double spaces or triple dots created by mistake
+  // Clean up punctuation and standardise
+  processed = processed.replace(/["\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const energy = settings?.energy ?? 50;
+  const speed = settings?.speed ?? 1.0;
+
+  // ElevenLabs responds to commas as natural brief breaks, and ellipsis (...) as distinct organic pause & breathe cues
+  if (speed < 0.95) {
+    // Slow tempo dialogue -> deep breathing breaks, deliberate rhythm
+    processed = processed.replace(/, /g, ', ... ');
+    processed = processed.replace(/\. /g, '. ... ... ');
+    processed = processed.replace(/\? /g, '? ... ... ');
+    processed = processed.replace(/\! /g, '! ... — ');
+  } else if (speed > 1.1) {
+    // Snappy, fast delivery pacing -> tight, compressed pause cues
+    processed = processed.replace(/, /g, ', ... ');
+    processed = processed.replace(/\. /g, '. ... ');
+    processed = processed.replace(/\? /g, '? ... ');
+  } else {
+    // Normal organic rate
+    processed = processed.replace(/, /g, ', ... ');
+    processed = processed.replace(/\. /g, '. ... ... ');
+    processed = processed.replace(/\! /g, '! ... — ');
+    processed = processed.replace(/ - /g, ' — ... ');
+    processed = processed.replace(/ – /g, ' — ... ');
+  }
+
+  // Energy dictates tone markers (style amplification)
+  if (energy > 75) {
+    // High energy -> exclamation emphasis, strong emotional pacing
+    processed = processed.replace(/\. \.\.\./g, '! ...');
+    if (!processed.endsWith('!') && !processed.endsWith('?')) {
+      processed += '!';
+    }
+  } else if (energy < 30) {
+    // Soft, academic whispering tempo -> gentle decay with double pause brackets
+    processed = processed.replace(/!/g, '.');
+    processed = processed.replace(/\. \.\.\./g, '... ...');
+  }
+
+  // Standardize any spacing issues created by replacement loops
   processed = processed.replace(/\s+/g, ' ');
   processed = processed.replace(/\.\.\.\s*\.\.\./g, '...');
   
@@ -39,7 +71,7 @@ export function usePodcastAudio(
 ) {
   const elevenlabsKey = useSettingsStore((state) => state.elevenlabsKey);
   
-  // Custom safe cache: keyed by "segmentId_voiceId_stability_similarity_style_speed_model"
+  // Custom safe cache: keyed by exact combination of parameters to ensure robust realtime invalidation
   const [audioCache, setAudioCache] = useState<Record<string, AudioCacheEntry>>({});
   
   const [synthesizingId, setSynthesizingId] = useState<string | null>(null);
@@ -71,17 +103,19 @@ export function usePodcastAudio(
     setPlayingId(null);
   };
 
-  // Generate complete, distinct cache keys that encompass exact slider variables
+  // Generate complete, distinct cache keys that encompass exact slider variables as requested by Requirement 2
   const getCacheKey = (
     segmentId: string, 
     voiceId: string, 
     stability = 45, 
     similarity = 75, 
     style = 45, 
+    energy = 50,
     speed = 1.0, 
+    useSpeakerBoost = true,
     modelId = 'eleven_multilingual_v2'
   ) => {
-    return `${segmentId}_${voiceId}_st${stability}_sm${similarity}_sy${style}_sp${speed.toFixed(2)}_${modelId}`;
+    return `${segmentId}_${voiceId}_st${stability}_sm${similarity}_sy${style}_en${energy}_sp${speed.toFixed(2)}_sb${useSpeakerBoost ? 1 : 0}_${modelId}`;
   };
 
   const playLocalSpeech = (text: string, voiceId: string, segmentId: string) => {
@@ -129,10 +163,10 @@ export function usePodcastAudio(
 
       const isHost = voiceId === voiceSelection?.hostVoiceId;
       const activeSettings = isHost ? hostSettings : guestSettings;
-      const speed = activeSettings?.speed ?? 1.0;
+      const speedSetting = activeSettings?.speed ?? 1.0;
 
       utterance.pitch = voiceInfo?.fallbackPitch ?? 1.0;
-      utterance.rate = (voiceInfo?.fallbackRate ?? 1.0) * speed;
+      utterance.rate = (voiceInfo?.fallbackRate ?? 1.0) * speedSetting;
 
       utterance.onstart = () => {
         setPlayingId(segmentId);
@@ -169,7 +203,9 @@ export function usePodcastAudio(
       activeSettings?.stability,
       activeSettings?.similarity_boost,
       activeSettings?.style,
+      activeSettings?.energy,
       activeSettings?.speed,
+      activeSettings?.use_speaker_boost,
       activeSettings?.modelId
     );
     
@@ -183,8 +219,8 @@ export function usePodcastAudio(
       throw new Error('ElevenLabs key not configured');
     }
 
-    // Apply speech rhythm engine BEFORE sending text to Elevenlabs
-    const enhancedText = applySpeechRhythm(text);
+    // Apply speech rhythm engine BEFORE sending text to Elevenlabs as requested by Requirement 10
+    const enhancedText = applySpeechRhythm(text, activeSettings);
 
     const voiceInfo = HUMAN_VOICE_LIBRARY[voiceId] || HUMAN_VOICE_LIBRARY['pNInz6obpgdq5TaqLwtY'];
     
@@ -203,7 +239,7 @@ export function usePodcastAudio(
       voiceName: voiceInfo?.name
     };
 
-    console.log(`[VOICE SYNTHESIS PIPELINE] Launching raw ElevenLabs call:`, payload);
+    console.log(`[VOICE SYNTHESIS PIPELINE] Launching raw ElevenLabs call with actual settings:`, payload);
 
     // Call synthesizer backend
     const response = await fetch('/api/podcast/synthesize', {
@@ -244,7 +280,9 @@ export function usePodcastAudio(
         activeSettings?.stability,
         activeSettings?.similarity_boost,
         activeSettings?.style,
+        activeSettings?.energy,
         activeSettings?.speed,
+        activeSettings?.use_speaker_boost,
         activeSettings?.modelId
       );
       const cached = audioCache[key];
@@ -291,7 +329,12 @@ export function usePodcastAudio(
     const energyMod = activeSettings?.energy ? (activeSettings.energy - 50) / 400 : 0;
     const finalSpeed = Math.max(0.7, Math.min(1.5, baseSpeed + energyMod));
 
+    // Ensure playback rate is applied even after resource finishes buffering
+    audio.oncanplay = () => {
+      audio.playbackRate = finalSpeed;
+    };
     audio.playbackRate = finalSpeed;
+
     console.log(`[PLAYER ENGINE] Playing segment ID: ${segmentId}. Base rate: ${baseSpeed}x. Modified by energy: ${finalSpeed.toFixed(2)}x`);
 
     audio.onplay = () => {
@@ -326,7 +369,9 @@ export function usePodcastAudio(
       activeSettings?.stability,
       activeSettings?.similarity_boost,
       activeSettings?.style,
+      activeSettings?.energy,
       activeSettings?.speed,
+      activeSettings?.use_speaker_boost,
       activeSettings?.modelId
     );
     const cached = audioCache[key];
@@ -377,7 +422,9 @@ export function usePodcastAudio(
           activeSettings?.stability,
           activeSettings?.similarity_boost,
           activeSettings?.style,
+          activeSettings?.energy,
           activeSettings?.speed,
+          activeSettings?.use_speaker_boost,
           activeSettings?.modelId
         );
         
@@ -433,6 +480,7 @@ export function usePodcastAudio(
     togglePlaySegment,
     downloadSegmentMp3,
     stopCurrentAudio,
+    getCacheKey, // export helper
     
     // Full Episode Support
     isSynthesizingFull,

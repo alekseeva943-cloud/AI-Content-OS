@@ -54,7 +54,7 @@ export function PodcastPreview({ result, onBack, guestEnabled }: PodcastPreviewP
         stability: Math.round(defaultVal.settings.stability * 100),
         similarity_boost: Math.round(defaultVal.settings.similarity_boost * 100),
         style: Math.round(defaultVal.settings.style * 100),
-        energy: defaultVal.name === 'Josh' ? 80 : defaultVal.name === 'Rachel' ? 50 : 45,
+        energy: defaultVal.name === 'Josh' ? 82 : defaultVal.name === 'Rachel' ? 50 : defaultVal.name === 'Bella' ? 85 : 45,
         speed: defaultVal.fallbackRate,
         use_speaker_boost: defaultVal.settings.use_speaker_boost,
         modelId: 'eleven_multilingual_v2'
@@ -70,7 +70,7 @@ export function PodcastPreview({ result, onBack, guestEnabled }: PodcastPreviewP
           stability: Math.round(defaultVal.settings.stability * 100),
           similarity_boost: Math.round(defaultVal.settings.similarity_boost * 100),
           style: Math.round(defaultVal.settings.style * 100),
-          energy: defaultVal.name === 'Bella' ? 90 : defaultVal.name === 'Domi' ? 35 : 65,
+          energy: defaultVal.name === 'Grace' ? 85 : defaultVal.name === 'Domi' ? 35 : defaultVal.name === 'Bella' ? 90 : 65,
           speed: defaultVal.fallbackRate,
           use_speaker_boost: defaultVal.settings.use_speaker_boost,
           modelId: 'eleven_multilingual_v2'
@@ -78,6 +78,40 @@ export function PodcastPreview({ result, onBack, guestEnabled }: PodcastPreviewP
       }
     }
   }, [voiceSelection.guestVoiceId]);
+
+  // Logging side-effects for realtime console audit trail as requested by Requirement 3
+  useEffect(() => {
+    const voiceName = HUMAN_VOICE_LIBRARY[voiceSelection.hostVoiceId]?.name || 'Unknown';
+    console.log(`
+[VOICE SETTINGS UPDATED]
+voice=${voiceName} (Host)
+stability=${hostSettings.stability / 100}
+similarity=${hostSettings.similarity_boost / 100}
+style=${hostSettings.style / 100}
+energy=${hostSettings.energy}%
+speed=${hostSettings.speed}
+
+[VOICE CACHE INVALIDATED]
+Active segments will be re-rendered and synthesized live with these settings on next play command.
+    `);
+  }, [hostSettings, voiceSelection.hostVoiceId]);
+
+  useEffect(() => {
+    if (!guestEnabled || !voiceSelection.guestVoiceId) return;
+    const voiceName = HUMAN_VOICE_LIBRARY[voiceSelection.guestVoiceId]?.name || 'Unknown';
+    console.log(`
+[VOICE SETTINGS UPDATED]
+voice=${voiceName} (Guest)
+stability=${guestSettings.stability / 100}
+similarity=${guestSettings.similarity_boost / 100}
+style=${guestSettings.style / 100}
+energy=${guestSettings.energy}%
+speed=${guestSettings.speed}
+
+[VOICE CACHE INVALIDATED]
+Active segments will be re-rendered and synthesized live with these settings on next play command.
+    `);
+  }, [guestSettings, voiceSelection.guestVoiceId, guestEnabled]);
 
   // Inject voice settings to hook
   const {
@@ -122,7 +156,7 @@ export function PodcastPreview({ result, onBack, guestEnabled }: PodcastPreviewP
       const voiceId = isHost ? voiceSelection.hostVoiceId : (voiceSelection.guestVoiceId || 'pNInz6obpgdq5TaqLwtY');
       const activeSettings = isHost ? hostSettings : guestSettings;
       
-      const cacheKey = `${segment.id}_${voiceId}_st${activeSettings.stability}_sm${activeSettings.similarity_boost}_sy${activeSettings.style}_sp${activeSettings.speed.toFixed(2)}_${activeSettings.modelId}`;
+      const cacheKey = `${segment.id}_${voiceId}_st${activeSettings.stability}_sm${activeSettings.similarity_boost}_sy${activeSettings.style}_en${activeSettings.energy}_sp${activeSettings.speed.toFixed(2)}_sb${activeSettings.use_speaker_boost ? 1 : 0}_${activeSettings.modelId}`;
       if (audioCache[cacheKey]) {
         urls[segment.id] = audioCache[cacheKey].url;
       }

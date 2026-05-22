@@ -15,6 +15,77 @@ export interface VoiceAudioSettings {
   modelId: string;
 }
 
+// 10. Humanization Engine (Preprocesses text and inserts conversational cadence, breaths and pauses to minimize robotic delivery)
+function applySpeechRhythm(text: string, settings?: VoiceAudioSettings): string {
+  if (!text) return text;
+  
+  let processed = text;
+  
+  // Clean up punctuation and standardise
+  processed = processed.replace(/["\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const energy = settings?.energy ?? 50;
+  const speed = settings?.speed ?? 1.0;
+
+  // ElevenLabs responds to commas as natural brief breaks, and ellipsis (...) as distinct organic pause & breathe cues
+  if (speed < 0.95) {
+    // Slow tempo dialogue -> deep breathing breaks, deliberate rhythm
+    processed = processed.replace(/, /g, ', ... ');
+    processed = processed.replace(/\. /g, '. ... ... ');
+    processed = processed.replace(/\? /g, '? ... ... ');
+    processed = processed.replace(/\! /g, '! ... — ');
+  } else if (speed > 1.1) {
+    // Snappy, fast delivery pacing -> tight, compressed pause cues
+    processed = processed.replace(/, /g, ', ... ');
+    processed = processed.replace(/\. /g, '. ... ');
+    processed = processed.replace(/\? /g, '? ... ');
+  } else {
+    // Normal organic rate
+    processed = processed.replace(/, /g, ', ... ');
+    processed = processed.replace(/\. /g, '. ... ... ');
+    processed = processed.replace(/\! /g, '! ... — ');
+    processed = processed.replace(/ - /g, ' — ... ');
+    processed = processed.replace(/ – /g, ' — ... ');
+  }
+
+  // Energy dictates tone markers (style amplification)
+  if (energy > 75) {
+    // High energy -> exclamation emphasis, strong emotional pacing
+    processed = processed.replace(/\. \.\.\./g, '! ...');
+    if (!processed.endsWith('!') && !processed.endsWith('?')) {
+      processed += '!';
+    }
+  } else if (energy < 30) {
+    // Soft, academic whispering tempo -> gentle decay with double pause brackets
+    processed = processed.replace(/!/g, '.');
+    processed = processed.replace(/\. \.\.\./g, '... ...');
+  }
+
+  // Standardize any spacing issues created by replacement loops
+  processed = processed.replace(/\s+/g, ' ');
+  processed = processed.replace(/\.\.\.\s*\.\.\./g, '...');
+  
+  return processed;
+}
+
+// Core helper to determine if current configuration is modified from factory default settings and needs the "LIVE" badge
+const isVoiceSettingsModified = (voiceId: string, settings: VoiceAudioSettings) => {
+  const defaults = HUMAN_VOICE_LIBRARY[voiceId];
+  if (!defaults) return false;
+  
+  const defaultStability = Math.round(defaults.settings.stability * 100);
+  const defaultSimilarity = Math.round(defaults.settings.similarity_boost * 100);
+  const defaultStyle = Math.round(defaults.settings.style * 100);
+  const defaultSpeed = defaults.fallbackRate;
+  
+  return (
+    defaultStability !== settings.stability ||
+    defaultSimilarity !== settings.similarity_boost ||
+    defaultStyle !== settings.style ||
+    defaultSpeed !== settings.speed
+  );
+};
+
 interface PodcastVoiceSelectorProps {
   selection: VoiceSelection;
   onChange: (val: VoiceSelection) => void;
@@ -106,13 +177,15 @@ export function PodcastVoiceSelector({
       setIsPreviewLoading(voiceId);
 
       try {
+        const enhancedText = applySpeechRhythm(sampleText, activeSettings);
+
         const response = await fetch('/api/podcast/synthesize', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            text: sampleText,
+            text: enhancedText,
             voiceId: voiceId,
             apiKey: elevenlabsKey,
             modelId: activeSettings.modelId,
@@ -247,6 +320,7 @@ export function PodcastVoiceSelector({
               const isSelected = selection.hostVoiceId === id;
               const isPlaying = currentPreviewVoiceId === id;
               const isLoading = isPreviewLoading === id;
+              const isModified = isVoiceSettingsModified(id, hostSettings);
 
               return (
                 <div
@@ -260,12 +334,20 @@ export function PodcastVoiceSelector({
                 >
                   {/* Avatar, name and tag info */}
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <div className={`w-8 h-8 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 relative transition-all ${
+                    <div className={`w-8 h-8 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 relative transition-all overflow-hidden ${
                       isSelected 
                         ? 'bg-[#10B981] text-white' 
                         : 'bg-neutral-100 text-neutral-600'
                     }`}>
-                      {voice.name[0]}
+                      {isPlaying ? (
+                        <div className="flex gap-0.5 items-end justify-center h-4 w-4 pb-0.5 scale-90">
+                          <span className="w-0.5 bg-current rounded-full animate-bounce h-2" style={{ animationDelay: '0s', animationDuration: '0.6s' }} />
+                          <span className="w-0.5 bg-current rounded-full animate-bounce h-3.5" style={{ animationDelay: '0.1s', animationDuration: '0.4s' }} />
+                          <span className="w-0.5 bg-current rounded-full animate-bounce h-1.5" style={{ animationDelay: '0.2s', animationDuration: '0.8s' }} />
+                        </div>
+                      ) : (
+                        voice.name[0]
+                      )}
                       {isPlaying && (
                         <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-500 text-white flex items-center justify-center border border-white scale-90">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
@@ -280,6 +362,9 @@ export function PodcastVoiceSelector({
                         <span className="text-[7px] bg-neutral-100 font-bold text-neutral-500 px-0.5 rounded scale-90">
                           {voice.gender === 'male' ? 'М' : 'Ж'}
                         </span>
+                        {isModified && isSelected && (
+                          <span className="text-[8px] bg-[#10B981] text-white font-black px-1.5 py-0.5 rounded leading-none animate-pulse select-none tracking-wide text-center">LIVE</span>
+                        )}
                       </div>
                       
                       {/* Compact tag and desc line */}
@@ -339,6 +424,7 @@ export function PodcastVoiceSelector({
                 const isSelected = selection.guestVoiceId === id;
                 const isPlaying = currentPreviewVoiceId === id;
                 const isLoading = isPreviewLoading === id;
+                const isModified = isVoiceSettingsModified(id, guestSettings);
 
                 return (
                   <div
@@ -352,12 +438,20 @@ export function PodcastVoiceSelector({
                   >
                     {/* Avatar, name and tag info */}
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div className={`w-8 h-8 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 relative transition-all ${
+                      <div className={`w-8 h-8 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 relative transition-all overflow-hidden ${
                         isSelected 
                           ? 'bg-violet-500 text-white' 
                           : 'bg-neutral-100 text-neutral-600'
                       }`}>
-                        {voice.name[0]}
+                        {isPlaying ? (
+                          <div className="flex gap-0.5 items-end justify-center h-4 w-4 pb-0.5 scale-90">
+                            <span className="w-0.5 bg-current rounded-full animate-bounce h-2" style={{ animationDelay: '0s', animationDuration: '0.6s' }} />
+                            <span className="w-0.5 bg-current rounded-full animate-bounce h-3.5" style={{ animationDelay: '0.1s', animationDuration: '0.4s' }} />
+                            <span className="w-0.5 bg-current rounded-full animate-bounce h-1.5" style={{ animationDelay: '0.2s', animationDuration: '0.8s' }} />
+                          </div>
+                        ) : (
+                          voice.name[0]
+                        )}
                         {isPlaying && (
                           <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-rose-500 text-white flex items-center justify-center border border-white scale-90">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
@@ -372,6 +466,9 @@ export function PodcastVoiceSelector({
                           <span className="text-[7px] bg-neutral-100 font-bold text-neutral-500 px-0.5 rounded scale-90">
                             {voice.gender === 'male' ? 'М' : 'Ж'}
                           </span>
+                          {isModified && isSelected && (
+                            <span className="text-[8px] bg-violet-500 text-white font-black px-1.5 py-0.5 rounded leading-none animate-pulse select-none tracking-wide text-center">LIVE</span>
+                          )}
                         </div>
                         
                         {/* Compact tag and desc line */}
