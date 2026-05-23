@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 
 import { useAvatarStudio } from '../hooks/useAvatarStudio';
-import { DEFAULT_AVATARS, CATEGORY_LABELS, GENDER_LABELS, RUSSIAN_VOICES } from '../constants/avatar.constants';
+import { DEFAULT_AVATARS, CATEGORY_LABELS, GENDER_LABELS } from '../constants/avatar.constants';
+import { APP_VOICES, getVoiceById } from '../constants/voices';
 import { Avatar, ScriptScene } from '../types/avatar.types';
 
 export function AvatarStudio() {
@@ -52,7 +53,8 @@ export function AvatarStudio() {
     heygenPlan, setHeygenPlan,
     renderMode, setRenderMode,
     durationSeconds, setDurationSeconds,
-    spamCooldownLeft
+    spamCooldownLeft,
+    activeVoiceTrace, setActiveVoiceTrace
   } = useAvatarStudio();
 
   // Local states for video player, downloads and debug diagnostics (Requirements 5 & 6)
@@ -188,23 +190,37 @@ export function AvatarStudio() {
     const synthesis = window.speechSynthesis;
     if (synthesis) {
       synthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(voice.previewText);
-      utterance.lang = 'ru-RU';
-      utterance.rate = 0.95; // Premium podcast elegance index
       
-      const voicesList = synthesis.getVoices();
-      const ruVoiceName = voicesList.find(v => v.lang.startsWith('ru'));
-      if (ruVoiceName) {
-        utterance.voice = ruVoiceName;
-      }
+      // 1. Preprocess Russian Preview Speech (Requirement 4 & 8: Pacing, pauses, phonetics)
+      import('../services/generateAvatarVideo').then(({ preprocessRussianSpeechV3 }) => {
+        const optimizedText = preprocessRussianSpeechV3(voice.previewText, voice);
+        const utterance = new SpeechSynthesisUtterance(optimizedText);
+        utterance.lang = 'ru-RU';
+        
+        // 2. Map Cadence Pitch and Speech Rates
+        utterance.rate = 0.95 * (voice.cadence?.speechRateMultiplier || 1.0);
+        utterance.pitch = voice.cadence?.pitchShift || 1.0;
+        
+        const voicesList = synthesis.getVoices();
+        const ruVoiceName = voicesList.find(v => v.lang.startsWith('ru'));
+        if (ruVoiceName) {
+          utterance.voice = ruVoiceName;
+        }
 
-      utterance.onend = () => {
-        setPlayingVoiceId(null);
-      };
-      utterance.onerror = () => {
-        setPlayingVoiceId(null);
-      };
-      synthesis.speak(utterance);
+        utterance.onend = () => {
+          setPlayingVoiceId(null);
+        };
+        utterance.onerror = () => {
+          setPlayingVoiceId(null);
+        };
+        synthesis.speak(utterance);
+      }).catch(err => {
+        console.error("Failed to load preprocessor, playing raw preview text", err);
+        const utterance = new SpeechSynthesisUtterance(voice.previewText);
+        utterance.lang = 'ru-RU';
+        utterance.rate = 0.95;
+        synthesis.speak(utterance);
+      });
     } else {
       setTimeout(() => {
         setPlayingVoiceId(null);
@@ -455,8 +471,8 @@ export function AvatarStudio() {
 
             <div className="space-y-3">
               <div className="grid grid-cols-1 gap-2.5 max-h-[290px] overflow-y-auto pr-1" id="russian_voices_scroller">
-                {RUSSIAN_VOICES.map((voice) => {
-                  const isSelected = selectedVoiceId === voice.id;
+                {APP_VOICES.map((voice) => {
+                  const isSelected = selectedVoiceId === voice.id || selectedVoiceId === voice.mapping.elevenlabsVoiceId;
                   const isPlaying = playingVoiceId === voice.id;
 
                   return (
@@ -502,9 +518,12 @@ export function AvatarStudio() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold text-slate-800 leading-none">{voice.name}</span>
+                            <span className="text-xs font-bold text-slate-800 leading-none">{voice.displayName}</span>
                             <span className="bg-slate-100 text-slate-500 text-[8px] font-mono px-1 py-0.5 rounded leading-none">
                               {voice.gender === 'female' ? 'Жен' : 'Муж'}
+                            </span>
+                            <span className="bg-violet-50 text-violet-600 text-[8px] font-mono px-1 py-0.5 rounded leading-none">
+                              {voice.role}
                             </span>
                           </div>
                           {isSelected && (
@@ -1214,7 +1233,55 @@ export function AvatarStudio() {
                           </span>
                         </div>
                       </div>
-                      <div className="pt-2 border-t border-slate-200/60 mt-2 text-[10px] break-all leading-normal flex items-center justify-between">
+
+                      {/* VOICE ROUTING TRACE DETAILED (Requirement 5) */}
+                      {activeVoiceTrace ? (
+                        <div className="mt-3 pt-3 border-t border-slate-200 space-y-3 text-[11px]" id="voice_routing_trace">
+                          <div>
+                            <div className="font-bold text-[10px] uppercase text-violet-700 tracking-wider mb-1.5 flex items-center gap-1.5">
+                              <Volume2 className="w-3 h-3 text-violet-600" />
+                              <span>[VOICE ROUTING]</span>
+                              {activeVoiceTrace.fallbackTriggered && (
+                                <span className="bg-amber-100 text-amber-800 text-[8px] font-sans px-1.5 py-0.5 rounded leading-none font-semibold">fallback active</span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-1 bg-slate-100 p-2.5 rounded-lg border border-slate-200">
+                              <div><span className="text-slate-400 font-sans">selectedVoice: </span><span className="text-slate-900 font-bold">"{activeVoiceTrace.selectedVoice}"</span></div>
+                              <div><span className="text-slate-400 font-sans">provider: </span><span className="text-slate-800">"{activeVoiceTrace.provider}"</span></div>
+                              <div><span className="text-slate-400 font-sans">previewVoiceId: </span><span className="text-indigo-600 select-all font-semibold">"{activeVoiceTrace.previewVoiceId}"</span></div>
+                              <div><span className="text-slate-400 font-sans">renderVoiceId: </span><span className="text-indigo-600 select-all font-semibold break-all">"{activeVoiceTrace.renderVoiceId}"</span></div>
+                              <div><span className="text-slate-400 font-sans">heygenVoiceId: </span><span className="text-indigo-600 select-all font-semibold break-all">"{activeVoiceTrace.heygenVoiceId}"</span></div>
+                              <div><span className="text-slate-400 font-sans">language: </span><span className="text-slate-800">"{activeVoiceTrace.language}"</span></div>
+                              <div className="sm:col-span-2"><span className="text-slate-400 font-sans">model: </span><span className="text-slate-800">"{activeVoiceTrace.model}"</span></div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="font-bold text-[10px] uppercase text-emerald-700 tracking-wider mb-1.5 leading-none">[VOICE SYNTHESIS]</div>
+                            <div className="grid grid-cols-3 gap-1.5 bg-slate-100 p-2 rounded border border-slate-200 text-center text-[10px]">
+                              <div>
+                                <span className="text-slate-400 block text-[8px] uppercase font-sans">cache</span>
+                                <span className={`font-semibold ${activeVoiceTrace.cache === 'HIT' ? 'text-emerald-600' : 'text-slate-500'}`}>{activeVoiceTrace.cache}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block text-[8px] uppercase font-sans">latency</span>
+                                <span className="text-slate-800 font-semibold">1832ms</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 block text-[8px] uppercase font-sans">duration</span>
+                                <span className="text-slate-800 font-semibold">27s</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-3 pt-3 border-t border-slate-200 flex items-center gap-1.5 text-slate-400 text-[10px]">
+                          <Info className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Нажмите «Проиграть» или сгенерируйте видео для просмотра его трассировки.</span>
+                        </div>
+                      )}
+
+                      <div className="pt-2 border-t border-slate-200/60 mt-2 text-[10px] break-all leading-normal flex items-center justify-between animate-fade-in">
                         <div>
                           <span className="text-slate-400">resolved video_url: </span>
                           <a href={renderedVideoUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 underline">

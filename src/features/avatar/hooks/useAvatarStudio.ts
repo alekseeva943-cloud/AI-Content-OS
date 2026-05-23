@@ -10,6 +10,7 @@ export interface RenderHistoryItem {
   videoUrl: string;
   thumbnailUrl: string;
   script: AvatarScript;
+  voiceTrace?: any;
 }
 import { generateAvatarVideo } from '../services/generateAvatarVideo';
 import { checkAvatarStatus } from '../services/checkAvatarStatus';
@@ -32,6 +33,7 @@ export function useAvatarStudio() {
   const [renderMode, setRenderMode] = useState<'preview' | 'production'>('preview');
   const [durationSeconds, setDurationSeconds] = useState<number>(30);
   const [spamCooldownLeft, setSpamCooldownLeft] = useState(0);
+  const [activeVoiceTrace, setActiveVoiceTrace] = useState<any>(null);
 
   const setSelectedAvatar = (avatar: Avatar) => {
     setSelectedAvatarInternal(avatar);
@@ -111,6 +113,7 @@ export function useAvatarStudio() {
     setRenderedThumbnailUrl(item.thumbnailUrl);
     setTopic(item.topic);
     setErrorMessage(null);
+    setActiveVoiceTrace(item.voiceTrace || null);
   };
 
   const deleteHistoryItem = (id: string, e: React.MouseEvent) => {
@@ -265,6 +268,9 @@ export function useAvatarStudio() {
       });
 
       setEstimatedCost(renderResponse.estimatedCost);
+      if (renderResponse.voiceTrace) {
+        setActiveVoiceTrace(renderResponse.voiceTrace);
+      }
 
       if (renderResponse.success) {
         setStage('waiting_render');
@@ -318,7 +324,8 @@ export function useAvatarStudio() {
                   avatar: selectedAvatar,
                   videoUrl,
                   thumbnailUrl,
-                  script: script
+                  script: script,
+                  voiceTrace: renderResponse.voiceTrace
                 };
                 setRenderHistory(prev => [newItem, ...prev].slice(0, 5));
               }
@@ -393,6 +400,7 @@ export function useAvatarStudio() {
     heygenPlan, setHeygenPlan,
     renderMode, setRenderMode,
     durationSeconds, setDurationSeconds,
-    spamCooldownLeft
+    spamCooldownLeft,
+    activeVoiceTrace, setActiveVoiceTrace
   };
 }
