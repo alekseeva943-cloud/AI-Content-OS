@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 import { useAvatarStudio } from '../hooks/useAvatarStudio';
-import { DEFAULT_AVATARS, CATEGORY_LABELS, GENDER_LABELS } from '../constants/avatar.constants';
+import { DEFAULT_AVATARS, CATEGORY_LABELS, GENDER_LABELS, RUSSIAN_VOICES } from '../constants/avatar.constants';
 import { Avatar, ScriptScene } from '../types/avatar.types';
 
 export function AvatarStudio() {
@@ -45,7 +45,14 @@ export function AvatarStudio() {
     heygenApiKey,
     renderHistory,
     selectHistoryItem,
-    deleteHistoryItem
+    deleteHistoryItem,
+
+    // Extended Premium State Outputs
+    selectedVoiceId, setSelectedVoiceId,
+    heygenPlan, setHeygenPlan,
+    renderMode, setRenderMode,
+    durationSeconds, setDurationSeconds,
+    spamCooldownLeft
   } = useAvatarStudio();
 
   // Local states for video player, downloads and debug diagnostics (Requirements 5 & 6)
@@ -88,16 +95,34 @@ export function AvatarStudio() {
     }
   };
 
-  // Avatar filter states
+  // Avatar filter and search engine states
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedGender, setSelectedGender] = useState<'all' | 'male' | 'female'>('all');
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'business' | 'casual' | 'educational' | 'creative'>('all');
+  const [selectedRoleType, setSelectedRoleType] = useState<string>('all');
+  const [selectedAgeGroup, setSelectedAgeGroup] = useState<'all' | 'young' | 'adult'>('all');
   const [hoveredAvatarId, setHoveredAvatarId] = useState<string | null>(null);
 
   // Filtered avatars helper
   const filteredAvatars = DEFAULT_AVATARS.filter(av => {
+    const searchLow = searchTerm.toLowerCase();
+    const nameMatch = av.name.toLowerCase().includes(searchLow) || 
+                      av.description.toLowerCase().includes(searchLow) || 
+                      (av.clothingStyle && av.clothingStyle.toLowerCase().includes(searchLow)) ||
+                      (av.roleType && av.roleType.toLowerCase().includes(searchLow));
+                      
     const gdMatch = selectedGender === 'all' || av.gender === selectedGender;
     const catMatch = selectedCategory === 'all' || av.category === selectedCategory;
-    return gdMatch && catMatch;
+    const roleMatch = selectedRoleType === 'all' || av.roleType === selectedRoleType;
+    
+    let ageMatch = true;
+    if (selectedAgeGroup === 'young') {
+      ageMatch = (av.age !== undefined && av.age <= 29);
+    } else if (selectedAgeGroup === 'adult') {
+      ageMatch = (av.age !== undefined && av.age >= 30);
+    }
+    
+    return nameMatch && gdMatch && catMatch && roleMatch && ageMatch;
   });
 
   // Track active scene audio preview state (simulating voice preview)
@@ -111,7 +136,6 @@ export function AvatarStudio() {
     }
     setPlayingVoiceAvatarId(avatar.id);
     
-    // Play synthesis voice preview audio (Requirement 4: improved humanized voice preview loop)
     const previewTexts = [
       'Привет! Я Ваш персональный ИИ аватар. Сгенерируйте сценарий, и мы запишем профессиональное видео за считанные минуты.',
       'Рада общению! Мой голос оптимизирован для естественного звучания, без роботизированной монотонности.',
@@ -150,9 +174,56 @@ export function AvatarStudio() {
     setPlayingVoiceAvatarId(null);
   };
 
+  // Russian live voice preview state manager
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+
+  const startRussianVoicePreview = (voice: any) => {
+    if (playingVoiceId) {
+      stopRussianVoicePreview();
+      if (playingVoiceId === voice.id) return;
+    }
+    setPlayingVoiceId(voice.id);
+    setSelectedVoiceId(voice.id); // Choose the clicked voice
+
+    const synthesis = window.speechSynthesis;
+    if (synthesis) {
+      synthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(voice.previewText);
+      utterance.lang = 'ru-RU';
+      utterance.rate = 0.95; // Premium podcast elegance index
+      
+      const voicesList = synthesis.getVoices();
+      const ruVoiceName = voicesList.find(v => v.lang.startsWith('ru'));
+      if (ruVoiceName) {
+        utterance.voice = ruVoiceName;
+      }
+
+      utterance.onend = () => {
+        setPlayingVoiceId(null);
+      };
+      utterance.onerror = () => {
+        setPlayingVoiceId(null);
+      };
+      synthesis.speak(utterance);
+    } else {
+      setTimeout(() => {
+        setPlayingVoiceId(null);
+      }, 5000);
+    }
+  };
+
+  const stopRussianVoicePreview = () => {
+    const synthesis = window.speechSynthesis;
+    if (synthesis) {
+      synthesis.cancel();
+    }
+    setPlayingVoiceId(null);
+  };
+
   useEffect(() => {
     return () => {
       stopVoicePreview();
+      stopRussianVoicePreview();
     };
   }, []);
 
@@ -217,161 +288,372 @@ export function AvatarStudio() {
         <div className="lg:col-span-4 space-y-6" id="left_config_column">
           
           {/* Step 1: Topic Selection */}
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4" id="step_1_box">
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 animate-fade-in" id="step_1_box">
             <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <span className="w-5 h-5 flex items-center justify-center bg-slate-900 text-white rounded-full text-xs font-mono">1</span>
-              <h3 className="font-medium text-slate-900 text-sm tracking-tight">Тема выпуска</h3>
+              <span className="w-5 h-5 flex items-center justify-center bg-slate-900 text-white rounded-full text-xs font-mono font-bold">1</span>
+              <h3 className="font-semibold text-slate-900 text-sm tracking-tight">Тема выпуска ИИ</h3>
             </div>
             
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-medium text-slate-500 block mb-1">О чем видео-аватар?</label>
+                <label className="text-xs font-semibold text-slate-500 block mb-1">О чем видео-аватар?</label>
                 <input
                   type="text"
-                  placeholder="Пример: Топ-3 тренда в ИИ на 2026 год"
+                  placeholder="Пример: Секреты успешных стартапов"
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-400 bg-slate-50"
+                  className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-400 bg-slate-50 font-medium transition-all"
                   id="avatar_topic_input"
                 />
               </div>
               
               <div>
-                <label className="text-xs font-medium text-slate-500 block mb-1">Дополнительный контекст / Целевые тезисы</label>
+                <label className="text-xs font-semibold text-slate-500 block mb-1">Фокус-тезисы (Контекст)</label>
                 <textarea
-                  placeholder="Добавьте факты, ссылки, цифры или манеру повествования..."
+                  placeholder="Добавьте тезисы, манеру речи, эмоциональный стиль или факты..."
                   value={context}
                   onChange={(e) => setContext(e.target.value)}
-                  rows={3}
-                  className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-400 bg-slate-50 resize-none"
+                  rows={2}
+                  className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-400 bg-slate-50 resize-none font-medium transition-all"
                   id="avatar_context_input"
                 />
               </div>
             </div>
           </div>
 
-          {/* Step 3: Duration settings Selector */}
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4" id="step_3_box">
+          {/* Step 2: Plan and Duration selection */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 animate-fade-in" id="step_2_plan_duration_box">
             <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <span className="w-5 h-5 flex items-center justify-center bg-slate-900 text-white rounded-full text-xs font-mono">2</span>
-              <h3 className="font-medium text-slate-900 text-sm tracking-tight">Длительность и тайминги</h3>
+              <span className="w-5 h-5 flex items-center justify-center bg-slate-900 text-white rounded-full text-xs font-mono font-bold">2</span>
+              <h3 className="font-semibold text-slate-900 text-sm tracking-tight">Длительность и тариф HeyGen</h3>
             </div>
-            
-            <div className="space-y-3">
-              <label className="text-xs font-medium text-slate-500 block">Целевой хронометраж: {durationMinutes} мин.</label>
-              
-              <div className="grid grid-cols-4 gap-2">
-                {[1, 2, 5, 10].map((mins) => (
+
+            <div className="space-y-4">
+              {/* Tariffs Selector */}
+              <div>
+                <label className="text-[10px] font-mono uppercase font-bold text-slate-400 block mb-2">Текущий тариф HeyGen</label>
+                <div className="grid grid-cols-4 gap-1.5" id="heygen_tariff_selector">
+                  {(['trial', 'creator', 'business', 'enterprise'] as const).map((plan) => (
+                    <button
+                      key={plan}
+                      type="button"
+                      onClick={() => {
+                        setHeygenPlan(plan);
+                      }}
+                      className={`py-2 px-1 text-[10px] capitalize font-mono font-bold rounded-xl border transition-all ${
+                        heygenPlan === plan
+                          ? 'bg-violet-600 text-white border-violet-600 shadow-md ring-2 ring-violet-200'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {plan}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Segmented Duration Selector Cards */}
+              <div>
+                <label className="text-[10px] font-mono uppercase font-bold text-slate-400 block mb-2">Хронометраж клипа</label>
+                <div className="grid grid-cols-2 gap-2" id="seconds_duration_selector">
+                  {[
+                    { sec: 15, desc: '~1 кред.', render: '~30 сек рендер' },
+                    { sec: 30, desc: '~2 кред.', render: '~1 мин рендер' },
+                    { sec: 60, desc: '~4 кред. (Creator)', render: '~2 мин рендер' },
+                    { sec: 300, desc: '~20 кред. (Business)', render: '~10 мин рендер' },
+                  ].map((item) => {
+                    const isSelected = durationSeconds === item.sec;
+                    
+                    // Enforce Plan Constraints Client-side warning
+                    const limits: Record<string, number> = {
+                      trial: 30,
+                      creator: 60,
+                      business: 300,
+                      enterprise: 1800
+                    };
+                    const isLimitBlocked = item.sec > (limits[heygenPlan] || 30);
+
+                    return (
+                      <button
+                        key={item.sec}
+                        type="button"
+                        disabled={isLimitBlocked}
+                        onClick={() => {
+                          setDurationSeconds(item.sec);
+                          setDurationMinutes(Math.ceil(item.sec / 60));
+                        }}
+                        className={`p-3 rounded-2xl border text-left transition-all relative overflow-hidden group ${
+                          isSelected
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-md'
+                            : isLimitBlocked
+                            ? 'bg-slate-100 opacity-40 cursor-not-allowed border-slate-100'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-xs leading-none">
+                            {item.sec < 60 ? `${item.sec} сек.` : `${item.sec / 60} мин.`}
+                          </span>
+                          {!isLimitBlocked && isSelected && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                          )}
+                        </div>
+                        <p className={`text-[9px] font-mono mt-1.5 leading-none transition-all ${isSelected ? 'text-indigo-200' : 'text-slate-400'}`}>
+                          {item.desc}
+                        </p>
+                        <span className="text-[8px] block opacity-70 mt-1">{item.render}</span>
+                        
+                        {isLimitBlocked && (
+                          <div className="absolute top-1 right-1" title="Недоступно на этом тарифе">
+                            <AlertTriangle className="w-3 h-3 text-amber-500" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Render Speed / Mode Selector */}
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-150 flex items-center justify-between text-xs" id="render_mode_switch">
+                <span className="font-medium text-slate-500 font-mono">Качество медиа-рендера:</span>
+                <div className="flex border border-slate-200 rounded-lg overflow-hidden bg-white">
                   <button
-                    key={mins}
-                    onClick={() => setDurationMinutes(mins)}
-                    className={`py-2 px-3 text-xs font-medium rounded-xl border transition-all ${
-                      durationMinutes === mins 
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-sm' 
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    type="button"
+                    onClick={() => setRenderMode('preview')}
+                    className={`px-3 py-1 text-[10px] uppercase font-mono tracking-wider transition-all ${
+                      renderMode === 'preview' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-500'
                     }`}
                   >
-                    {mins} мин
+                    Preview
                   </button>
-                ))}
+                  <button
+                    type="button"
+                    onClick={() => setRenderMode('production')}
+                    className={`px-3 py-1 text-[10px] uppercase font-mono tracking-wider transition-all ${
+                      renderMode === 'production' ? 'bg-violet-600 text-white font-bold' : 'text-slate-500'
+                    }`}
+                  >
+                    HD
+                  </button>
+                </div>
               </div>
-              <p className="text-[10px] text-slate-400 leading-normal">
-                При изменении длительности ИИ адаптирует количество сцен и глубинность устных аргументов.
-              </p>
+            </div>
+          </div>
+
+          {/* Step 3: Russian Premium Voices Selection Row */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 animate-fade-in" id="step_3_russian_voices_box">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 flex items-center justify-center bg-slate-900 text-white rounded-full text-xs font-mono font-bold">3</span>
+                <h3 className="font-semibold text-slate-900 text-sm tracking-tight">Русские голоса (Подкаст-V2)</h3>
+              </div>
+              <span className="bg-emerald-50 text-emerald-600 text-[9px] font-mono font-bold px-2 py-0.5 rounded border border-emerald-100 uppercase">
+                ElevenLabs v2
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-2.5 max-h-[290px] overflow-y-auto pr-1" id="russian_voices_scroller">
+                {RUSSIAN_VOICES.map((voice) => {
+                  const isSelected = selectedVoiceId === voice.id;
+                  const isPlaying = playingVoiceId === voice.id;
+
+                  return (
+                    <div
+                      key={voice.id}
+                      onClick={() => {
+                        setSelectedVoiceId(voice.id);
+                      }}
+                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all duration-300 relative group flex gap-3 ${
+                        isSelected
+                          ? 'border-violet-600 bg-violet-50/10 shadow-md ring-1 ring-violet-500'
+                          : 'border-slate-200 hover:border-slate-350 bg-white'
+                      }`}
+                      id={`voice_option_${voice.id}`}
+                    >
+                      {/* Playback Button with dynamic waveform layout */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startRussianVoicePreview(voice);
+                        }}
+                        className={`w-9 h-9 rounded-full shrink-0 flex items-center justify-center border transition-all ${
+                          isPlaying
+                            ? 'bg-rose-500 text-white border-rose-500 shadow'
+                            : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'
+                        }`}
+                        title="Прослушать образец голоса"
+                      >
+                        {isPlaying ? (
+                          <div className="flex items-center gap-[2px] h-3.5">
+                            <span className="w-[1.5px] h-2 bg-white animate-pulse" />
+                            <span className="w-[1.5px] h-3.5 bg-white animate-pulse delay-75" />
+                            <span className="w-[1.5px] h-1.5 bg-white animate-pulse" />
+                            <span className="w-[1.5px] h-3 bg-white animate-pulse delay-150" />
+                          </div>
+                        ) : (
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                        )}
+                      </button>
+
+                      {/* Speaking metadata description */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-slate-800 leading-none">{voice.name}</span>
+                            <span className="bg-slate-100 text-slate-500 text-[8px] font-mono px-1 py-0.5 rounded leading-none">
+                              {voice.gender === 'female' ? 'Жен' : 'Муж'}
+                            </span>
+                          </div>
+                          {isSelected && (
+                            <span className="w-2 h-2 rounded-full bg-violet-500" />
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-1 select-none font-medium truncate">{voice.speakingStyle}</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5 select-none leading-normal font-mono">{voice.emotionalProfile}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Intelligent preprocessor footnote descriptor */}
+              <div className="bg-emerald-500/5 border border-emerald-500/10 p-3 rounded-2xl flex items-start gap-2.5 text-[10px] text-emerald-800">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="leading-normal">
+                  <b>Эвристика живой речи активна:</b> Внедряются профессиональные разговорные задержки, паузы дыхания и мягкие окончания предложений.
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Action Trigger for Script Generation */}
-          <div className="space-y-3" id="script_generate_trigger_area">
+          <div className="space-y-3 animate-fade-in" id="script_generate_trigger_area">
             <button
               onClick={generateScript}
               disabled={isGeneratingScript || !topic.trim() || stage !== 'idle'}
-              className="w-full bg-slate-900 text-white hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed py-3.5 rounded-2xl font-medium text-sm flex items-center justify-center gap-2 transition-all shadow-sm"
+              className="w-full bg-slate-900 text-white hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed py-3.5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-sm"
               id="script_generate_btn"
             >
               {isGeneratingScript ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  <span>Сочиняем сценарий...</span>
+                  <span>Сочиняем ИИ-сценарий...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" />
+                  <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
                   <span>Сгенерировать сценарий ИИ</span>
                 </>
               )}
             </button>
             <p className="text-[10px] text-slate-400 text-center">
-              * Раздельная архитектура: Сценарий можно редактировать перед запуском видео-рендеринга.
+              Раздельный конвейер: Вы можете отредактировать сцены перед запуском рендера.
             </p>
           </div>
 
-          {/* Step 2: Avatar selection Library Section */}
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4" id="step_2_box">
+          {/* Step 4: Upgraded Adaptive Grid Avatar selection Library Section */}
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 animate-fade-in" id="step_2_box">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
-                <span className="w-5 h-5 flex items-center justify-center bg-slate-900 text-white rounded-full text-xs font-mono">3</span>
-                <h3 className="font-medium text-slate-900 text-sm tracking-tight">Библиотека аватаров v2</h3>
+                <span className="w-5 h-5 flex items-center justify-center bg-slate-900 text-white rounded-full text-xs font-mono font-bold">4</span>
+                <h3 className="font-semibold text-slate-900 text-sm tracking-tight">Библиотека аватаров v2</h3>
               </div>
-              <span className="text-xs text-slate-400 font-mono">
-                {DEFAULT_AVATARS.length} профилей
+              <span className="text-[10px] text-slate-400 font-mono font-medium">
+                Найдено: {filteredAvatars.length}/{DEFAULT_AVATARS.length}
               </span>
             </div>
 
-            {/* Avatar Filters */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-1 overflow-x-auto pb-1" id="gender_filter_row">
+            {/* Comprehensive search input */}
+            <div className="relative" id="avatar_search_wrapper">
+              <input
+                type="text"
+                placeholder="Поиск по имени, описанию или стилю..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-violet-400 bg-slate-50 font-medium"
+              />
+              {searchTerm && (
                 <button
-                  onClick={() => setSelectedGender('all')}
-                  className={`px-2.5 py-1 text-[10px] uppercase font-mono tracking-wider rounded-md border transition-all ${
-                    selectedGender === 'all' ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                  }`}
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute top-2.5 right-2 text-slate-400 hover:text-slate-600 p-0.5"
                 >
-                  Все полы
+                  <X className="w-3.5 h-3.5" />
                 </button>
-                <button
-                  onClick={() => setSelectedGender('male')}
-                  className={`px-2.5 py-1 text-[10px] uppercase font-mono tracking-wider rounded-md border transition-all ${
-                    selectedGender === 'male' ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  {GENDER_LABELS.male}
-                </button>
-                <button
-                  onClick={() => setSelectedGender('female')}
-                  className={`px-2.5 py-1 text-[10px] uppercase font-mono tracking-wider rounded-md border transition-all ${
-                    selectedGender === 'female' ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  {GENDER_LABELS.female}
-                </button>
+              )}
+            </div>
+
+            {/* Deep Dynamic Filter Rows */}
+            <div className="space-y-2 text-[10px] font-medium text-slate-500">
+              {/* Gender and Age Group Selector Container */}
+              <div className="grid grid-cols-2 gap-2" id="avatar_gender_age_filters">
+                <div>
+                  <span className="block mb-1 text-[9px] font-mono text-slate-400 uppercase">Гендер</span>
+                  <select
+                    value={selectedGender}
+                    onChange={(e) => setSelectedGender(e.target.value as any)}
+                    className="w-full text-xs p-1.5 rounded-lg border border-slate-200 bg-slate-50/50"
+                  >
+                    <option value="all">Все полы</option>
+                    <option value="male">Мужской</option>
+                    <option value="female">Женский</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <span className="block mb-1 text-[9px] font-mono text-slate-400 uppercase">Возрастная группа</span>
+                  <select
+                    value={selectedAgeGroup}
+                    onChange={(e) => setSelectedAgeGroup(e.target.value as any)}
+                    className="w-full text-xs p-1.5 rounded-lg border border-slate-200 bg-slate-50/50"
+                  >
+                    <option value="all">Все возраста</option>
+                    <option value="young">До 30 лет</option>
+                    <option value="adult">30 лет и старше</option>
+                  </select>
+                </div>
               </div>
 
-              <div className="flex items-center gap-1 overflow-x-auto pb-1" id="category_filter_row">
-                <button
-                  onClick={() => setSelectedCategory('all')}
-                  className={`px-2.5 py-1 text-[10px] font-mono rounded-md border transition-all ${
-                    selectedCategory === 'all' ? 'bg-slate-800 text-white border-slate-800' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  Все стили
-                </button>
-                {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                  <button
-                    key={key}
-                    onClick={() => setSelectedCategory(key as any)}
-                    className={`px-2.5 py-1 text-[10px] font-mono whitespace-nowrap rounded-md border transition-all ${
-                      selectedCategory === key ? 'bg-slate-800 text-white border-slate-800' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                    }`}
+              {/* Category & Role Type Dropdowns Container */}
+              <div className="grid grid-cols-2 gap-2" id="avatar_styles_role_filters">
+                <div>
+                  <span className="block mb-1 text-[9px] font-mono text-slate-400 uppercase">Стиль одежды</span>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value as any)}
+                    className="w-full text-xs p-1.5 rounded-lg border border-slate-200 bg-slate-50/50"
                   >
-                    {label}
-                  </button>
-                ))}
+                    <option value="all">Все стили</option>
+                    <option value="business">Бизнес / Костюм</option>
+                    <option value="casual">Повседневный</option>
+                    <option value="educational">Педагогический</option>
+                    <option value="creative">Креативный</option>
+                  </select>
+                </div>
+
+                <div>
+                  <span className="block mb-1 text-[9px] font-mono text-slate-400 uppercase">Проф. специализация</span>
+                  <select
+                    value={selectedRoleType}
+                    onChange={(e) => setSelectedRoleType(e.target.value)}
+                    className="w-full text-xs p-1.5 rounded-lg border border-slate-200 bg-slate-50/50"
+                  >
+                    <option value="all">Все специализации</option>
+                    <option value="Business">Бизнес-отдел</option>
+                    <option value="Creator">Создатель блогов</option>
+                    <option value="Podcast">Ведущий подкастов</option>
+                    <option value="Coach">Эффективный коуч</option>
+                    <option value="Teacher">Педагог / Преподаватель</option>
+                  </select>
+                </div>
               </div>
             </div>
 
-            {/* Avatar Cards Grid */}
-            <div className="grid grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1" id="avatar_cards_grid">
+            {/* Avatar Cards Adaptive Gallery Grid */}
+            <div className="grid grid-cols-2 gap-3 max-h-[420px] overflow-y-auto pr-1" id="avatar_cards_grid">
               {filteredAvatars.map((avatar) => {
                 const isSelected = selectedAvatar.id === avatar.id;
                 const isHovered = hoveredAvatarId === avatar.id;
@@ -385,7 +667,7 @@ export function AvatarStudio() {
                     onClick={() => setSelectedAvatar(avatar)}
                     className={`relative rounded-2xl overflow-hidden border cursor-pointer group transition-all duration-300 ${
                       isSelected 
-                        ? 'border-slate-900 ring-2 ring-slate-900 ring-offset-2' 
+                        ? 'border-violet-600 ring-2 ring-violet-500/40 shadow-lg scale-[0.98]' 
                         : 'border-slate-200 hover:border-slate-400 bg-slate-50'
                     }`}
                     id={`avatar_card_${avatar.id}`}
@@ -410,13 +692,16 @@ export function AvatarStudio() {
                         />
                       )}
 
-                      {/* Micro Visual Hover Indicator Badge */}
-                      <span className="absolute top-2 left-2 bg-slate-900/85 text-white text-[9px] font-mono px-2 py-0.5 rounded backdrop-blur-sm">
-                        {CATEGORY_LABELS[avatar.category]}
-                      </span>
+                      {/* Professional Specialty Overlay Badge */}
+                      {avatar.roleType && (
+                        <span className="absolute top-2 left-2 bg-slate-900/85 text-white text-[8px] font-mono font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">
+                          {avatar.roleType.toUpperCase()}
+                        </span>
+                      )}
 
                       {/* Play Preview Audio Button */}
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           startVoicePreview(avatar);
@@ -429,27 +714,31 @@ export function AvatarStudio() {
                         title="Прослушать образец голоса"
                       >
                         {isPlayingVoice ? (
-                          <Volume2 className="w-3_5 h-3_5 animate-pulse" />
+                          <Volume2 className="w-3.5 h-3.5 animate-pulse" />
                         ) : (
-                          <Play className="w-3_5 h-3_5" />
+                          <Play className="w-3.5 h-3.5" />
                         )}
                       </button>
                     </div>
 
-                    <div className="p-2.5 bg-white">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-xs font-semibold text-slate-800">{avatar.name}</span>
-                        <span className="text-[9px] font-mono text-slate-400">{avatar.language.split(' ')[0]}</span>
+                    <div className="p-2.5 bg-white text-xs">
+                      <div className="flex items-center justify-between font-semibold">
+                        <span className="text-slate-800 tracking-tight">{avatar.name}</span>
+                        {avatar.age && (
+                          <span className="text-slate-400 font-mono text-[9px]">{avatar.age} лет</span>
+                        )}
                       </div>
-                      <div className="text-[10px] text-slate-400 truncate leading-tight">
-                        {avatar.speakingStyle}
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-slate-100">
-                        <span className="text-[9px] text-slate-500 bg-slate-100 px-1 py-0.5 rounded">
+                      
+                      <p className="text-[10px] text-slate-400 truncate mt-0.5 font-medium">
+                        {avatar.clothingStyle || 'Smart Casual'}
+                      </p>
+                      
+                      <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-slate-100 text-[8px] font-mono">
+                        <span className="text-slate-500 bg-slate-100 px-1 py-0.5 rounded">
                           Энергия: {avatar.energyLevel}/10
                         </span>
-                        <span className="text-[9px] text-slate-500 bg-slate-100 px-1 py-0.5 rounded">
-                          {avatar.avatarStyle === 'close-up' ? 'Крупно' : 'Норм'}
+                        <span className="text-slate-500 bg-slate-100 px-1 py-0.5 rounded uppercase font-bold">
+                          {avatar.avatarStyle === 'close-up' ? 'Крупно' : 'Общий'}
                         </span>
                       </div>
                     </div>
@@ -460,7 +749,7 @@ export function AvatarStudio() {
 
             {/* Active Selected Details */}
             <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 text-xs text-slate-500" id="avatar_details_footer">
-              <div className="font-semibold text-slate-700 mb-1">Выбран: {selectedAvatar.name}</div>
+              <div className="font-semibold text-slate-700 mb-1">Выбран: {selectedAvatar.name} ({selectedAvatar.roleType})</div>
               <p className="leading-relaxed leading-normal">{selectedAvatar.description}</p>
             </div>
           </div>
@@ -767,11 +1056,25 @@ export function AvatarStudio() {
 
                     <button
                       onClick={triggerVideoRender}
-                      className="bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-6 rounded-xl text-xs transition-all tracking-tight inline-flex items-center gap-2 shadow-sm"
+                      disabled={spamCooldownLeft > 0}
+                      className={`font-semibold py-2.5 px-6 rounded-xl text-xs transition-all tracking-tight inline-flex items-center gap-2 shadow-sm ${
+                        spamCooldownLeft > 0 
+                          ? 'bg-slate-200 text-slate-500 cursor-not-allowed border border-slate-300' 
+                          : 'bg-slate-900 hover:bg-slate-800 text-white'
+                      }`}
                       id="launch_render_btn"
                     >
-                      <Activity className="w-4 h-4 animate-pulse" />
-                      <span>Генерировать видео-аватар</span>
+                      {spamCooldownLeft > 0 ? (
+                        <>
+                          <Clock className="w-4 h-4 text-amber-600 animate-spin" />
+                          <span>Повторный запуск через {spamCooldownLeft}с</span>
+                        </>
+                      ) : (
+                        <>
+                          <Activity className="w-4 h-4 text-rose-500 animate-pulse" />
+                          <span>Генерировать видео-аватар</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 ) : (stage !== 'idle' && stage !== 'error') ? (
@@ -946,10 +1249,11 @@ export function AvatarStudio() {
 
                       <button
                         onClick={triggerVideoRender}
-                        className="py-2.5 px-4 bg-white text-slate-750 border border-slate-200 hover:bg-slate-50 rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 transition-all"
+                        disabled={spamCooldownLeft > 0}
+                        className="py-2.5 px-4 bg-white disabled:bg-slate-105 disabled:text-slate-400 text-slate-700 border border-slate-200 hover:bg-slate-50 rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 transition-all"
                       >
-                        <RotateCcw className="w-3.5 h-3.5 text-indigo-500" />
-                        <span>Пересобрать видео</span>
+                        <RotateCcw className={`w-3.5 h-3.5 ${spamCooldownLeft > 0 ? 'text-slate-400 animate-spin' : 'text-indigo-500'}`} />
+                        <span>{spamCooldownLeft > 0 ? `Повтор через ${spamCooldownLeft}с` : 'Пересобрать видео'}</span>
                       </button>
                     </div>
                   </div>

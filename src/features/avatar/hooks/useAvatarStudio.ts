@@ -23,8 +23,15 @@ export function useAvatarStudio() {
   // Inputs
   const [topic, setTopic] = useState('');
   const [context, setContext] = useState('');
-  const [durationMinutes, setDurationMinutes] = useState(2);
+  const [durationMinutes, setDurationMinutes] = useState(2); // Keep for backwards compatibility
   const [selectedAvatar, setSelectedAvatarInternal] = useState<Avatar>(DEFAULT_AVATARS[0]);
+
+  // Premium UI & Plan-aware States
+  const [selectedVoiceId, setSelectedVoiceId] = useState('pqH6THCHvgSzSg3749S8'); // Default Alexei
+  const [heygenPlan, setHeygenPlan] = useState<'trial' | 'creator' | 'business' | 'enterprise'>('trial');
+  const [renderMode, setRenderMode] = useState<'preview' | 'production'>('preview');
+  const [durationSeconds, setDurationSeconds] = useState<number>(30);
+  const [spamCooldownLeft, setSpamCooldownLeft] = useState(0);
 
   const setSelectedAvatar = (avatar: Avatar) => {
     setSelectedAvatarInternal(avatar);
@@ -32,6 +39,31 @@ export function useAvatarStudio() {
     setRenderedThumbnailUrl(null);
     setErrorMessage(null);
   };
+
+  // Cooldown interval for button safe locks
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (spamCooldownLeft > 0) {
+      interval = setInterval(() => {
+        setSpamCooldownLeft(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [spamCooldownLeft]);
+
+  // Plan-aware duration downgrade side effect
+  useEffect(() => {
+    const limits: Record<string, number> = {
+      trial: 30,
+      creator: 60,
+      business: 300,
+      enterprise: 1800
+    };
+    const maxAllowed = limits[heygenPlan] || 30;
+    if (durationSeconds > maxAllowed) {
+      setDurationSeconds(maxAllowed);
+    }
+  }, [heygenPlan, durationSeconds]);
 
   // States
   const [script, setScript] = useState<AvatarScript | null>(null);
@@ -133,7 +165,7 @@ export function useAvatarStudio() {
       // Call OpenAI to get the script
       const data = await generateVideoAvatar({
         topic,
-        context: `${context}\nTarget Duration: ${durationMinutes} minutes`
+        context: `${context}\nTarget Duration: ${durationSeconds} seconds (${durationSeconds / 60} minutes)`
       });
 
       if (data) {
@@ -186,6 +218,26 @@ export function useAvatarStudio() {
   // 3. Trigger video rendering via HeyGen (Requirement 7 & 8 & 9)
   const triggerVideoRender = async () => {
     if (!script) return;
+
+    // PRE-RENDER PLAN VALIDATIONS (Plan-Aware Limits Verification)
+    const limits: Record<string, number> = {
+      trial: 30,
+      creator: 60,
+      business: 300,
+      enterprise: 1800
+    };
+    const maxAllowed = limits[heygenPlan] || 30;
+    if (durationSeconds > maxAllowed) {
+      setErrorMessage(`Превышен лимит тарифа! Ваш тариф HeyGen (${heygenPlan.toUpperCase()}) не поддерживает рендеры длиннее ${maxAllowed} сек. Пожалуйста, измените длительность.`);
+      return;
+    }
+
+    // Rate Limiting Prevention Clashing Click Safeguards
+    if (spamCooldownLeft > 0) {
+      setErrorMessage(`Защита от спама: Пожалуйста, подождите перед повторной отправкой. Кулдаун: ${spamCooldownLeft} секунд.`);
+      return;
+    }
+
     setStage('building_script');
     setProgressPercent(5);
     setStatusMessage('Форматирование сценария...');
@@ -198,20 +250,17 @@ export function useAvatarStudio() {
       await new Promise(resolve => setTimeout(resolve, 800));
       setStage('preparing_payload');
       setProgressPercent(15);
-      setStatusMessage('Мультиплексирование настроек аватара...');
+      setStatusMessage('Мультиплексирование настроек аватара и голоса...');
 
       await new Promise(resolve => setTimeout(resolve, 800));
       setStage('sending_request');
       setProgressPercent(25);
       setStatusMessage('Отправка запроса в HeyGen...');
 
-      // Choose a voice ID from HUMAN_VOICE_LIBRARY corresponding to gender
-      const voiceId = selectedAvatar.gender === 'male' ? 'pNInz6obpgdq5TaqLwtY' : '21m00Tcm4TlvDq8ikWAM'; // Adam vs Rachel
-
       const renderResponse = await generateAvatarVideo({
         script,
         avatar: selectedAvatar,
-        voiceId,
+        voiceId: selectedVoiceId,
         heygenApiKey
       });
 
@@ -222,6 +271,7 @@ export function useAvatarStudio() {
         setProgressPercent(40);
         setStatusMessage('Ожидание рендеринга видео в HeyGen (в потоке)...');
         setRequestCount(prev => prev + 1);
+        setSpamCooldownLeft(10); // Trigger a 10s anti-spam lock key safety cooldown
 
         // Start polling (Requirement 7)
         let retries = 0;
@@ -336,6 +386,13 @@ export function useAvatarStudio() {
     heygenApiKey,
     renderHistory,
     selectHistoryItem,
-    deleteHistoryItem
+    deleteHistoryItem,
+
+    // Extended Premium State Outputs
+    selectedVoiceId, setSelectedVoiceId,
+    heygenPlan, setHeygenPlan,
+    renderMode, setRenderMode,
+    durationSeconds, setDurationSeconds,
+    spamCooldownLeft
   };
 }

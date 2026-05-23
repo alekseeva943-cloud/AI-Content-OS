@@ -14,6 +14,9 @@ export interface Avatar {
   previewVideo: string;
   description: string;
   avatarStyle: AvatarStyle;
+  age?: number;
+  clothingStyle?: string;
+  roleType?: 'Business' | 'Creator' | 'Podcast' | 'Coach' | 'Teacher';
 }
 
 export interface ScriptScene {
