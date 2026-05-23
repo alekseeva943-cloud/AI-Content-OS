@@ -37,69 +37,115 @@ function getPromptPath(
   return filePath;
 }
 
+const EMBEDDED_FALLBACKS: Record<string, string> = {
+  "shared/russian-style.txt": "Вы всегда пишите на русском языке в естественном, грамотном и современном стиле.",
+  "shared/anti-ai.txt": "Запрещено использовать типичные ИИ-клише и штампы. Речь должна быть 'живой' и очеловеченной.",
+  "shared/creator-tone.txt": "Тональность ваших материалов — вовлекающая, профессиональная и харизматичная.",
+  "video-avatar/system.txt": "Вы — expert video presenter и ИИ-диктор. Создавайте сценарии, оптимизированные для устного произношения (spoken delivery) с естественным темпом.",
+  "video-avatar/generation.txt": "Создайте сценарий для видеопрезентации по теме: {{topic}}.\nКонтекст: {{context}}.\nВерните строго валидный JSON с ключами: title, description, summary, hook, scenes, captionStyles.",
+  "longreads/system.txt": "Вы — senior tech journalist и мастер сторителлинга. Создавайте увлекательные статьи с глубокой проработкой.",
+  "longreads/generation.txt": "Создайте статью по теме: {{topic}}.\nКонтекст: {{context}}.\nВерните строго валидный JSON с ключами: title, subtitle, readingTime, content, outline, callouts, socialSummary.",
+  "podcast/system.txt": "Вы — senior podcast producer. Создавайте увлекательные разговорные выпуски с живой динамикой.",
+  "podcast/generation.txt": "Создайте сценарий подкаста по теме: {{topic}}.\nКонтекст: {{context}}.\nВерните строго валидный JSON с ключами: episode_title, hook, intro, segments, guest_questions, final_takeaway, cta.",
+  "planner/system.txt": "Вы — эксперт-медиапланер контента.",
+  "planner/generation.txt": "Создайте медиаплан контента по теме: {{topic}}.\nКонтекст: {{context}}.\nВерните строго валидный JSON.",
+  "newsletter/system.txt": "Вы — эксперт по email-рассылкам.",
+  "newsletter/generation.txt": "Создайте email-рассылку по теме: {{topic}}.\nКонтекст: {{context}}.\nВерните строго валидный JSON.",
+  "newsletter/detect.txt": "Определите параметры рассылки.",
+  "post/telegram/system.txt": "Вы — автор Telegram-канала. Пишите кратко, емко, с вовлекающими абзацами и структурированными мыслями.",
+  "post/telegram/generation.txt": "Создайте Telegram-пост по теме: {{topic}}.\nКонтекст: {{context}}.\nВерните текст поста.",
+  "post/vk/system.txt": "Вы — автор паблика ВКонтакте.",
+  "post/vk/generation.txt": "Создайте пост ВКонтакте по теме: {{topic}}.\nКонтекст: {{context}}.",
+  "post/email/system.txt": "Вы — автор email-рассылок.",
+  "post/email/generation.txt": "Создайте email по теме: {{topic}}.\nКонтекст: {{context}}."
+};
+
 export function loadPrompt(
   group: string,
   fileName: string
 ): string {
-
-  const cacheKey =
-    `${group}/${fileName}`;
+  const startTime = Date.now();
+  const cacheKey = `${group}/${fileName}`;
 
   if (promptCache.has(cacheKey)) {
-    return promptCache.get(cacheKey)!;
+    const cachedContent = promptCache.get(cacheKey)!;
+    console.log(`[Prompt Diagnostics] ${cacheKey} | Memory Cache Hit | Size: ${cachedContent.length} chars | Latency: 0ms`);
+    return cachedContent;
   }
 
-  const filePath =
-    getPromptPath(group, fileName);
-
+  const filePath = getPromptPath(group, fileName);
   const exists = fs.existsSync(filePath);
-  
+
   if (!exists) {
-    console.error(`[PromptLoader] Missing prompt file: ${filePath}`);
+    console.warn(`[Prompt Loader Warning] ${cacheKey} is missing at ${filePath}. Using fallback embedded system prompt.`);
     
-    // If it's a platform-specific prompt, we can try to fallback to telegram
+    // Check embedded fallback
+    if (EMBEDDED_FALLBACKS[cacheKey]) {
+      const fallbackContent = EMBEDDED_FALLBACKS[cacheKey];
+      promptCache.set(cacheKey, fallbackContent);
+      console.log(`[Prompt Diagnostics] ${cacheKey} | Fallback Loaded | Size: ${fallbackContent.length} chars | Latency: ${Date.now() - startTime}ms`);
+      return fallbackContent;
+    }
+
+    // Platform-specific fallback
     if (group.startsWith("post/") && group !== `post/${PLATFORM_FALLBACK}`) {
       const fallbackGroup = `post/${PLATFORM_FALLBACK}`;
       const fallbackPath = getPromptPath(fallbackGroup, fileName);
-      console.warn(`[PromptLoader] Attempting fallback for ${cacheKey} -> ${fallbackGroup}/${fileName}`);
+      console.warn(`[PromptLoader] Attempting directory fallback for ${cacheKey} -> ${fallbackGroup}/${fileName}`);
       
       if (fs.existsSync(fallbackPath)) {
         const content = fs.readFileSync(fallbackPath, "utf8");
         promptCache.set(cacheKey, content);
+        console.log(`[Prompt Diagnostics] ${cacheKey} | Platform Fallback Success | Size: ${content.length} chars | Latency: ${Date.now() - startTime}ms`);
         return content;
       }
     }
 
-    throw new Error(
-      `Missing prompt file: ${cacheKey}`
-    );
+    // Ultimate backup fallback
+    const ultimateFallback = `Вы — профессиональный ИИ-ассистент по направлению ${group}. Отвечайте строго на русском языке. При необходимости генерации JSON, верните валидный объект со всеми требуемыми ключами.`;
+    promptCache.set(cacheKey, ultimateFallback);
+    console.log(`[Prompt Diagnostics] ${cacheKey} | Ultimate Generic Fallback | Size: ${ultimateFallback.length} chars | Latency: ${Date.now() - startTime}ms`);
+    return ultimateFallback;
   }
 
   try {
-    const content =
-      fs.readFileSync(filePath, "utf8");
+    const content = fs.readFileSync(filePath, "utf8");
 
     if (!content.trim()) {
-      console.warn(`[PromptLoader] File is empty: ${filePath}`);
+      console.warn(`[Prompt Loader Warning] File is empty: ${filePath}. Using fallback.`);
       
-      // Fallback for empty files too
+      if (EMBEDDED_FALLBACKS[cacheKey]) {
+        const fallbackContent = EMBEDDED_FALLBACKS[cacheKey];
+        promptCache.set(cacheKey, fallbackContent);
+        console.log(`[Prompt Diagnostics] ${cacheKey} | Empty File Fallback | Size: ${fallbackContent.length} chars | Latency: ${Date.now() - startTime}ms`);
+        return fallbackContent;
+      }
+
       if (group.startsWith("post/") && group !== `post/${PLATFORM_FALLBACK}`) {
          const fallbackGroup = `post/${PLATFORM_FALLBACK}`;
          const fallbackContent = loadPrompt(fallbackGroup, fileName);
          return fallbackContent;
       }
 
-      throw new Error(
-        `Empty prompt file: ${cacheKey}`
-      );
+      const ultimateFallback = `Вы — профессиональный ИИ-ассистент по направлению ${group}. Отвечайте строго на русском языке.`;
+      promptCache.set(cacheKey, ultimateFallback);
+      console.log(`[Prompt Diagnostics] ${cacheKey} | Ultimate Generic Fallback | Size: ${ultimateFallback.length} chars | Latency: ${Date.now() - startTime}ms`);
+      return ultimateFallback;
     }
 
     promptCache.set(cacheKey, content);
-    console.log(`[PromptLoader] Successfully loaded: ${cacheKey}`);
+    console.log(`[Prompt Diagnostics] ${cacheKey} | File System Load Success | Size: ${content.length} chars | Latency: ${Date.now() - startTime}ms | Path: ${filePath}`);
     return content;
   } catch (error: any) {
-    console.error(`[PromptLoader] Read error for ${filePath}:`, error.message);
-    throw error;
+    console.error(`[Prompt Loader Exception] Read error for ${filePath}: ${error.message}`);
+    if (EMBEDDED_FALLBACKS[cacheKey]) {
+      const fallbackContent = EMBEDDED_FALLBACKS[cacheKey];
+      console.log(`[Prompt Diagnostics] ${cacheKey} | Exception Fallback | Size: ${fallbackContent.length} chars | Latency: ${Date.now() - startTime}ms`);
+      return fallbackContent;
+    }
+    const errFallback = `Вы — профессиональный ИИ-ассистент по направлению ${group}.`;
+    console.log(`[Prompt Diagnostics] ${cacheKey} | Exception Ultimate Fallback | Size: ${errFallback.length} chars | Latency: ${Date.now() - startTime}ms`);
+    return errFallback;
   }
 }
 
