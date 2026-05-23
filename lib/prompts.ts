@@ -54,7 +54,7 @@ const EMBEDDED_FALLBACKS: Record<string, string> = {
   "newsletter/detect.txt": "Определите параметры рассылки.",
   "post/telegram/system.txt": "Вы — автор Telegram-канала. Пишите кратко, емко, с вовлекающими абзацами и структурированными мыслями.",
   "post/telegram/generation.txt": "Создайте Telegram-пост по теме: {{topic}}.\nКонтекст: {{context}}.\nВерните текст поста.",
-  "post/vk/system.txt": "Вы — автор паблика ВКонтакте.",
+  "post/vk/system.txt": "Вы — автор паблика ВКонтакте!",
   "post/vk/generation.txt": "Создайте пост ВКонтакте по теме: {{topic}}.\nКонтекст: {{context}}.",
   "post/email/system.txt": "Вы — автор email-рассылок.",
   "post/email/generation.txt": "Создайте email по теме: {{topic}}.\nКонтекст: {{context}}."
