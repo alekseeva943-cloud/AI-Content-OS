@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { PodcastResult, VoiceSelection } from '../types/podcast.types';
+import { PodcastResult, VoiceSelection, ScriptSegment } from '../types/podcast.types';
 import { PodcastAudioPlayer } from './PodcastAudioPlayer';
 import { PodcastVoiceSelector, VoiceAudioSettings } from './PodcastVoiceSelector';
 import { PodcastTimeline } from './PodcastTimeline';
@@ -19,6 +19,13 @@ interface PodcastPreviewProps {
 export function PodcastPreview({ result, onBack, guestEnabled }: PodcastPreviewProps) {
   const addFavorite = useFavoritesStore((state) => state.addFavorite);
   
+  // Script segment local copy state for editing support (Requirement 5)
+  const [script, setScript] = useState<ScriptSegment[]>(result.script);
+
+  useEffect(() => {
+    setScript(result.script);
+  }, [result.script]);
+
   // 1. Voice configurations basic state
   const [voiceSelection, setVoiceSelection] = useState<VoiceSelection>({
     hostVoiceId: 'pNInz6obpgdq5TaqLwtY', // Adam
@@ -122,6 +129,8 @@ Active segments will be re-rendered and synthesized live with these settings on 
     togglePlaySegment,
     downloadSegmentMp3,
     stopCurrentAudio,
+    invalidateSegmentCache,
+    forceRegenerateSegmentAudio,
     
     // Full Episode Support
     isSynthesizingFull,
@@ -130,6 +139,36 @@ Active segments will be re-rendered and synthesized live with these settings on 
     synthesizeAndMergeFullEpisode,
     downloadFullEpisode
   } = usePodcastAudio(voiceSelection, hostSettings, guestSettings);
+
+  const handleUpdateScriptSegmentText = (id: string, newText: string) => {
+    let oldLength = 0;
+    setScript(prev => prev.map(seg => {
+      if (seg.id === id) {
+        oldLength = seg.text.length;
+        // In Russian, average characters per second is around 12-15.
+        // Let's approximate durationSeconds dynamically.
+        const charCount = newText.length;
+        const durationSeconds = Math.max(3, Math.ceil(charCount / 13));
+        return {
+          ...seg,
+          text: newText,
+          durationSeconds
+        };
+      }
+      return seg;
+    }));
+
+    // Invalidate caches and log
+    invalidateSegmentCache(id);
+    
+    console.log(`
+[SEGMENT EDIT] Text Updated
+- segmentId: ${id}
+- old length: ${oldLength}
+- new length: ${newText.length}
+- cache invalidated: true
+    `);
+  };
 
   const handleSaveToFavorites = () => {
     addFavorite({
@@ -152,7 +191,7 @@ Active segments will be re-rendered and synthesized live with these settings on 
   // Compute active synthesized URLs based on CURRENT voice selections dynamically (matching detailed slider keys)
   const currentSynthesizedUrls = useMemo(() => {
     const urls: Record<string, string> = {};
-    result.script.forEach((segment) => {
+    script.forEach((segment) => {
       const isHost = segment.speaker === 'host';
       const voiceId = isHost ? voiceSelection.hostVoiceId : (voiceSelection.guestVoiceId || 'pNInz6obpgdq5TaqLwtY');
       const activeSettings = isHost ? hostSettings : guestSettings;
@@ -163,23 +202,23 @@ Active segments will be re-rendered and synthesized live with these settings on 
       }
     });
     return urls;
-  }, [audioCache, result.script, voiceSelection, hostSettings, guestSettings]);
+  }, [audioCache, script, voiceSelection, hostSettings, guestSettings]);
 
   const totalLoaded = Object.keys(currentSynthesizedUrls).length;
-  const isAllSynthesized = totalLoaded >= result.script.length;
+  const isAllSynthesized = totalLoaded >= script.length;
 
   // Active voice diagnostics panel values
   const currentActiveSpeaker = useMemo(() => {
     if (playingId) {
-      const seg = result.script.find(s => s.id === playingId);
+      const seg = script.find(s => s.id === playingId);
       return seg ? { name: seg.speakerName, speaker: seg.speaker } : null;
     }
     if (synthesizingId) {
-      const seg = result.script.find(s => s.id === synthesizingId);
+      const seg = script.find(s => s.id === synthesizingId);
       return seg ? { name: seg.speakerName, speaker: seg.speaker } : null;
     }
     return null;
-  }, [playingId, synthesizingId, result.script]);
+  }, [playingId, synthesizingId, script]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 text-left">
@@ -214,14 +253,14 @@ Active segments will be re-rendered and synthesized live with these settings on 
       <PodcastAudioPlayer
         title={result.title}
         description={result.description}
-        script={result.script}
+        script={script}
         synthesizedUrls={currentSynthesizedUrls}
         onSaveToFavorites={handleSaveToFavorites}
         voiceSelection={voiceSelection}
         isSynthesizingFull={isSynthesizingFull}
         fullProgress={fullProgress}
         fullEpisodeUrl={fullEpisodeUrl}
-        onSynthesizeFull={() => synthesizeAndMergeFullEpisode(result.script, voiceSelection)}
+        onSynthesizeFull={() => synthesizeAndMergeFullEpisode(script, voiceSelection)}
         onDownloadFull={() => downloadFullEpisode(`${result.title.replace(/\s+/g, '_')}_episode.mp3`)}
       />
 
@@ -251,11 +290,11 @@ Active segments will be re-rendered and synthesized live with these settings on 
             <div className="space-y-2.5 text-xs text-neutral-600 font-medium">
               <div className="flex justify-between">
                 <span>Общая глубина:</span>
-                <span className="font-bold text-neutral-800">{result.script.length} реплик(и)</span>
+                <span className="font-bold text-neutral-800">{script.length} реплик(и)</span>
               </div>
               <div className="flex justify-between">
                 <span>Озвучено сегментов:</span>
-                <span className="font-bold text-[#10B981]">{totalLoaded} / {result.script.length}</span>
+                <span className="font-bold text-[#10B981]">{totalLoaded} / {script.length}</span>
               </div>
               <div className="flex justify-between">
                 <span>Режим подкаста:</span>
@@ -415,7 +454,7 @@ Active segments will be re-rendered and synthesized live with these settings on 
                     <div className="flex justify-between">
                       <span>CACHE HIT RATIO:</span>
                       <span className="text-emerald-400 font-bold">
-                        {result.script.length > 0 ? `${Math.round((totalLoaded / result.script.length) * 100)}%` : '0%'}
+                        {script.length > 0 ? `${Math.round((totalLoaded / script.length) * 100)}%` : '0%'}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -435,19 +474,21 @@ Active segments will be re-rendered and synthesized live with these settings on 
         {/* Right pane: Script Timeline */}
         <div className="lg:col-span-2 space-y-6 bg-white border border-neutral-200 p-6 md:p-8 rounded-[2.5rem] shadow-sm text-left">
           <PodcastTimeline
-            script={result.script}
+            script={script}
             voiceSelection={voiceSelection}
             playingId={playingId}
             synthesizedUrls={currentSynthesizedUrls}
             synthesizingId={synthesizingId}
             onTogglePlay={(id, text, voiceId) => {
-              const seg = result.script.find(s => s.id === id);
+              const seg = script.find(s => s.id === id);
               togglePlaySegment(id, text, voiceId, seg?.speaker);
             }}
             onDownloadMp3={(id, text, voiceId, title) => {
-              const seg = result.script.find(s => s.id === id);
+              const seg = script.find(s => s.id === id);
               downloadSegmentMp3(id, text, voiceId, title, seg?.speaker);
             }}
+            onUpdateScriptSegmentText={handleUpdateScriptSegmentText}
+            onRegenerateAudio={forceRegenerateSegmentAudio}
           />
         </div>
 

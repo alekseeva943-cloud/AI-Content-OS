@@ -574,6 +574,52 @@ export function usePodcastAudio(
     document.body.removeChild(a);
   };
 
+  const invalidateSegmentCache = (segmentId: string) => {
+    setAudioCache(prev => {
+      const copy = { ...prev };
+      let count = 0;
+      Object.keys(copy).forEach(key => {
+        if (key.startsWith(`${segmentId}_`)) {
+          delete copy[key];
+          count++;
+        }
+      });
+      if (count > 0) {
+        console.log(`[SEGMENT EDIT] Cache keys removed for segmentId=${segmentId}: ${count}`);
+      }
+      return copy;
+    });
+    setFullEpisodeUrl(null);
+    setFullEpisodeBlob(null);
+  };
+
+  const forceRegenerateSegmentAudio = async (
+    segmentId: string, 
+    text: string, 
+    voiceId: string, 
+    speaker?: 'host' | 'guest'
+  ): Promise<any> => {
+    const isHost = speaker === 'host' || voiceId === voiceSelection?.hostVoiceId;
+    const activeSettings = isHost ? hostSettings : guestSettings;
+    
+    invalidateSegmentCache(segmentId);
+    
+    setSynthesizingId(segmentId);
+    const startMs = Date.now();
+    console.log(`[SEGMENT EDIT] Force regenerating audio for segment = ${segmentId}...`);
+    try {
+      const entry = await synthesizeSegmentDirectly(segmentId, text, voiceId, isHost);
+      const latency = Date.now() - startMs;
+      console.log(`[SEGMENT EDIT] Audio regenerated successfully. Latency: ${latency}ms`);
+      return entry;
+    } catch (err: any) {
+      console.error(`[SEGMENT EDIT] Force regenerate failed:`, err);
+      throw err;
+    } finally {
+      setSynthesizingId(null);
+    }
+  };
+
   return {
     audioCache,
     synthesizingId,
@@ -583,6 +629,8 @@ export function usePodcastAudio(
     downloadSegmentMp3,
     stopCurrentAudio,
     getCacheKey, // export helper
+    invalidateSegmentCache,
+    forceRegenerateSegmentAudio,
     
     // Full Episode Support
     isSynthesizingFull,
