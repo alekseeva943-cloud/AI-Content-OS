@@ -7,6 +7,8 @@ import dotenv from "dotenv";
 import plannerRouter from "./src/server/routes/planner.ts";
 import newsletterRouter from "./src/server/routes/newsletter.ts";
 import podcastRouter from "./src/server/routes/podcast.ts";
+import avatarsRouter from "./src/server/routes/avatars.ts";
+import longreadsRouter from "./src/server/routes/longreads.ts";
 
 dotenv.config();
 
@@ -31,6 +33,8 @@ app.use(express.json({
 app.use(plannerRouter);
 app.use(newsletterRouter);
 app.use(podcastRouter);
+app.use(avatarsRouter);
+app.use(longreadsRouter);
 
 app.all("/api/*", (req, res) => {
   res.status(404).json({
