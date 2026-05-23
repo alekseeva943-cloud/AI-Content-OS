@@ -58,13 +58,36 @@ export async function generateAvatarVideo(req: GenerateVideoRequest): Promise<Ge
     const totalDuration = req.script.scenes.reduce((acc, s) => acc + (s.durationSeconds || 10), 0) + 5; // Add hook duration
     const estimatedCost = parseFloat(((totalDuration / 60) * 0.40).toFixed(4)); // $0.40 per min estimated
 
+    // Validate & Map Avatar Style (Requirement 4 & 6: Safe Fallbacks for HeyGen styles, warning logs)
+    const allowedStyles = ["circle", "closeUp", "full", "normal", "voiceOnly"];
+    let mappedStyle = req.avatar.avatarStyle as string;
+    
+    // Convert 'close-up' (our local type) to 'closeUp' (HeyGen camelCase)
+    if (mappedStyle === 'close-up') {
+      mappedStyle = 'closeUp';
+    }
+    
+    if (!allowedStyles.includes(mappedStyle)) {
+      console.warn(`[Avatar Style Warning] Unsupported avatar style detected: "${req.avatar.avatarStyle}". Fallback applied: "normal"`);
+      addLog({
+        type: 'error',
+        module: 'AI-Avatar-Render-Validation',
+        message: `[Avatar Style Warning] Unsupported avatar style detected: "${req.avatar.avatarStyle}". Fallback applied: "normal"`,
+        data: {
+          originalStyle: req.avatar.avatarStyle,
+          mappedStyle: 'normal'
+        }
+      });
+      mappedStyle = 'normal';
+    }
+
     const payload = {
       video_inputs: [
         {
           character: {
             type: 'avatar',
             avatar_id: req.avatar.id,
-            avatar_style: req.avatar.avatarStyle || 'normal'
+            avatar_style: mappedStyle
           },
           voice: {
             type: 'text',
@@ -78,6 +101,24 @@ export async function generateAvatarVideo(req: GenerateVideoRequest): Promise<Ge
         height: 720
       }
     };
+
+    // Payload Diagnostics (Requirement 5)
+    console.log(`[HEYGEN PAYLOAD]\n- avatar_id: ${req.avatar.id}\n- avatar_style: ${mappedStyle}\n- voice_id: ${req.voiceId}\n- resolution: 1280x720\n- video mode: standard\n- estimated duration: ${totalDuration}s`);
+
+    addLog({
+      type: 'info',
+      module: 'AI-Avatar-Diagnostics',
+      message: `[HEYGEN PAYLOAD] Style: ${mappedStyle} | Voice: ${req.voiceId} | Duration: ${totalDuration}s`,
+      data: {
+        avatar_id: req.avatar.id,
+        avatar_style: mappedStyle,
+        voice_id: req.voiceId,
+        resolution: "1280x720",
+        video_mode: "standard",
+        estimated_duration: `${totalDuration}s`,
+        rawPayload: payload
+      }
+    });
 
     req.onStageChange?.('Sending render request', 30);
 
@@ -148,7 +189,7 @@ export async function generateAvatarVideo(req: GenerateVideoRequest): Promise<Ge
     } else {
       // PREMIUM fall back to simulation with elegant, timed log statements matching exactly the HeyGen pipeline (Requirement 1, 7, 11)
       const latencyMs = Math.round(Math.random() * 300 + 150);
-      const videoId = `sim_heygen_${Math.random().toString(36).substr(2, 9)}`;
+      const videoId = `sim_heygen_${req.avatar.id}_${Math.random().toString(36).substr(2, 9)}`;
 
       // Simulate network request
       await new Promise(resolve => setTimeout(resolve, latencyMs));

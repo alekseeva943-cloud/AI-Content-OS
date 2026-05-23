@@ -1,6 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { Avatar, AvatarScript, AvatarGenerationStage, GenerationProgress } from '../types/avatar.types';
 import { DEFAULT_AVATARS } from '../constants/avatar.constants';
+
+export interface RenderHistoryItem {
+  id: string;
+  timestamp: number;
+  topic: string;
+  avatar: Avatar;
+  videoUrl: string;
+  thumbnailUrl: string;
+  script: AvatarScript;
+}
 import { generateAvatarVideo } from '../services/generateAvatarVideo';
 import { checkAvatarStatus } from '../services/checkAvatarStatus';
 import { generateVideoAvatar } from '@/src/services/ai/client';
@@ -14,7 +24,14 @@ export function useAvatarStudio() {
   const [topic, setTopic] = useState('');
   const [context, setContext] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(2);
-  const [selectedAvatar, setSelectedAvatar] = useState<Avatar>(DEFAULT_AVATARS[0]);
+  const [selectedAvatar, setSelectedAvatarInternal] = useState<Avatar>(DEFAULT_AVATARS[0]);
+
+  const setSelectedAvatar = (avatar: Avatar) => {
+    setSelectedAvatarInternal(avatar);
+    setRenderedVideoUrl(null);
+    setRenderedThumbnailUrl(null);
+    setErrorMessage(null);
+  };
 
   // States
   const [script, setScript] = useState<AvatarScript | null>(null);
@@ -29,6 +46,45 @@ export function useAvatarStudio() {
 
   // Video generation states
   const [stage, setStage] = useState<AvatarGenerationStage>('idle');
+
+  // Render History State
+  const [renderHistory, setRenderHistory] = useState<RenderHistoryItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('avatar_render_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('avatar_render_history', JSON.stringify(renderHistory));
+    } catch {}
+  }, [renderHistory]);
+
+  const selectHistoryItem = (item: RenderHistoryItem) => {
+    if (item.script) {
+      setScript(item.script);
+      setHookEditVal(item.script.hook);
+      const mappedscenes: Record<string, { narration: string; visuals: string }> = {};
+      item.script.scenes.forEach((s: any) => {
+        mappedscenes[s.id] = { narration: s.narration, visuals: s.visuals };
+      });
+      setScenesEditVals(mappedscenes);
+      setIsDirty(false);
+    }
+    setSelectedAvatarInternal(item.avatar);
+    setRenderedVideoUrl(item.videoUrl);
+    setRenderedThumbnailUrl(item.thumbnailUrl);
+    setTopic(item.topic);
+    setErrorMessage(null);
+  };
+
+  const deleteHistoryItem = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRenderHistory(prev => prev.filter(item => item.id !== id));
+  };
   const [progressPercent, setProgressPercent] = useState(0);
   const [statusMessage, setStatusMessage] = useState('');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -195,9 +251,27 @@ export function useAvatarStudio() {
               setStage('finalizing_player');
               setProgressPercent(100);
               setStatusMessage('Готово!');
-              setRenderedVideoUrl(statusResp.videoUrl || '');
-              setRenderedThumbnailUrl(statusResp.thumbnailUrl || '');
+
+              const videoUrl = statusResp.videoUrl || '';
+              const thumbnailUrl = statusResp.thumbnailUrl || '';
+
+              setRenderedVideoUrl(videoUrl);
+              setRenderedThumbnailUrl(thumbnailUrl);
               setStage('idle');
+
+              // Append to render history safely (Requirement 11)
+              if (videoUrl) {
+                const newItem: RenderHistoryItem = {
+                  id: `render_${Date.now()}`,
+                  timestamp: Date.now(),
+                  topic: topic || 'Информационное видео',
+                  avatar: selectedAvatar,
+                  videoUrl,
+                  thumbnailUrl,
+                  script: script
+                };
+                setRenderHistory(prev => [newItem, ...prev].slice(0, 5));
+              }
             } else if (statusResp.status === 'failed') {
               if (pollingRef.current) clearInterval(pollingRef.current);
               throw new Error(statusResp.error || 'HeyGen рендеринг зафейлился.');
@@ -259,6 +333,9 @@ export function useAvatarStudio() {
     errorMessage,
     triggerVideoRender,
     cancelGeneration,
-    heygenApiKey
+    heygenApiKey,
+    renderHistory,
+    selectHistoryItem,
+    deleteHistoryItem
   };
 }

@@ -1,4 +1,5 @@
 import { useDebugStore } from '@/src/stores/useDebugStore';
+import { DEFAULT_AVATARS } from '../constants/avatar.constants';
 
 export interface CheckStatusRequest {
   videoId: string;
@@ -36,9 +37,21 @@ export async function checkAvatarStatus(req: CheckStatusRequest): Promise<CheckS
     if (progressPercent >= 100) {
       status = 'completed';
       progressPercent = 100;
-      // High quality stock video matching speaking to camera to represent a stunning premium outcome!
-      videoUrl = 'https://assets.mixkit.co/videos/preview/mixkit-businessman-talking-to-camera-at-office-41849-large.mp4';
-      thumbnailUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=300&h=300';
+      
+      // Decode selected avatar from videoId (e.g. sim_heygen_charles-business-hq_abc123)
+      let matchedAvatar = DEFAULT_AVATARS[0]; // Charles fallback
+      const parts = req.videoId.split('_');
+      if (parts.length >= 3) {
+        const avatarId = parts[2];
+        const found = DEFAULT_AVATARS.find(av => av.id === avatarId);
+        if (found) {
+          matchedAvatar = found;
+        }
+      }
+
+      // Dynamic stock video matching speaking to camera to represent a stunning premium outcome!
+      videoUrl = matchedAvatar.previewVideo;
+      thumbnailUrl = matchedAvatar.thumbnail;
     }
 
     addLog({

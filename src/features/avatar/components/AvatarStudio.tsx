@@ -42,8 +42,51 @@ export function AvatarStudio() {
     errorMessage,
     triggerVideoRender,
     cancelGeneration,
-    heygenApiKey
+    heygenApiKey,
+    renderHistory,
+    selectHistoryItem,
+    deleteHistoryItem
   } = useAvatarStudio();
+
+  // Local states for video player, downloads and debug diagnostics (Requirements 5 & 6)
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [playbackStatus, setPlaybackStatus] = useState<'paused' | 'playing' | 'ended'>('paused');
+  const [downloadStatus, setDownloadStatus] = useState<'idle' | 'downloading' | 'completed' | 'error'>('idle');
+  const [blobSize, setBlobSize] = useState<string>('N/A');
+  const [isPlayerInitialized, setIsPlayerInitialized] = useState<boolean>(false);
+
+  const handleDownloadMp4 = async () => {
+    if (!renderedVideoUrl) return;
+    setDownloadStatus('downloading');
+    try {
+      const resp = await fetch(renderedVideoUrl);
+      const blob = await resp.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `avatar_studio_${selectedAvatar.id}_render.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
+      setDownloadStatus('completed');
+      
+      const sizeMb = (blob.size / (1024 * 1024)).toFixed(2);
+      setBlobSize(`${sizeMb} MB`);
+    } catch (err) {
+      console.error("Direct download failed, opening URL in new tab instead", err);
+      // fallback
+      window.open(renderedVideoUrl, '_blank');
+      setDownloadStatus('error');
+    }
+  };
+
+  const handleReplayVideo = () => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(e => console.log('Replay error', e));
+    }
+  };
 
   // Avatar filter states
   const [selectedGender, setSelectedGender] = useState<'all' | 'male' | 'female'>('all');
@@ -816,43 +859,150 @@ export function AvatarStudio() {
                     {/* Embedding Video Player */}
                     <div className="aspect-video w-full overflow-hidden rounded-xl border border-slate-105 shadow-md relative bg-black">
                       <video
+                        ref={videoRef}
                         src={renderedVideoUrl}
                         controls
                         poster={renderedThumbnailUrl || undefined}
                         className="w-full h-full object-contain"
                         id="rendered_player_tag"
+                        onPlay={() => setPlaybackStatus('playing')}
+                        onPause={() => setPlaybackStatus('paused')}
+                        onEnded={() => setPlaybackStatus('ended')}
+                        onLoadedMetadata={() => setIsPlayerInitialized(true)}
+                        preload="auto"
                       />
+                    </div>
+
+                    {/* VIDEO DEBUG PANEL (Requirement 5) */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2 text-xs font-mono text-slate-600 animate-fade-in" id="video_debug_panel">
+                      <div className="flex items-center gap-2 border-b border-slate-200 pb-1.5 mb-1 font-semibold text-slate-800">
+                        <Activity className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>AVATAR VIDEO DIAGNOSTICS DETAILED</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                        <div>
+                          <span className="text-slate-400">render_id: </span>
+                          <span className="text-slate-800 select-all font-semibold break-all">
+                            {renderedVideoUrl.split('?')[0].split('/').pop() || 'sim_render_hash'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">avatar_id: </span>
+                          <span className="text-slate-800 font-semibold">{selectedAvatar.id}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">playback status: </span>
+                          <span className={`font-semibold capitalize ${playbackStatus === 'playing' ? 'text-emerald-600' : 'text-slate-500'}`}>
+                            • {playbackStatus}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">preload state: </span>
+                          <span className="text-slate-800 font-semibold">{isPlayerInitialized ? 'Loaded (Buffer Ready)' : 'Preloading...'}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">blob size: </span>
+                          <span className="text-slate-800 font-semibold">{blobSize}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">download status: </span>
+                          <span className={`font-semibold ${downloadStatus === 'downloading' ? 'text-amber-600' : (downloadStatus === 'completed' ? 'text-emerald-600' : 'text-slate-500')}`}>
+                            {downloadStatus}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="pt-2 border-t border-slate-200/60 mt-2 text-[10px] break-all leading-normal flex items-center justify-between">
+                        <div>
+                          <span className="text-slate-400">resolved video_url: </span>
+                          <a href={renderedVideoUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 underline">
+                            {renderedVideoUrl}
+                          </a>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Replay Download, copy Script button, voice actions */}
                     <div className="flex flex-wrap items-center gap-2.5 pt-2" id="player_actions">
-                      <a
-                        href={renderedVideoUrl}
-                        download={`studio_avatar_${selectedAvatar.id}.mp4`}
-                        className="py-2.5 px-4 bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                      <button
+                        onClick={handleDownloadMp4}
+                        disabled={downloadStatus === 'downloading'}
+                        className="py-2.5 px-4 bg-slate-900 text-white hover:bg-slate-800 disabled:bg-slate-300 rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm"
                       >
-                        <Download className="w-3.5 h-3.5" />
-                        <span>Скачать MP4 видео</span>
-                      </a>
+                        {downloadStatus === 'downloading' ? (
+                          <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <Download className="w-3.5 h-3.5" />
+                        )}
+                        <span>{downloadStatus === 'downloading' ? 'Загрузка...' : 'Скачать MP4 видео'}</span>
+                      </button>
+
+                      <button
+                        onClick={handleReplayVideo}
+                        className="py-2.5 px-4 bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 transition-all"
+                      >
+                        <Play className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Повторить (Replay)</span>
+                      </button>
 
                       <button
                         onClick={triggerVideoRender}
-                        className="py-2.5 px-4 bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 transition-all"
+                        className="py-2.5 px-4 bg-white text-slate-750 border border-slate-200 hover:bg-slate-50 rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 transition-all"
                       >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                        <span>Переозвучить голос</span>
+                        <RotateCcw className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>Пересобрать видео</span>
                       </button>
+                    </div>
+                  </div>
+                )}
 
-                      <button
-                        onClick={() => {
-                          // Allow quick regeneration using another selected avatar choices
-                          triggerVideoRender();
-                        }}
-                        className="py-2.5 px-4 bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 transition-all"
-                      >
-                        <User className="w-3.5 h-3.5" />
-                        <span>Сменить аватар</span>
-                      </button>
+                {/* Render History Panel (Requirement 11) */}
+                {renderHistory.length > 0 && (
+                  <div className="border border-slate-200 rounded-2xl p-5 bg-white shadow-sm space-y-3" id="render_history_panel">
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                       <div className="flex items-center gap-1.5">
+                         <Layers className="w-4 h-4 text-slate-500" />
+                         <span className="text-xs uppercase font-mono tracking-wider font-bold text-slate-500">Последние рендеры (История)</span>
+                       </div>
+                       <span className="text-[10px] text-slate-400">Сохранено: {renderHistory.length}/5</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                      {renderHistory.map((item) => {
+                        const isCurrentActive = renderedVideoUrl === item.videoUrl;
+                        return (
+                          <button 
+                            key={item.id}
+                            onClick={() => selectHistoryItem(item)}
+                            className={`p-1.5 rounded-xl border transition-all cursor-pointer group text-left relative block focus:outline-none ${
+                              isCurrentActive 
+                                ? 'bg-slate-900 text-white border-slate-900 shadow-md ring-1 ring-slate-900' 
+                                : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            <div className="aspect-video w-full rounded-lg overflow-hidden bg-slate-200 relative">
+                              <img src={item.thumbnailUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=300&h=300'} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/10 group-hover:bg-black/25 transition-all flex items-center justify-center">
+                                <Play className="w-5 h-5 text-white drop-shadow-md" />
+                              </div>
+                            </div>
+                            <div className="mt-1.5 px-0.5">
+                              <p className={`text-[10px] font-semibold truncate leading-tight ${isCurrentActive ? 'text-white' : 'text-slate-800'}`}>
+                                {item.topic}
+                              </p>
+                              <div className="flex items-center justify-between mt-1 text-[8px] opacity-70">
+                                <span className="font-mono">{item.avatar.name}</span>
+                                <span>{new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                              </div>
+                            </div>
+                            <button 
+                              onClick={(e) => deleteHistoryItem(item.id, e)}
+                              className="absolute top-2 right-2 p-1 bg-white/90 text-red-600 hover:bg-white rounded-full shadow transition-opacity opacity-0 group-hover:opacity-100"
+                              title="Удалить рендер"
+                            >
+                              <Trash2 className="w-2.5 h-2.5" />
+                            </button>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
