@@ -1,6 +1,7 @@
 import { useDebugStore } from '@/src/stores/useDebugStore';
 import { Avatar, AvatarScript } from '../types/avatar.types';
 import { getVoiceById, APP_VOICES, DEFAULT_FALLBACK_VOICE, AppVoice } from '../constants/voices';
+import { resolveAndValidateAvatar } from '../constants/avatarRegistry';
 
 export interface GenerateVideoRequest {
   script: AvatarScript;
@@ -255,6 +256,15 @@ export async function generateAvatarVideo(req: GenerateVideoRequest): Promise<Ge
       }
     }
 
+    // 2. RESOLVE & VALIDATE AVATAR MAPPING (Requirement 3: Mapping, 4: Fallbacks, 5: Debug Console log)
+    const resolvedAvatarTrace = await resolveAndValidateAvatar(
+      req.avatar.id,
+      req.heygenApiKey,
+      addLog
+    );
+
+    const heygenAvatarId = resolvedAvatarTrace.heygenAvatarId;
+
     const voiceTrace = {
       selectedVoice: selectedVoice.displayName,
       provider: selectedVoice.provider,
@@ -272,7 +282,7 @@ export async function generateAvatarVideo(req: GenerateVideoRequest): Promise<Ge
         {
           character: {
             type: 'avatar',
-            avatar_id: req.avatar.id,
+            avatar_id: heygenAvatarId,
             avatar_style: mappedStyle
           },
           voice: {
@@ -288,7 +298,9 @@ export async function generateAvatarVideo(req: GenerateVideoRequest): Promise<Ge
       }
     };
 
-    // Trace diagnostics print
+    // Trace diagnostics print (Requirement 5)
+    console.log(`[AVATAR ROUTING] selectedAvatar: "${req.avatar.name}", localId: "${req.avatar.id}", mappedHeyGenAvatarId: "${heygenAvatarId}", mappedLookId: "${resolvedAvatarTrace.heygenLookId || 'N/A'}", validation: ${resolvedAvatarTrace.isFallback ? 'fallback' : 'success'}`);
+
     console.log(`[VOICE ROUTING]
 selectedVoice: "${selectedVoice.displayName}"
 provider: "${selectedVoice.provider}"
@@ -305,11 +317,13 @@ model: "eleven_multilingual_v2"`);
       addLog({
         type: 'request',
         module: 'AI-Avatar-Render',
-        message: `[VOICE ROUTING] Dispatching HeyGen Render. Mapped voice: ${heygenVoiceId} (Ref: ${selectedVoice.displayName})`,
+        message: `[VOICE & AVATAR ROUTING] Dispatching HeyGen Render. Mapped voice: ${heygenVoiceId} (Ref: ${selectedVoice.displayName}). Mapped avatar: ${heygenAvatarId} (Ref: ${req.avatar.name})`,
         data: {
           providerName: 'HeyGen',
           avatarId: req.avatar.id,
+          mappedAvatarId: heygenAvatarId,
           voiceTrace,
+          avatarTrace: resolvedAvatarTrace,
           requestPayload: payload
         }
       });

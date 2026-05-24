@@ -9,6 +9,7 @@ import {
 
 import { useAvatarStudio } from '../hooks/useAvatarStudio';
 import { DEFAULT_AVATARS, CATEGORY_LABELS, GENDER_LABELS } from '../constants/avatar.constants';
+import { fetchWorkspaceLooks } from '../constants/avatarRegistry';
 import { APP_VOICES, getVoiceById } from '../constants/voices';
 import { Avatar, ScriptScene } from '../types/avatar.types';
 
@@ -104,6 +105,37 @@ export function AvatarStudio() {
   const [selectedRoleType, setSelectedRoleType] = useState<string>('all');
   const [selectedAgeGroup, setSelectedAgeGroup] = useState<'all' | 'young' | 'adult'>('all');
   const [hoveredAvatarId, setHoveredAvatarId] = useState<string | null>(null);
+
+  // Dynamic Avatar Looks Preload & Capability cache state
+  const [workspaceLooks, setWorkspaceLooks] = useState<any[]>([]);
+  const [isLoadingLooks, setIsLoadingLooks] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadLooks = async () => {
+      if (heygenApiKey) {
+        setIsLoadingLooks(true);
+        try {
+          const looks = await fetchWorkspaceLooks(heygenApiKey, true);
+          if (isMounted) {
+            setWorkspaceLooks(looks);
+          }
+        } catch (err) {
+          console.error("Failed to preload avatar looks metadata:", err);
+        } finally {
+          if (isMounted) {
+            setIsLoadingLooks(false);
+          }
+        }
+      } else {
+        setWorkspaceLooks([]);
+      }
+    };
+    loadLooks();
+    return () => {
+      isMounted = false;
+    };
+  }, [heygenApiKey]);
 
   // Filtered avatars helper
   const filteredAvatars = DEFAULT_AVATARS.filter(av => {
@@ -747,8 +779,39 @@ export function AvatarStudio() {
                           <span className="text-slate-400 font-mono text-[9px]">{avatar.age} лет</span>
                         )}
                       </div>
+
+                      {/* Live Avatar Capability Diagnostics Check */}
+                      <div className="flex items-center gap-1 mt-0.5 text-[9px] font-semibold">
+                        {isLoadingLooks ? (
+                          <span className="text-amber-500 animate-pulse">● Попплинг ИИ...</span>
+                        ) : (() => {
+                          const hasWorkspaceMatch = workspaceLooks.some((look: any) => {
+                            const name = (look.look_name || look.avatar_name || '').toLowerCase();
+                            const lookId = (look.look_id || '').toLowerCase();
+                            return name.includes(avatar.name.toLowerCase()) || 
+                                   lookId.includes(avatar.id.replace('-', '_')) || 
+                                   lookId.includes(avatar.id);
+                          });
+
+                          if (hasWorkspaceMatch) {
+                            return (
+                              <span className="text-emerald-600 flex items-center gap-1" title="Точный клон воркспейса HeyGen найден!">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping inline-block" />
+                                Клон воркспейса
+                              </span>
+                            );
+                          } else {
+                            return (
+                              <span className="text-slate-500 flex items-center gap-1" title="Маршрутизация на высококачественный публичный аватар">
+                                <span className="w-1 h-1 rounded-full bg-slate-400 inline-block" />
+                                Роутинг: Публичный
+                              </span>
+                            );
+                          }
+                        })()}
+                      </div>
                       
-                      <p className="text-[10px] text-slate-400 truncate mt-0.5 font-medium">
+                      <p className="text-[10px] text-slate-400 truncate mt-1 font-medium">
                         {avatar.clothingStyle || 'Smart Casual'}
                       </p>
                       
