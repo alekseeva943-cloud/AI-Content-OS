@@ -9,7 +9,7 @@ import {
 
 import { useAvatarStudio } from '../hooks/useAvatarStudio';
 import { DEFAULT_AVATARS, CATEGORY_LABELS, GENDER_LABELS } from '../constants/avatar.constants';
-import { fetchWorkspaceLooks } from '../constants/avatarRegistry';
+import { fetchWorkspaceLooks } from '../services/heygenAvatarService';
 import { APP_VOICES, getVoiceById } from '../constants/voices';
 import { Avatar, ScriptScene } from '../types/avatar.types';
 
