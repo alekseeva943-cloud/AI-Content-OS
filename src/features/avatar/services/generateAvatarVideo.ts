@@ -176,7 +176,85 @@ export async function generateAvatarVideo(req: GenerateVideoRequest): Promise<Ge
     const cacheHit = rawNarratives.length % 5 === 0 ? 'HIT' : 'MISS';
 
     // 2. BUILD SECURE VOICE TRACE TELEMETRY (Requirement 5)
-    const heygenVoiceId = selectedVoice.mapping.heygenVoiceId;
+    let heygenVoiceId = selectedVoice.mapping.heygenVoiceId;
+
+    if (req.heygenApiKey && req.heygenApiKey.trim().length > 10) {
+      try {
+        console.log(`[Dynamic Voice Matcher] Querying HeyGen voices to find optimal Russian speaker...`);
+        req.onStageChange?.('Loading available voices', 20);
+        const voicesResponse = await fetch('https://api.heygen.com/v2/voices', {
+          method: 'GET',
+          headers: {
+            'X-Api-Key': req.heygenApiKey,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (voicesResponse.ok) {
+          const voicesData = await voicesResponse.json();
+          const voiceList = voicesData?.data?.voices || voicesData?.voices || [];
+          console.log(`[Dynamic Voice Matcher] Resolved ${voiceList.length} total voices from HeyGen.`);
+
+          // Filter out voices that are Russian
+          const ruVoices = voiceList.filter((v: any) => {
+            const lang = (v.language || '').toLowerCase();
+            const code = (v.language_code || '').toLowerCase();
+            const name = (v.name || '').toLowerCase();
+            return lang.includes('russian') || code.startsWith('ru') || name.includes('russian') || name.includes('ru-ru');
+          });
+
+          console.log(`[Dynamic Voice Matcher] Found ${ruVoices.length} Russian voices:`);
+          ruVoices.forEach((v: any) => {
+            console.log(` - ID: "${v.voice_id}", Name: "${v.name}", Gender: "${v.gender}", Language: "${v.language}"`);
+          });
+
+          if (ruVoices.length > 0) {
+            // Let's find an elegant match
+            // Try matching specifically by name, e.g. "Dmitry" or "Svetlana" or "Dariya" or "Yaroslav"
+            let matched = ruVoices.find((v: any) => 
+              v.name?.toLowerCase()?.includes(selectedVoice.displayName.toLowerCase()) ||
+              v.voice_id?.toLowerCase()?.includes(selectedVoice.displayName.toLowerCase())
+            );
+
+            if (!matched) {
+              // Try matching by gender fallback
+              matched = ruVoices.find((v: any) => v.gender?.toLowerCase() === selectedVoice.gender.toLowerCase());
+            }
+
+            if (!matched) {
+              // If still no match, take the very first Russian voice
+              matched = ruVoices[0];
+            }
+
+            if (matched) {
+              console.log(`[Dynamic Voice Matcher] Dynamically matched Russian voice: "${matched.name}" (ID: "${matched.voice_id}")`);
+              heygenVoiceId = matched.voice_id;
+
+              // Log to debug logs
+              addLog({
+                type: 'response',
+                module: 'AI-Voice-Validation',
+                message: `[Dynamic Voice Matcher] Успешно согласован голос "${matched.name}" (ID: ${matched.voice_id}) для генерации в HeyGen.`,
+                data: {
+                  selectedVoice: selectedVoice.displayName,
+                  originalHeygenId: selectedVoice.mapping.heygenVoiceId,
+                  matchedName: matched.name,
+                  matchedId: matched.voice_id,
+                  gender: matched.gender
+                }
+              });
+            }
+          } else {
+            console.warn(`[Dynamic Voice Matcher] No Russian voices available in this HeyGen account.`);
+          }
+        } else {
+          console.warn(`[Dynamic Voice Matcher] Failed to retrieve HeyGen voices (HTTP ${voicesResponse.status}). Using fallback IDs.`);
+        }
+      } catch (voiceFetchErr) {
+        console.error(`[Dynamic Voice Matcher] Connection error trying to list HeyGen voices:`, voiceFetchErr);
+      }
+    }
+
     const voiceTrace = {
       selectedVoice: selectedVoice.displayName,
       provider: selectedVoice.provider,
