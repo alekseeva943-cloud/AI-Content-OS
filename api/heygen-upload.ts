@@ -89,7 +89,7 @@ export default async function handler(
 
     const initResponse =
       await fetch(
-        "https://api.heygen.com/v1/asset.upload",
+        "https://api.heygen.com/v1/asset",
         {
           method: "POST",
 
@@ -123,7 +123,7 @@ export default async function handler(
       initJson =
         JSON.parse(initText);
 
-    } catch {}
+    } catch { }
 
     if (!initResponse.ok) {
 
