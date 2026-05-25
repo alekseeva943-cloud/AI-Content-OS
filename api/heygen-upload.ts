@@ -11,7 +11,7 @@ const upload = multer({
   storage: multer.memoryStorage(),
 });
 
-// Helper for Vercel middleware
+// Run multer inside Vercel
 function runMiddleware(
   req: any,
   res: any,
@@ -53,7 +53,7 @@ export default async function handler(
 
   try {
 
-    // Parse multipart/form-data
+    // Parse multipart upload
     await runMiddleware(
       req,
       res,
@@ -81,105 +81,139 @@ export default async function handler(
     }
 
     console.log(
-      `[PROXY-UPLOAD] Received file: ${req.file.originalname}`
+      `[HEYGEN-UPLOAD] Received file: ${req.file.originalname}`
     );
 
-    // Convert buffer → blob
-    const fileBlob = new Blob(
-      [req.file.buffer],
-      {
-        type:
-          req.file.mimetype ||
-          "audio/mpeg",
-      }
-    );
+    // STEP 1:
+    // Request upload URL from HeyGen
 
-    // IMPORTANT:
-    // HeyGen upload schema
-    const formData = new FormData();
-
-    formData.append(
-      "file",
-      new File(
-        [fileBlob],
-        req.file.originalname ||
-          "audio.mp3",
+    const initResponse =
+      await fetch(
+        "https://api.heygen.com/v1/asset.upload",
         {
-          type:
-            req.file.mimetype ||
-            "audio/mpeg",
+          method: "POST",
+
+          headers: {
+            "X-Api-Key": apiKey,
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            content_type:
+              req.file.mimetype ||
+              "audio/mpeg",
+
+            file_name:
+              req.file.originalname ||
+              "audio.mp3",
+
+            folder: "uploads",
+          }),
         }
-      )
-    );
+      );
 
-    formData.append(
-      "asset_type",
-      "audio"
-    );
+    const initText =
+      await initResponse.text();
 
-    formData.append(
-      "title",
-      req.file.originalname ||
-        "audio.mp3"
-    );
-
-    const endpoint =
-      "https://upload.heygen.com/v1/asset";
-
-    console.log(
-      `[PROXY-UPLOAD] Forwarding to HeyGen: ${endpoint}`
-    );
-
-    const heygenResponse =
-      await fetch(endpoint, {
-        method: "POST",
-
-        headers: {
-          "X-Api-Key": apiKey,
-        },
-
-        body: formData,
-      });
-
-    const responseText =
-      await heygenResponse.text();
-
-    let responseJson: any = null;
+    let initJson: any = null;
 
     try {
 
-      responseJson =
-        JSON.parse(responseText);
+      initJson =
+        JSON.parse(initText);
 
     } catch {}
 
-    // ERROR
-    if (!heygenResponse.ok) {
+    if (!initResponse.ok) {
 
       console.error(
-        `[PROXY-UPLOAD] HeyGen API Error (${heygenResponse.status})`
+        "[HEYGEN-UPLOAD] Failed requesting upload URL"
       );
 
-      console.error(responseText);
+      console.error(initText);
 
       return res
-        .status(heygenResponse.status)
-        .send(responseText);
+        .status(initResponse.status)
+        .send(initText);
+
+    }
+
+    const uploadUrl =
+      initJson?.data?.upload_url;
+
+    const assetId =
+      initJson?.data?.asset_id;
+
+    if (!uploadUrl) {
+
+      return res.status(500).json({
+        error:
+          "HeyGen upload URL missing.",
+      });
 
     }
 
     console.log(
-      "[PROXY-UPLOAD] Upload success"
+      "[HEYGEN-UPLOAD] Upload URL received"
     );
 
-    return res.status(200).json(
-      responseJson
+    // STEP 2:
+    // Upload binary directly
+
+    const binaryUpload =
+      await fetch(uploadUrl, {
+        method: "PUT",
+
+        headers: {
+          "Content-Type":
+            req.file.mimetype ||
+            "audio/mpeg",
+        },
+
+        body: req.file.buffer,
+      });
+
+    const binaryText =
+      await binaryUpload.text();
+
+    if (!binaryUpload.ok) {
+
+      console.error(
+        "[HEYGEN-UPLOAD] Binary upload failed"
+      );
+
+      console.error(binaryText);
+
+      return res
+        .status(binaryUpload.status)
+        .send(binaryText);
+
+    }
+
+    console.log(
+      "[HEYGEN-UPLOAD] Binary upload success"
     );
+
+    // STEP 3:
+    // Return asset info
+
+    return res.status(200).json({
+      success: true,
+
+      data: {
+        asset_id: assetId,
+
+        audio_url:
+          initJson?.data?.asset_url ||
+          initJson?.data?.url,
+      },
+    });
 
   } catch (error: any) {
 
     console.error(
-      "[PROXY-UPLOAD] Fatal Error:",
+      "[HEYGEN-UPLOAD] Fatal Error:",
       error
     );
 
