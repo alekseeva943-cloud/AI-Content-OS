@@ -47,7 +47,7 @@ export default async function handler(req: any, res: any) {
 
     const formData = new FormData();
     formData.append(
-      "file",
+      "asset",
       new File(
         [fileBlob],
         req.file.originalname || "audio.mp3",
