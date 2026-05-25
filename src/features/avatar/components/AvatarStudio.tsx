@@ -12,6 +12,7 @@ import { DEFAULT_AVATARS, CATEGORY_LABELS, GENDER_LABELS } from '../constants/av
 import { fetchWorkspaceLooks } from '../services/heygenAvatarService';
 import { APP_VOICES, getVoiceById } from '../constants/voices';
 import { Avatar, ScriptScene } from '../types/avatar.types';
+import { useSettingsStore } from '@/src/stores/useSettingsStore';
 
 export function AvatarStudio() {
   const {
@@ -136,6 +137,87 @@ export function AvatarStudio() {
       isMounted = false;
     };
   }, [heygenApiKey]);
+
+  // Dynamic ElevenLabs Dynamic Voice Registry Loader
+  const [voices, setVoices] = useState<any[]>(() => {
+    return APP_VOICES.map(v => ({
+      id: v.mapping.elevenlabsVoiceId, // Map appropriately
+      displayName: v.displayName,
+      provider: v.provider,
+      language: v.language,
+      gender: v.gender,
+      role: v.role,
+      previewSupport: v.previewSupport,
+      avatarCompatibility: v.avatarCompatibility,
+      providerCompatibility: v.providerCompatibility,
+      mapping: v.mapping,
+      speakingStyle: v.speakingStyle,
+      emotionalProfile: v.emotionalProfile,
+      previewText: v.previewText,
+      cadence: v.cadence
+    }));
+  });
+  const [isLoadingVoices, setIsLoadingVoices] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const loadVoices = async () => {
+      setIsLoadingVoices(true);
+      try {
+        const { fetchAvailableVoices } = await import('../services/elevenlabsVoiceProvider');
+        const list = await fetchAvailableVoices(useSettingsStore.getState().elevenlabsKey);
+        if (active) {
+          const mapped = list.map(v => {
+            let role = 'Narrator';
+            if (v.archetype === 'expert') role = 'Expert';
+            else if (v.archetype === 'conversational_coach') role = 'Coach';
+            else if (v.archetype === 'calm_narrator') role = 'Calm';
+            else if (v.archetype === 'energetic_creator') role = 'Energetic';
+            else if (v.archetype === 'media_host') role = 'Host';
+
+            return {
+              id: v.providerVoiceId,
+              displayName: v.displayName,
+              provider: v.provider,
+              language: v.language,
+              gender: v.gender,
+              role: role,
+              previewSupport: true,
+              avatarCompatibility: ['all'],
+              providerCompatibility: ['elevenlabs'],
+              mapping: {
+                elevenlabsVoiceId: v.providerVoiceId,
+                heygenVoiceId: 'synced-audio-lipsync',
+                previewVoiceId: v.providerVoiceId
+              },
+              speakingStyle: v.emotionalProfile || 'Премиальный голос',
+              emotionalProfile: `ID: ${v.providerVoiceId}`,
+              previewText: v.previewText,
+              cadence: {
+                speechRateMultiplier: v.speed || 1.0,
+                pitchShift: v.pitch || 1.0
+              }
+            };
+          });
+          setVoices(mapped);
+          
+          console.log(`[VOICE REGISTRY] Loaded voices: ${mapped.length}`);
+          mapped.forEach(mv => {
+            console.log(`[VOICE VALIDATION] Validated voice: "${mv.displayName}" (id: ${mv.id})`);
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load dynamic voices from provider', err);
+      } finally {
+        if (active) setIsLoadingVoices(false);
+      }
+    };
+
+    loadVoices();
+    return () => {
+      active = false;
+    };
+  }, [useSettingsStore.getState().elevenlabsKey]);
 
   // Filtered avatars helper
   const filteredAvatars = DEFAULT_AVATARS.filter(av => {
@@ -503,8 +585,14 @@ export function AvatarStudio() {
 
             <div className="space-y-3">
               <div className="grid grid-cols-1 gap-2.5 max-h-[290px] overflow-y-auto pr-1" id="russian_voices_scroller">
-                {APP_VOICES.map((voice) => {
-                  const isSelected = selectedVoiceId === voice.id || selectedVoiceId === voice.mapping.elevenlabsVoiceId;
+                {isLoadingVoices && (
+                  <div className="py-8 flex flex-col items-center justify-center text-slate-400 gap-2">
+                    <div className="w-5 h-5 rounded-full border-2 border-slate-300 border-t-slate-800 animate-spin" />
+                    <span className="text-[10px] font-mono">Обновление голосов ElevenLabs...</span>
+                  </div>
+                )}
+                {voices.map((voice) => {
+                  const isSelected = selectedVoiceId === voice.id || selectedVoiceId === voice.mapping?.elevenlabsVoiceId;
                   const isPlaying = playingVoiceId === voice.id;
 
                   return (
