@@ -37,7 +37,7 @@ export async function checkAvatarStatus(req: CheckStatusRequest): Promise<CheckS
     if (progressPercent >= 100) {
       status = 'completed';
       progressPercent = 100;
-      
+
       // Decode selected avatar from videoId (e.g. sim_heygen_charles-business-hq_abc123)
       let matchedAvatar = DEFAULT_AVATARS[0]; // Charles fallback
       const parts = req.videoId.split('_');
@@ -108,7 +108,7 @@ export async function checkAvatarStatus(req: CheckStatusRequest): Promise<CheckS
       let parsedJson: any = null;
       try {
         parsedJson = JSON.parse(rawText);
-      } catch (e) {}
+      } catch (e) { }
 
       addLog({
         type: response.ok ? 'response' : 'error',
@@ -130,15 +130,58 @@ export async function checkAvatarStatus(req: CheckStatusRequest): Promise<CheckS
 
       const rawStatus = parsedJson?.data?.status; // "pending", "processing", "completed", "failed"
       const percent = parsedJson?.data?.status === 'completed' ? 100 : (parsedJson?.data?.status === 'processing' ? 50 : 10);
-      
+
+      const rawError =
+        parsedJson?.data?.error;
+
+      let prettyError: string | null =
+        null;
+
+      if (
+        typeof rawError === 'string'
+      ) {
+
+        prettyError = rawError;
+
+      } else if (
+        rawError?.message
+      ) {
+
+        if (
+          rawError.message.includes(
+            'Insufficient credit'
+          )
+        ) {
+
+          prettyError =
+            'Недостаточно API-кредитов HeyGen';
+
+        } else {
+
+          prettyError =
+            rawError.message;
+
+        }
+      }
+
       return {
-        status: rawStatus || 'processing',
+        status:
+          rawStatus || 'processing',
+
         progressPercent: percent,
-        videoUrl: parsedJson?.data?.video_url,
-        thumbnailUrl: parsedJson?.data?.thumbnail_url,
-        error: parsedJson?.data?.error,
+
+        videoUrl:
+          parsedJson?.data?.video_url,
+
+        thumbnailUrl:
+          parsedJson?.data?.thumbnail_url,
+
+        error: prettyError,
+
         httpStatus,
+
         latencyMs,
+
         rawResponse: parsedJson
       };
 
