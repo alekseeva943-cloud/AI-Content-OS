@@ -59,4 +59,32 @@ export function normalizeElevenLabsVoice(rawVoice: any): RegistryVoice | null {
       archetype = 'energetic_creator';
     } else if (description.includes('host')) {
       archetype = 'media_host';
+    }
+
+    return {
+      localId: rawVoice.voice_id,
+      displayName: rawVoice.name,
+      provider: 'elevenlabs',
+      providerVoiceId: rawVoice.voice_id,
+      language: labels.language || 'ru-RU',
+      gender,
+      archetype,
+      previewText: `Проверка голоса ${rawVoice.name}`,
+      speed: 1,
+      pitch: 0,
+      stability: 0.75,
+      similarityBoost: 0.85,
+      style: 0.1,
+      emotionalProfile:
+        rawVoice.description || 'Dynamic ElevenLabs Voice'
+    };
+
+  } catch (err) {
+    console.error(
+      '[VOICE REGISTRY] Failed to normalize voice',
+      err
+    );
+
+    return null;
+  }
 }
