@@ -387,3 +387,126 @@ export function validateRenderSetup(
     infoMessages
   };
 }
+
+export interface HeyGenResult {
+  videoId: string;
+  success: boolean;
+  rawResponse: any;
+  httpStatus: number;
+}
+
+/**
+ * Dispatch final HeyGen render.
+ */
+
+export async function dispatchHeyGenLipsyncRender(
+  heygenAvatarId: string,
+  style: string,
+  audioUrl: string,
+  apiKey: string,
+  onLog?: (logEntry: any) => void
+): Promise<HeyGenResult> {
+
+  const payload = {
+    video_inputs: [
+      {
+        character: {
+          type: 'avatar',
+          avatar_id: heygenAvatarId,
+          avatar_style:
+            style === 'close-up'
+              ? 'closeUp'
+              : 'normal'
+        },
+
+        voice: {
+          type: 'audio',
+          audio_url: audioUrl
+        }
+      }
+    ],
+
+    dimension: {
+      width: 1280,
+      height: 720
+    }
+  };
+
+  onLog?.({
+    type: 'request',
+    module: '[LIPSYNC RENDER]',
+    message:
+      `Sending HeyGen render request`,
+    data: payload
+  });
+
+  const response = await fetch(
+    'https://api.heygen.com/v2/video/generate',
+    {
+      method: 'POST',
+
+      headers: {
+        'X-Api-Key': apiKey,
+        'Content-Type': 'application/json'
+      },
+
+      body: JSON.stringify(payload)
+    }
+  );
+
+  const httpStatus =
+    response.status;
+
+  const textResponse =
+    await response.text();
+
+  let parsedJson: any = null;
+
+  try {
+
+    parsedJson =
+      JSON.parse(textResponse);
+
+  } catch {}
+
+  if (!response.ok) {
+
+    onLog?.({
+      type: 'error',
+      module: '[LIPSYNC RENDER]',
+      message:
+        `HeyGen render failed (${httpStatus})`,
+      data: textResponse
+    });
+
+    throw new Error(
+      `HeyGen render failed (${httpStatus}): ${textResponse}`
+    );
+  }
+
+  const videoId =
+    parsedJson?.data?.video_id ||
+    parsedJson?.video_id;
+
+  onLog?.({
+    type: 'response',
+    module: '[LIPSYNC RENDER]',
+    message:
+      `HeyGen render queued successfully`,
+    data: parsedJson
+  });
+
+  return {
+    success: true,
+
+    videoId:
+      videoId ||
+      `heygen_${Math.random()
+        .toString(36)
+        .slice(2)}`,
+
+    rawResponse: parsedJson,
+
+    httpStatus
+  };
+}
