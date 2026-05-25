@@ -19,7 +19,7 @@ import { synthesizeElevenLabsAudio } from './elevenlabsService';
 import { resolveAndValidateAvatar } from './avatarResolver';
 
 import {
-  uploadAudioToHeyGen,
+
   validateRenderSetup,
   dispatchHeyGenLipsyncRender
 } from './heygenAvatarService';
@@ -229,11 +229,66 @@ export async function generateAvatarVideo(
   );
 
   // UPLOAD AUDIO
-  const audioUrl = await uploadAudioToHeyGen(
-    audioBlob,
-    req.heygenApiKey || '',
-    addLog
+  // CREATE TEMP AUDIO URL
+  const audioFile = new File(
+    [audioBlob],
+    'speech.mp3',
+    {
+      type: 'audio/mpeg'
+    }
   );
+
+  const formData = new FormData();
+
+  formData.append(
+    'file',
+    audioFile
+  );
+
+  addLog({
+    type: 'request',
+    module: '[TEMP AUDIO]',
+    message: 'Uploading temporary audio file'
+  });
+
+  const uploadResp = await fetch(
+    'https://tmpfiles.org/api/v1/upload',
+    {
+      method: 'POST',
+      body: formData
+    }
+  );
+
+  const uploadJson =
+    await uploadResp.json();
+
+  if (
+    !uploadResp.ok ||
+    !uploadJson?.data?.url
+  ) {
+    throw new Error(
+      'Temporary audio upload failed'
+    );
+  }
+
+  // TMPFiles returns preview URL.
+  // Convert to direct file URL.
+  const audioUrl =
+    uploadJson.data.url
+      .replace(
+        'https://tmpfiles.org/',
+        'https://tmpfiles.org/dl/'
+      );
+
+  addLog({
+    type: 'response',
+    module: '[TEMP AUDIO]',
+    message:
+      'Temporary audio URL created',
+    data: {
+      audioUrl
+    }
+  });
 
   req.onStageChange?.(
     'Рендер HeyGen',
