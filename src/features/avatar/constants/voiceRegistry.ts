@@ -42,6 +42,11 @@ export interface RegistryVoice {
  */
 
 export const VOICE_REGISTRY: RegistryVoice[] = [
+
+  // =========================================
+  // MALE VOICES
+  // =========================================
+
   {
     localId: 'alexei',
 
@@ -49,7 +54,8 @@ export const VOICE_REGISTRY: RegistryVoice[] = [
 
     provider: 'elevenlabs',
 
-    providerVoiceId: 'IKne3meq5aC27shg036e',
+    // Ivan - energetic russian male
+    providerVoiceId: 'JKtNvDNrWu33P1xzttP2',
 
     language: 'ru-RU',
 
@@ -57,19 +63,21 @@ export const VOICE_REGISTRY: RegistryVoice[] = [
 
     archetype: 'media_host',
 
-    previewText: 'Приветствую! Это Алексей.',
+    previewText:
+      'Приветствую. Это Алексей.',
 
     speed: 1,
 
     pitch: 0,
 
-    stability: 0.75,
+    stability: 0.72,
 
     similarityBoost: 0.85,
 
-    style: 0.1,
+    style: 0.18,
 
-    emotionalProfile: 'Уверенный медиа-баритон.'
+    emotionalProfile:
+      'Энергичный медиа-ведущий.'
   },
 
   {
@@ -79,7 +87,8 @@ export const VOICE_REGISTRY: RegistryVoice[] = [
 
     provider: 'elevenlabs',
 
-    providerVoiceId: 'IKne3meq5aC27shg036e',
+    // Marat - warm storyteller
+    providerVoiceId: 'vQxSi2EuaRWwBw3nn6dK',
 
     language: 'ru-RU',
 
@@ -87,20 +96,59 @@ export const VOICE_REGISTRY: RegistryVoice[] = [
 
     archetype: 'storyteller',
 
-    previewText: 'Это Дмитрий.',
+    previewText:
+      'Это Дмитрий. Начинаем.',
 
-    speed: 0.9,
+    speed: 0.92,
 
-    pitch: -0.05,
+    pitch: -0.04,
 
-    stability: 0.85,
+    stability: 0.82,
 
     similarityBoost: 0.8,
 
-    style: 0.2,
+    style: 0.28,
 
-    emotionalProfile: 'Кинематографичный рассказчик.'
+    emotionalProfile:
+      'Тёплый кинематографичный рассказчик.'
   },
+
+  {
+    localId: 'maksim',
+
+    displayName: 'Максим',
+
+    provider: 'elevenlabs',
+
+    // Maxim - neutral professional
+    providerVoiceId: 'HcaxAsrhw4ByUo4CBCBN',
+
+    language: 'ru-RU',
+
+    gender: 'male',
+
+    archetype: 'expert',
+
+    previewText:
+      'Здравствуйте. Говорит Максим.',
+
+    speed: 0.96,
+
+    pitch: -0.02,
+
+    stability: 0.88,
+
+    similarityBoost: 0.84,
+
+    style: 0.12,
+
+    emotionalProfile:
+      'Спокойный профессиональный эксперт.'
+  },
+
+  // =========================================
+  // FEMALE VOICES
+  // =========================================
 
   {
     localId: 'anna',
@@ -109,7 +157,8 @@ export const VOICE_REGISTRY: RegistryVoice[] = [
 
     provider: 'elevenlabs',
 
-    providerVoiceId: 'EXAVITQu4vr4xnSDXMaL',
+    // Ekaterina
+    providerVoiceId: 'GN4wbsbejSnGSa1AzjH5',
 
     language: 'ru-RU',
 
@@ -117,29 +166,99 @@ export const VOICE_REGISTRY: RegistryVoice[] = [
 
     archetype: 'calm_narrator',
 
-    previewText: 'Здравствуйте. Это Анна.',
+    previewText:
+      'Здравствуйте. Это Анна.',
 
-    speed: 0.85,
+    speed: 0.9,
 
     pitch: 0.05,
 
-    stability: 0.85,
+    stability: 0.84,
 
-    similarityBoost: 0.75,
+    similarityBoost: 0.76,
 
     style: 0.15,
 
-    emotionalProfile: 'Мягкий медитативный голос.'
+    emotionalProfile:
+      'Мягкий спокойный женский голос.'
+  },
+
+  {
+    localId: 'nadia',
+
+    displayName: 'Надежда',
+
+    provider: 'elevenlabs',
+
+    // Ariana energetic female
+    providerVoiceId: 'xyu8HSCv1JYrhLx4m8UG',
+
+    language: 'ru-RU',
+
+    gender: 'female',
+
+    archetype: 'energetic_creator',
+
+    previewText:
+      'Привет! С вами Надежда.',
+
+    speed: 1.02,
+
+    pitch: 0.08,
+
+    stability: 0.7,
+
+    similarityBoost: 0.83,
+
+    style: 0.35,
+
+    emotionalProfile:
+      'Энергичная эмоциональная подача.'
+  },
+
+  {
+    localId: 'marina',
+
+    displayName: 'Марина',
+
+    provider: 'elevenlabs',
+
+    // Soft warm female
+    providerVoiceId: 'X0jd19oPQ0cVJcbpmAuX',
+
+    language: 'ru-RU',
+
+    gender: 'female',
+
+    archetype: 'conversational_coach',
+
+    previewText:
+      'Добро пожаловать. Я Марина.',
+
+    speed: 0.94,
+
+    pitch: 0.03,
+
+    stability: 0.86,
+
+    similarityBoost: 0.82,
+
+    style: 0.14,
+
+    emotionalProfile:
+      'Тёплый разговорный коуч.'
   }
 ];
 
-export const DEFAULT_VOICE_LOCAL_ID = 'alexei';
+export const DEFAULT_VOICE_LOCAL_ID =
+  'alexei';
 
 export function getVoiceFromRegistry(
   localId: string
 ): RegistryVoice | undefined {
 
   return VOICE_REGISTRY.find(
-    (voice) => voice.localId === localId
+    (voice) =>
+      voice.localId === localId
   );
 }
