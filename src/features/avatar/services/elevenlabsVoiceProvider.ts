@@ -207,37 +207,23 @@ export async function fetchAvailableVoices(
         .map(normalizeElevenLabsVoice)
         .filter(Boolean) as RegistryVoice[];
 
-    // MERGE DYNAMIC + STATIC
-    const mergedMap =
-      new Map<string, RegistryVoice>();
-
-    normalizedVoices.forEach((voice) => {
-
-      mergedMap.set(
-        voice.providerVoiceId,
-        voice
-      );
-
-    });
-
-    staticVoices.forEach((voice) => {
-
-      mergedMap.set(
-        voice.providerVoiceId,
-        voice
-      );
-
-    });
-
-    const mergedVoices =
-      Array.from(mergedMap.values());
+    // IMPORTANT:
+    //
+    // Runtime ElevenLabs voices are used
+    // ONLY for validation.
+    //
+    // UI and routing must ALWAYS use
+    // canonical VOICE_REGISTRY voices.
+    //
+    // Never merge runtime voices into
+    // selectable voice pool.
 
     voiceCache = {
-      voices: mergedVoices,
+      voices: staticVoices,
       fetchedAt: now
     };
 
-    return mergedVoices;
+    return staticVoices;
 
   } catch (err) {
 

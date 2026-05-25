@@ -81,9 +81,12 @@ export async function generateAvatarVideo(
   );
 
   // FIND ACTIVE VOICE
-  let activeVoice = availableVoices.find(
-    (voice) => voice.localId === req.voiceId
+  const routedVoice = routeVoice(
+    req.voiceId
   );
+
+  let activeVoice =
+    routedVoice.voice;
 
   let fallbackTriggered = false;
 
