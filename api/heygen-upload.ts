@@ -84,129 +84,93 @@ export default async function handler(
       `[HEYGEN-UPLOAD] Received file: ${req.file.originalname}`
     );
 
-    // STEP 1:
-    // Request upload URL from HeyGen
+    // Build multipart form
+    const formData = new FormData();
 
-    const initResponse =
-      await fetch(
-        "https://api.heygen.com/v1/asset",
+    formData.append(
+      "file",
+      new Blob(
+        [req.file.buffer],
         {
-          method: "POST",
-
-          headers: {
-            "X-Api-Key": apiKey,
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            content_type:
-              req.file.mimetype ||
-              "audio/mpeg",
-
-            file_name:
-              req.file.originalname ||
-              "audio.mp3",
-
-            folder: "uploads",
-          }),
+          type:
+            req.file.mimetype ||
+            "audio/mpeg",
         }
-      );
+      ),
+      req.file.originalname ||
+        "audio.mp3"
+    );
 
-    const initText =
-      await initResponse.text();
+    formData.append(
+      "asset_type",
+      "audio"
+    );
 
-    let initJson: any = null;
+    formData.append(
+      "title",
+      req.file.originalname ||
+        "audio.mp3"
+    );
+
+    // DIRECT upload endpoint
+    const endpoint =
+      "https://upload.heygen.com/v1/asset";
+
+    console.log(
+      `[HEYGEN-UPLOAD] Uploading to ${endpoint}`
+    );
+
+    const heygenResponse =
+      await fetch(endpoint, {
+        method: "POST",
+
+        headers: {
+          "X-Api-Key": apiKey,
+        },
+
+        body: formData,
+      });
+
+    const responseText =
+      await heygenResponse.text();
+
+    let responseJson: any = null;
 
     try {
 
-      initJson =
-        JSON.parse(initText);
+      responseJson =
+        JSON.parse(responseText);
 
-    } catch { }
+    } catch {}
 
-    if (!initResponse.ok) {
+    if (!heygenResponse.ok) {
 
       console.error(
-        "[HEYGEN-UPLOAD] Failed requesting upload URL"
+        `[HEYGEN-UPLOAD] Upload failed (${heygenResponse.status})`
       );
 
-      console.error(initText);
+      console.error(responseText);
 
       return res
-        .status(initResponse.status)
-        .send(initText);
-
-    }
-
-    const uploadUrl =
-      initJson?.data?.upload_url;
-
-    const assetId =
-      initJson?.data?.asset_id;
-
-    if (!uploadUrl) {
-
-      return res.status(500).json({
-        error:
-          "HeyGen upload URL missing.",
-      });
+        .status(heygenResponse.status)
+        .send(responseText);
 
     }
 
     console.log(
-      "[HEYGEN-UPLOAD] Upload URL received"
+      "[HEYGEN-UPLOAD] Upload success"
     );
-
-    // STEP 2:
-    // Upload binary directly
-
-    const binaryUpload =
-      await fetch(uploadUrl, {
-        method: "PUT",
-
-        headers: {
-          "Content-Type":
-            req.file.mimetype ||
-            "audio/mpeg",
-        },
-
-        body: req.file.buffer,
-      });
-
-    const binaryText =
-      await binaryUpload.text();
-
-    if (!binaryUpload.ok) {
-
-      console.error(
-        "[HEYGEN-UPLOAD] Binary upload failed"
-      );
-
-      console.error(binaryText);
-
-      return res
-        .status(binaryUpload.status)
-        .send(binaryText);
-
-    }
-
-    console.log(
-      "[HEYGEN-UPLOAD] Binary upload success"
-    );
-
-    // STEP 3:
-    // Return asset info
 
     return res.status(200).json({
       success: true,
 
       data: {
-        asset_id: assetId,
+        asset_id:
+          responseJson?.data?.asset_id,
 
         audio_url:
-          initJson?.data?.asset_url ||
-          initJson?.data?.url,
+          responseJson?.data?.asset_url ||
+          responseJson?.data?.url,
       },
     });
 
