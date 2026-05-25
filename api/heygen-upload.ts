@@ -46,9 +46,18 @@ export default async function handler(req: any, res: any) {
     });
 
     const formData = new FormData();
-    formData.append("file", fileBlob, req.file.originalname || "audio.mp3");
+    formData.append(
+      "file",
+      new File(
+        [fileBlob],
+        req.file.originalname || "audio.mp3",
+        {
+          type: req.file.mimetype || "audio/mpeg",
+        }
+      )
+    );
 
-    const endpoint = "https://api.heygen.com/v2/assets";
+    const endpoint = "https://upload.heygen.com/v1/asset";
     console.log(`[PROXY-UPLOAD] Forwarding to HeyGen: ${endpoint}`);
 
     const heygenResponse = await fetch(endpoint, {
@@ -63,7 +72,7 @@ export default async function handler(req: any, res: any) {
     let respJson: any = null;
     try {
       respJson = JSON.parse(respText);
-    } catch {}
+    } catch { }
 
     if (!heygenResponse.ok) {
       console.error(
