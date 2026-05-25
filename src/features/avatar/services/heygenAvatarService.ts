@@ -213,7 +213,7 @@ export async function uploadAudioToHeyGen(
     );
 
     const response = await fetch(
-      'https://api.heygen.com/v2/assets',
+      '/api/heygen-upload',
       {
         method: 'POST',
 

@@ -1,8 +1,63 @@
 import { Router } from "express";
 import { OpenAI } from "openai";
+import multer from "multer";
 import { getModulePrompts } from "../../../lib/prompts.ts";
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage() });
+
+router.post("/api/heygen-upload", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const apiKey = process.env.HEYGEN_API_KEY || req.headers["x-api-key"] || "";
+    if (!apiKey) {
+      return res.status(401).json({
+        error: "HeyGen API Key is missing on the server and client headers.",
+      });
+    }
+
+    const fileBlob = new Blob([req.file.buffer], {
+      type: req.file.mimetype || "audio/mpeg",
+    });
+
+    const formData = new FormData();
+    formData.append("file", fileBlob, req.file.originalname || "audio.mp3");
+
+    const endpoint = "https://api.heygen.com/v2/assets";
+    console.log(`[SERVER-PROXY-UPLOAD] Forwarding to HeyGen: ${endpoint}`);
+
+    const heygenResponse = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "X-Api-Key": apiKey as string,
+      },
+      body: formData,
+    });
+
+    const respText = await heygenResponse.text();
+    let respJson: any = null;
+    try {
+      respJson = JSON.parse(respText);
+    } catch {}
+
+    if (!heygenResponse.ok) {
+      console.error(
+        `[SERVER-PROXY-UPLOAD] HeyGen API Error (${heygenResponse.status}): ${respText}`
+      );
+      return res.status(heygenResponse.status).send(respText);
+    }
+
+    return res.status(200).json(respJson);
+  } catch (error: any) {
+    console.error("[SERVER-PROXY-UPLOAD] General Error:", error);
+    return res
+      .status(500)
+      .json({ error: error.message || "Server proxy upload failed" });
+  }
+});
 
 let openaiClient: OpenAI | null = null;
 function getOpenAI() {

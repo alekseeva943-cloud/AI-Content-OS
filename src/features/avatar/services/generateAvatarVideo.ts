@@ -5,6 +5,7 @@ import { useSettingsStore } from '@/src/stores/useSettingsStore';
 
 import { Avatar, AvatarScript } from '../types/avatar.types';
 import { getAvatarFromRegistry } from '../constants/avatarRegistry';
+import { routeVoice, preprocessTextForVoice } from './voiceRouter';
 
 import {
   fetchAvailableVoices,
@@ -36,6 +37,31 @@ export interface GenerateVideoResponse {
   videoId: string;
   rawResponse?: any;
   provider: string;
+  estimatedCost: number;
+  durationSeconds: number;
+  voiceTrace?: {
+    selectedVoice: string;
+    provider: string;
+    previewVoiceId: string;
+    renderVoiceId: string;
+    heygenVoiceId: string;
+    language: string;
+    model: string;
+    cache: string;
+    fallbackTriggered: boolean;
+  };
+}
+
+/**
+ * Backward compatible signature of Russian Speech Preprocessor
+ */
+export function preprocessRussianSpeechV3(text: string, voice: any): string {
+  return preprocessTextForVoice(text, voice);
+}
+
+export function preprocessRussianSpeech(text: string): string {
+  const matched = routeVoice('anna');
+  return preprocessTextForVoice(text, matched.voice);
 }
 
 export async function generateAvatarVideo(
@@ -59,11 +85,13 @@ export async function generateAvatarVideo(
     (voice) => voice.localId === req.voiceId
   );
 
+  let fallbackTriggered = false;
+
   // HARD FALLBACK IF VOICE MISSING
   if (!activeVoice) {
-
+    fallbackTriggered = true;
     addLog({
-      type: 'warning',
+      type: 'info',
       module: 'VOICE FALLBACK',
       message: `Voice ${req.voiceId} not found. Using fallback.`
     });
@@ -83,9 +111,9 @@ export async function generateAvatarVideo(
 
   // IF VOICE DELETED IN ELEVENLABS
   if (!existsRuntime) {
-
+    fallbackTriggered = true;
     addLog({
-      type: 'warning',
+      type: 'info',
       module: 'VOICE VALIDATION',
       message: `Voice ${activeVoice.providerVoiceId} missing in ElevenLabs runtime.`
     });
@@ -102,10 +130,13 @@ export async function generateAvatarVideo(
     req.avatar.id
   );
 
+  const estimatedDurationSeconds = req.script.scenes.reduce((acc, s) => acc + (s.durationSeconds || 10), 0) + 5;
+  const estimatedCost = parseFloat(((estimatedDurationSeconds / 60) * 0.40).toFixed(4));
+
   validateRenderSetup(
     registryAvatar,
     activeVoice,
-    30
+    estimatedDurationSeconds
   );
 
   // BUILD TRANSCRIPT
@@ -138,9 +169,9 @@ export async function generateAvatarVideo(
       raw.includes('voice_not_found') ||
       raw.includes('404')
     ) {
-
+      fallbackTriggered = true;
       addLog({
-        type: 'warning',
+        type: 'info',
         module: 'VOICE RECOVERY',
         message: 'Voice deleted in ElevenLabs. Starting recovery.'
       });
@@ -170,6 +201,7 @@ export async function generateAvatarVideo(
       );
 
       audioBlob = retry.audioBlob;
+      activeVoice = fallbackVoice;
 
     } else {
 
@@ -223,10 +255,25 @@ export async function generateAvatarVideo(
     100
   );
 
+  const voiceTrace = {
+    selectedVoice: activeVoice.displayName,
+    provider: activeVoice.provider,
+    previewVoiceId: activeVoice.providerVoiceId,
+    renderVoiceId: activeVoice.providerVoiceId,
+    heygenVoiceId: 'synced-audio-lipsync',
+    language: activeVoice.language,
+    model: 'eleven_multilingual_v2',
+    cache: 'MISS',
+    fallbackTriggered: fallbackTriggered
+  };
+
   return {
     success: true,
     videoId: render.videoId,
     rawResponse: render.rawResponse,
-    provider: 'HeyGen + ElevenLabs'
+    provider: 'HeyGen + ElevenLabs',
+    estimatedCost,
+    durationSeconds: estimatedDurationSeconds,
+    voiceTrace
   };
 }
