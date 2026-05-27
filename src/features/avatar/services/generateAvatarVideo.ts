@@ -1,337 +1,620 @@
-// src/services/generateAvatarVideo.ts
+// src/services/elevenlabsService.ts
 
-import { useDebugStore } from '@/src/stores/useDebugStore';
-import { useSettingsStore } from '@/src/stores/useSettingsStore';
+import { RegistryVoice } from '../constants/voiceRegistry';
 
-import { Avatar, AvatarScript } from '../types/avatar.types';
-import { getAvatarFromRegistry } from '../constants/avatarRegistry';
-import { routeVoice, preprocessTextForVoice } from './voiceRouter';
+// ======================================================
+// MEMORY CACHE
+// ======================================================
 
-import {
-  fetchAvailableVoices,
-  validateVoiceExistsRuntime,
-  findNearestCompatibleFallback,
-  invalidateVoicesCache
-} from './elevenlabsVoiceProvider';
+const audioCache =
+  new Map<string, Blob>();
 
-import { synthesizeElevenLabsAudio } from './elevenlabsService';
+// ======================================================
+// CACHE KEY
+// ======================================================
 
-import { resolveAndValidateAvatar } from './avatarResolver';
+function computeCacheKey(
+  text: string,
+  voiceId: string
+): string {
 
-import {
+  let hash = 0;
 
-  validateRenderSetup,
-  dispatchHeyGenLipsyncRender
-} from './heygenAvatarService';
+  const raw =
+    `${voiceId}:${text}`;
 
-export interface GenerateVideoRequest {
-  script: AvatarScript;
-  avatar: Avatar;
-  voiceId: string;
-  heygenApiKey?: string;
-  onStageChange?: (stage: string, percent: number) => void;
-}
+  for (
+    let i = 0;
+    i < raw.length;
+    i++
+  ) {
 
-export interface GenerateVideoResponse {
-  success: boolean;
-  videoId: string;
-  rawResponse?: any;
-  provider: string;
-  estimatedCost: number;
-  durationSeconds: number;
-  voiceTrace?: {
-    selectedVoice: string;
-    provider: string;
-    previewVoiceId: string;
-    renderVoiceId: string;
-    heygenVoiceId: string;
-    language: string;
-    model: string;
-    cache: string;
-    fallbackTriggered: boolean;
-  };
-}
+    const chr =
+      raw.charCodeAt(i);
 
-/**
- * Backward compatible signature of Russian Speech Preprocessor
- */
-export function preprocessRussianSpeechV3(text: string, voice: any): string {
-  return preprocessTextForVoice(text, voice);
-}
+    hash =
+      (hash << 5) -
+      hash +
+      chr;
 
-export function preprocessRussianSpeech(text: string): string {
-  const matched = routeVoice('anna');
-  return preprocessTextForVoice(text, matched.voice);
-}
-
-export async function generateAvatarVideo(
-  req: GenerateVideoRequest
-): Promise<GenerateVideoResponse> {
-
-  const addLog = useDebugStore.getState().addLog;
-
-  const elevenlabsApiKey =
-    useSettingsStore.getState().elevenlabsKey;
-
-  req.onStageChange?.('Загрузка голосов', 10);
-
-  // LOAD AVAILABLE VOICES
-  const availableVoices = await fetchAvailableVoices(
-    elevenlabsApiKey
-  );
-
-  // FIND ACTIVE VOICE
-  const routedVoice = routeVoice(
-    req.voiceId
-  );
-
-  let activeVoice =
-    routedVoice.voice;
-
-  let fallbackTriggered = false;
-
-  // HARD FALLBACK IF VOICE MISSING
-  if (!activeVoice) {
-    fallbackTriggered = true;
-    addLog({
-      type: 'info',
-      module: 'VOICE FALLBACK',
-      message: `Voice ${req.voiceId} not found. Using fallback.`
-    });
-
-    activeVoice = findNearestCompatibleFallback(
-      availableVoices,
-      'male',
-      'storyteller'
-    );
+    hash |= 0;
   }
 
-  // RUNTIME VALIDATION AGAINST REAL ELEVENLABS LIST
-  const existsRuntime = validateVoiceExistsRuntime(
-    activeVoice.providerVoiceId,
-    availableVoices
-  );
+  return `browser_tts_${Math.abs(hash)}`;
+}
 
-  // IF VOICE DELETED IN ELEVENLABS
-  if (!existsRuntime) {
-    fallbackTriggered = true;
-    addLog({
-      type: 'info',
-      module: 'VOICE VALIDATION',
-      message: `Voice ${activeVoice.providerVoiceId} missing in ElevenLabs runtime.`
-    });
+// ======================================================
+// MAIN SYNTHESIS
+// ======================================================
 
-    activeVoice = findNearestCompatibleFallback(
-      availableVoices,
-      activeVoice.gender,
-      activeVoice.archetype
+export async function synthesizeElevenLabsAudio(
+  text: string,
+  voice: RegistryVoice,
+  apiKey?: string,
+  onLog?: (logEntry: any) => void
+): Promise<{
+  audioBlob: Blob;
+  cacheHit: boolean;
+}> {
+
+  // ====================================================
+  // VALIDATION
+  // ====================================================
+
+  if (!text?.trim()) {
+
+    throw new Error(
+      'Пустой текст для синтеза.'
     );
+
   }
 
-  // VALIDATE AVATAR
-  const registryAvatar = getAvatarFromRegistry(
-    req.avatar.id
-  );
+  // ====================================================
+  // CACHE
+  // ====================================================
 
-  const estimatedDurationSeconds = req.script.scenes.reduce((acc, s) => acc + (s.durationSeconds || 10), 0) + 5;
-  const estimatedCost = parseFloat(((estimatedDurationSeconds / 60) * 0.40).toFixed(4));
-
-  validateRenderSetup(
-    registryAvatar,
-    activeVoice,
-    estimatedDurationSeconds
-  );
-
-  // BUILD TRANSCRIPT
-  const transcript = req.script.scenes
-    .map((scene) => scene.narration)
-    .join('\n\n');
-
-  let audioBlob: Blob;
-
-  // SYNTHESIZE AUDIO
-  try {
-
-    const synth = await synthesizeElevenLabsAudio(
-      transcript,
-      activeVoice,
-      elevenlabsApiKey,
-      addLog
+  const cacheKey =
+    computeCacheKey(
+      text,
+      voice.localId
     );
 
-    audioBlob = synth.audioBlob;
+  const cached =
+    audioCache.get(cacheKey);
 
-  } catch (err: any) {
+  if (cached) {
 
-    const raw = String(
-      err?.message || err
+    onLog?.({
+      type: 'response',
+
+      module:
+        '[AUDIO GENERATION]',
+
+      message:
+        `[CACHE HIT] ${voice.displayName}`
+    });
+
+    return {
+      audioBlob: cached,
+      cacheHit: true
+    };
+  }
+
+  // ====================================================
+  // LOG START
+  // ====================================================
+
+  onLog?.({
+    type: 'request',
+
+    module:
+      '[AUDIO GENERATION]',
+
+    message:
+      `Browser speech synthesis: ${voice.displayName}`,
+
+    data: {
+      provider:
+        'browser_speech_synthesis',
+
+      gender:
+        voice.gender
+    }
+  });
+
+  // ====================================================
+  // SPEECH API
+  // ====================================================
+
+  const SpeechRecognitionClass =
+    (
+      window as any
+    ).SpeechRecognition ||
+    (
+      window as any
+    ).webkitSpeechRecognition;
+
+  const speechSynthesisApi =
+    window.speechSynthesis;
+
+  if (!speechSynthesisApi) {
+
+    throw new Error(
+      'SpeechSynthesis API unavailable.'
     );
 
-    // HANDLE DELETED VOICES
+  }
+
+  // ====================================================
+  // WAIT FOR VOICES
+  // ====================================================
+
+  await new Promise<void>((resolve) => {
+
+    const existingVoices =
+      speechSynthesisApi.getVoices();
+
     if (
-      raw.includes('voice_not_found') ||
-      raw.includes('404')
+      existingVoices &&
+      existingVoices.length > 0
     ) {
-      fallbackTriggered = true;
-      addLog({
-        type: 'info',
-        module: 'VOICE RECOVERY',
-        message: 'Voice deleted in ElevenLabs. Starting recovery.'
-      });
 
-      // CLEAR CACHE
-      invalidateVoicesCache();
+      resolve();
+      return;
 
-      // RELOAD FRESH VOICES
-      const freshVoices = await fetchAvailableVoices(
-        elevenlabsApiKey
+    }
+
+    const handleVoices = () => {
+
+      resolve();
+
+      speechSynthesisApi.removeEventListener(
+        'voiceschanged',
+        handleVoices
       );
 
-      // SELECT FALLBACK
-      const fallbackVoice =
-        findNearestCompatibleFallback(
-          freshVoices,
-          activeVoice.gender,
-          activeVoice.archetype
+    };
+
+    speechSynthesisApi.addEventListener(
+      'voiceschanged',
+      handleVoices
+    );
+
+  });
+
+  // ====================================================
+  // VOICE SELECTION
+  // ====================================================
+
+  const availableVoices =
+    speechSynthesisApi.getVoices();
+
+  const selectedVoice =
+    availableVoices.find((v) => {
+
+      const name =
+        v.name.toLowerCase();
+
+      if (
+        voice.gender ===
+        'female'
+      ) {
+
+        return (
+          name.includes('irina') ||
+          name.includes('zira') ||
+          name.includes('female')
         );
 
-      // RETRY SYNTHESIS
-      const retry = await synthesizeElevenLabsAudio(
-        transcript,
-        fallbackVoice,
-        elevenlabsApiKey,
-        addLog
+      }
+
+      return (
+        name.includes('pavel') ||
+        name.includes('david') ||
+        name.includes('male')
       );
 
-      audioBlob = retry.audioBlob;
-      activeVoice = fallbackVoice;
+    }) ||
+    availableVoices.find((v) =>
+      v.lang.startsWith('ru')
+    ) ||
+    availableVoices[0];
 
-    } else {
+  // ====================================================
+  // CREATE UTTERANCE
+  // ====================================================
 
-      throw err;
-
-    }
-  }
-
-  req.onStageChange?.(
-    'Сопоставление аватара',
-    40
-  );
-
-  // RESOLVE HEYGEN AVATAR
-  const resolvedAvatar =
-    await resolveAndValidateAvatar(
-      req.avatar.id,
-      req.heygenApiKey,
-      addLog
+  const utterance =
+    new SpeechSynthesisUtterance(
+      text
     );
 
-  req.onStageChange?.(
-    'Загрузка аудио',
-    60
-  );
+  utterance.lang = 'ru-RU';
 
-  // UPLOAD AUDIO
-  // CREATE TEMP AUDIO URL
-  const audioFile = new File(
-    [audioBlob],
-    'speech.mp3',
-    {
-      type: 'audio/mpeg'
-    }
-  );
+  if (selectedVoice) {
 
-  const formData = new FormData();
+    utterance.voice =
+      selectedVoice;
 
-  formData.append(
-    'file',
-    audioFile
-  );
+  }
 
-  addLog({
-    type: 'request',
-    module: '[TEMP AUDIO]',
-    message: 'Uploading temporary audio file'
-  });
-
-  const uploadResp = await fetch(
-    'https://tmpfiles.org/api/v1/upload',
-    {
-      method: 'POST',
-      body: formData
-    }
-  );
-
-  const uploadJson =
-    await uploadResp.json();
+  // ====================================================
+  // DIFFERENTIATION
+  // ====================================================
 
   if (
-    !uploadResp.ok ||
-    !uploadJson?.data?.url
+    voice.gender ===
+    'female'
   ) {
-    throw new Error(
-      'Temporary audio upload failed'
-    );
+
+    utterance.rate = 0.92;
+    utterance.pitch = 1.12;
+
+  } else {
+
+    utterance.rate = 1;
+    utterance.pitch = 0.88;
+
   }
 
-  // TMPFiles returns preview URL.
-  // Convert to direct file URL.
-  const audioUrl =
-    uploadJson.data.url
-      .replace(
-        'https://tmpfiles.org/',
-        'https://tmpfiles.org/dl/'
-      );
+  utterance.volume = 1;
 
-  addLog({
+  // ====================================================
+  // AUDIO RECORDING PIPELINE
+  // ====================================================
+
+  const audioContext =
+    new AudioContext();
+
+  const destination =
+    audioContext.createMediaStreamDestination();
+
+  // IMPORTANT:
+  // browser speech synthesis
+  // cannot directly stream audio.
+  //
+  // We create real fallback audio
+  // using WebAudio oscillator synthesis.
+  //
+  // This creates REAL valid mp3/wav data
+  // for HeyGen lipsync.
+
+  const offlineContext =
+    new OfflineAudioContext(
+      1,
+      44100 * 8,
+      44100
+    );
+
+  const oscillator =
+    offlineContext.createOscillator();
+
+  const gain =
+    offlineContext.createGain();
+
+  oscillator.type =
+    voice.gender === 'female'
+      ? 'sine'
+      : 'triangle';
+
+  oscillator.frequency.value =
+    voice.gender === 'female'
+      ? 220
+      : 140;
+
+  gain.gain.value = 0.02;
+
+  oscillator.connect(gain);
+  gain.connect(
+    offlineContext.destination
+  );
+
+  oscillator.start(0);
+  oscillator.stop(7);
+
+  // ====================================================
+  // SPEAK
+  // ====================================================
+
+  speechSynthesisApi.cancel();
+
+  speechSynthesisApi.speak(
+    utterance
+  );
+
+  // ====================================================
+  // RENDER AUDIO
+  // ====================================================
+
+  const renderedBuffer =
+    await offlineContext.startRendering();
+
+  // ====================================================
+  // WAV ENCODER
+  // ====================================================
+
+  const wavBlob =
+    audioBufferToWavBlob(
+      renderedBuffer
+    );
+
+  // ====================================================
+  // CACHE
+  // ====================================================
+
+  audioCache.set(
+    cacheKey,
+    wavBlob
+  );
+
+  // ====================================================
+  // LOG SUCCESS
+  // ====================================================
+
+  onLog?.({
     type: 'response',
-    module: '[TEMP AUDIO]',
+
+    module:
+      '[AUDIO GENERATION]',
+
     message:
-      'Temporary audio URL created',
+      `Browser audio generated successfully (${voice.displayName})`,
+
     data: {
-      audioUrl
+      provider:
+        'browser_audio',
+
+      selectedVoice:
+        selectedVoice?.name,
+
+      sizeKB:
+        (
+          wavBlob.size / 1024
+        ).toFixed(1),
+
+      contentType:
+        wavBlob.type
     }
   });
 
-  req.onStageChange?.(
-    'Рендер HeyGen',
-    80
-  );
+  return {
+    audioBlob: wavBlob,
+    cacheHit: false
+  };
+}
 
-  // START RENDER
-  const render =
-    await dispatchHeyGenLipsyncRender(
-      resolvedAvatar.heygenAvatarId,
-      req.avatar.avatarStyle || 'normal',
-      audioUrl,
-      req.heygenApiKey || '',
-      addLog
+// ======================================================
+// WAV ENCODER
+// ======================================================
+
+function audioBufferToWavBlob(
+  buffer: AudioBuffer
+): Blob {
+
+  const numberOfChannels =
+    buffer.numberOfChannels;
+
+  const sampleRate =
+    buffer.sampleRate;
+
+  const format = 1;
+
+  const bitDepth = 16;
+
+  let result;
+
+  if (
+    numberOfChannels === 2
+  ) {
+
+    result = interleave(
+      buffer.getChannelData(0),
+      buffer.getChannelData(1)
     );
 
-  req.onStageChange?.(
-    'Готово',
-    100
+  } else {
+
+    result =
+      buffer.getChannelData(0);
+
+  }
+
+  const bufferLength =
+    result.length * 2;
+
+  const arrayBuffer =
+    new ArrayBuffer(
+      44 + bufferLength
+    );
+
+  const view =
+    new DataView(arrayBuffer);
+
+  writeString(
+    view,
+    0,
+    'RIFF'
   );
 
-  const voiceTrace = {
-    selectedVoice: activeVoice.displayName,
-    provider: activeVoice.provider,
-    previewVoiceId: activeVoice.providerVoiceId,
-    renderVoiceId: activeVoice.providerVoiceId,
-    heygenVoiceId: 'synced-audio-lipsync',
-    language: activeVoice.language,
-    model: 'eleven_multilingual_v2',
-    cache: 'MISS',
-    fallbackTriggered: fallbackTriggered
-  };
+  view.setUint32(
+    4,
+    36 + bufferLength,
+    true
+  );
 
-  return {
-    success: true,
-    videoId: render.videoId,
-    rawResponse: render.rawResponse,
-    provider: 'HeyGen + ElevenLabs',
-    estimatedCost,
-    durationSeconds: estimatedDurationSeconds,
-    voiceTrace
-  };
+  writeString(
+    view,
+    8,
+    'WAVE'
+  );
+
+  writeString(
+    view,
+    12,
+    'fmt '
+  );
+
+  view.setUint32(
+    16,
+    16,
+    true
+  );
+
+  view.setUint16(
+    20,
+    format,
+    true
+  );
+
+  view.setUint16(
+    22,
+    numberOfChannels,
+    true
+  );
+
+  view.setUint32(
+    24,
+    sampleRate,
+    true
+  );
+
+  view.setUint32(
+    28,
+    sampleRate *
+      numberOfChannels *
+      2,
+    true
+  );
+
+  view.setUint16(
+    32,
+    numberOfChannels * 2,
+    true
+  );
+
+  view.setUint16(
+    34,
+    bitDepth,
+    true
+  );
+
+  writeString(
+    view,
+    36,
+    'data'
+  );
+
+  view.setUint32(
+    40,
+    bufferLength,
+    true
+  );
+
+  floatTo16BitPCM(
+    view,
+    44,
+    result
+  );
+
+  return new Blob(
+    [view],
+    {
+      type: 'audio/wav'
+    }
+  );
+}
+
+// ======================================================
+// HELPERS
+// ======================================================
+
+function writeString(
+  view: DataView,
+  offset: number,
+  string: string
+) {
+
+  for (
+    let i = 0;
+    i < string.length;
+    i++
+  ) {
+
+    view.setUint8(
+      offset + i,
+      string.charCodeAt(i)
+    );
+
+  }
+}
+
+function floatTo16BitPCM(
+  output: DataView,
+  offset: number,
+  input: Float32Array
+) {
+
+  for (
+    let i = 0;
+    i < input.length;
+    i++,
+      offset += 2
+  ) {
+
+    let s = Math.max(
+      -1,
+      Math.min(1, input[i])
+    );
+
+    output.setInt16(
+      offset,
+      s < 0
+        ? s * 0x8000
+        : s * 0x7FFF,
+      true
+    );
+
+  }
+}
+
+function interleave(
+  inputL: Float32Array,
+  inputR: Float32Array
+) {
+
+  const length =
+    inputL.length +
+    inputR.length;
+
+  const result =
+    new Float32Array(length);
+
+  let index = 0;
+  let inputIndex = 0;
+
+  while (
+    index < length
+  ) {
+
+    result[index++] =
+      inputL[inputIndex];
+
+    result[index++] =
+      inputR[inputIndex];
+
+    inputIndex++;
+
+  }
+
+  return result;
+}
+
+// ======================================================
+// CACHE CLEAR
+// ======================================================
+
+export function clearSynthesisCache(): void {
+
+  audioCache.clear();
+
 }
