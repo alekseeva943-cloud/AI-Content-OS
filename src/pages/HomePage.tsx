@@ -515,7 +515,7 @@ export function HomePage() {
                 tracking-[0.2em]
               ">
 
-                AI система
+                Статистика студии
 
               </span>
 
@@ -558,7 +558,7 @@ export function HomePage() {
                   leading-tight
                 ">
 
-                  AI генераций доступно
+                  Проектов создано
 
                 </div>
 
@@ -584,7 +584,7 @@ export function HomePage() {
                   leading-tight
                 ">
 
-                  AI модулей активно
+                  Инструментов студии
 
                 </div>
 
