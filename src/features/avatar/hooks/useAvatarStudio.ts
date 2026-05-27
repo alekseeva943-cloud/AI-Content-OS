@@ -294,7 +294,7 @@ export function useAvatarStudio() {
     heygenApiKey,
 
     openaiApiKey:
-      settings.openaiApiKey,
+      settings.openaiKey,
 
     onStageChange:
       (stage, percent) => {
@@ -476,6 +476,13 @@ pollingRef.current =
 
     3000
   );
+} catch (err: any) {
+  setStage('error');
+  setErrorMessage(
+    err.message || 'Ошибка запуска рендера.'
+  );
+}
+};
 
   // ====================================================
   // CANCEL

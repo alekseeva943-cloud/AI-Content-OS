@@ -1,6 +1,11 @@
 // src/services/generateAvatarVideo.ts
 
 import { useDebugStore } from '@/src/stores/useDebugStore';
+import { preprocessTextForVoice } from './voiceRouter';
+
+export function preprocessRussianSpeechV3(text: string, voice: any): string {
+  return preprocessTextForVoice(text, voice);
+}
 
 import {
   Avatar,
