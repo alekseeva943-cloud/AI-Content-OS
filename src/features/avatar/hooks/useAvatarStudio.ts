@@ -226,7 +226,7 @@ export function useAvatarStudio() {
       );
 
       setIsDirty(false);
-    }
+    
     } catch (err: any) {
     console.error(err);
     setErrorMessage(err.message || 'Не удалось сгенерировать сценарий. Проверьте OpenAI API ключ.');
