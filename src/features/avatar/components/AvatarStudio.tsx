@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Sparkles, Play, Download, Pause, Video, User, Clock, ArrowRight, 
-  Edit2, Save, X, RotateCcw, FileText, Settings, Layers, Activity, 
-  CheckCircle2, AlertTriangle, Trash2, HelpCircle, Volume2, Briefcase, 
+import {
+  Sparkles, Play, Download, Pause, Video, User, Clock, ArrowRight,
+  Edit2, Save, X, RotateCcw, FileText, Settings, Layers, Activity,
+  CheckCircle2, AlertTriangle, Trash2, HelpCircle, Volume2, Briefcase,
   Glasses, BookOpen, Palette, Info, Copy, Share2
 } from 'lucide-react';
 
@@ -81,7 +81,7 @@ export function AvatarStudio() {
       document.body.removeChild(a);
       URL.revokeObjectURL(objectUrl);
       setDownloadStatus('completed');
-      
+
       const sizeMb = (blob.size / (1024 * 1024)).toFixed(2);
       setBlobSize(`${sizeMb} MB`);
     } catch (err) {
@@ -200,7 +200,7 @@ export function AvatarStudio() {
             };
           });
           setVoices(mapped);
-          
+
           console.log(`[VOICE REGISTRY] Loaded voices: ${mapped.length}`);
           mapped.forEach(mv => {
             console.log(`[VOICE VALIDATION] Validated voice: "${mv.displayName}" (id: ${mv.id})`);
@@ -222,22 +222,22 @@ export function AvatarStudio() {
   // Filtered avatars helper
   const filteredAvatars = DEFAULT_AVATARS.filter(av => {
     const searchLow = searchTerm.toLowerCase();
-    const nameMatch = av.name.toLowerCase().includes(searchLow) || 
-                      av.description.toLowerCase().includes(searchLow) || 
-                      (av.clothingStyle && av.clothingStyle.toLowerCase().includes(searchLow)) ||
-                      (av.roleType && av.roleType.toLowerCase().includes(searchLow));
-                      
+    const nameMatch = av.name.toLowerCase().includes(searchLow) ||
+      av.description.toLowerCase().includes(searchLow) ||
+      (av.clothingStyle && av.clothingStyle.toLowerCase().includes(searchLow)) ||
+      (av.roleType && av.roleType.toLowerCase().includes(searchLow));
+
     const gdMatch = selectedGender === 'all' || av.gender === selectedGender;
     const catMatch = selectedCategory === 'all' || av.category === selectedCategory;
     const roleMatch = selectedRoleType === 'all' || av.roleType === selectedRoleType;
-    
+
     let ageMatch = true;
     if (selectedAgeGroup === 'young') {
       ageMatch = (av.age !== undefined && av.age <= 29);
     } else if (selectedAgeGroup === 'adult') {
       ageMatch = (av.age !== undefined && av.age >= 30);
     }
-    
+
     return nameMatch && gdMatch && catMatch && roleMatch && ageMatch;
   });
 
@@ -251,7 +251,7 @@ export function AvatarStudio() {
       return;
     }
     setPlayingVoiceAvatarId(avatar.id);
-    
+
     const previewTexts = [
       'Привет! Я Ваш персональный ИИ аватар. Сгенерируйте сценарий, и мы запишем профессиональное видео за считанные минуты.',
       'Рада общению! Мой голос оптимизирован для естественного звучания, без роботизированной монотонности.',
@@ -304,21 +304,54 @@ export function AvatarStudio() {
     const synthesis = window.speechSynthesis;
     if (synthesis) {
       synthesis.cancel();
-      
+
       // 1. Preprocess Russian Preview Speech (Requirement 4 & 8: Pacing, pauses, phonetics)
       import('../services/generateAvatarVideo').then(({ preprocessRussianSpeechV3 }) => {
         const optimizedText = preprocessRussianSpeechV3(voice.previewText, voice);
         const utterance = new SpeechSynthesisUtterance(optimizedText);
         utterance.lang = 'ru-RU';
-        
+
         // 2. Map Cadence Pitch and Speech Rates
         utterance.rate = 0.95 * (voice.cadence?.speechRateMultiplier || 1.0);
         utterance.pitch = voice.cadence?.pitchShift || 1.0;
-        
+
         const voicesList = synthesis.getVoices();
-        const ruVoiceName = voicesList.find(v => v.lang.startsWith('ru'));
-        if (ruVoiceName) {
-          utterance.voice = ruVoiceName;
+
+        console.log(
+          '[BROWSER VOICES]',
+          voicesList.map(v => ({
+            name: v.name,
+            lang: v.lang
+          }))
+        );
+
+        const matchingVoice = voicesList.find((v) => {
+          const name = v.name.toLowerCase();
+
+          if (voice.gender === 'female') {
+            return (
+              name.includes('irina') ||
+              name.includes('zira') ||
+              name.includes('female')
+            );
+          }
+
+          return (
+            name.includes('pavel') ||
+            name.includes('david') ||
+            name.includes('male')
+          );
+        });
+
+        if (matchingVoice) {
+          utterance.voice = matchingVoice;
+
+          console.log(
+            '[VOICE PREVIEW]',
+            voice.displayName,
+            '=>',
+            matchingVoice.name
+          );
         }
 
         utterance.onend = () => {
@@ -360,8 +393,8 @@ export function AvatarStudio() {
   const [copiedScript, setCopiedScript] = useState(false);
   const handleCopyFullScript = () => {
     if (!script) return;
-    const fullText = `[Заголовок]: ${script.title}\n[Описание]: ${script.description}\n\n[Хук (Вступление)]:\n${script.hook}\n\n` + 
-      script.scenes.map((s, idx) => `[Сцена ${idx+1}]:\n- Описание кадра: ${s.visuals}\n- Реплика спикера: ${s.narration}`).join('\n\n');
+    const fullText = `[Заголовок]: ${script.title}\n[Описание]: ${script.description}\n\n[Хук (Вступление)]:\n${script.hook}\n\n` +
+      script.scenes.map((s, idx) => `[Сцена ${idx + 1}]:\n- Описание кадра: ${s.visuals}\n- Реплика спикера: ${s.narration}`).join('\n\n');
     navigator.clipboard.writeText(fullText);
     setCopiedScript(true);
     setTimeout(() => setCopiedScript(false), 2000);
@@ -399,7 +432,7 @@ export function AvatarStudio() {
             Полноценная видеорепликация аватаров на движке HeyGen и улучшенном ElevenLabs голосовом конвейере подкастов.
           </p>
         </div>
-        
+
         <div className="mt-4 md:mt-0 flex items-center gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm" id="studio_top_counters">
           <div className="text-right">
             <div className="text-[10px] font-mono uppercase text-slate-400">Пул генераций</div>
@@ -416,14 +449,14 @@ export function AvatarStudio() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8" id="studio_workspace_grid">
         {/* Left Control Column (Steps 1 to 3) */}
         <div className="lg:col-span-4 space-y-6" id="left_config_column">
-          
+
           {/* Step 1: Topic Selection */}
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4 animate-fade-in" id="step_1_box">
             <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
               <span className="w-5 h-5 flex items-center justify-center bg-slate-900 text-white rounded-full text-xs font-mono font-bold">1</span>
               <h3 className="font-semibold text-slate-900 text-sm tracking-tight">Тема выпуска ИИ</h3>
             </div>
-            
+
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-semibold text-slate-500 block mb-1">О чем видео-аватар?</label>
@@ -436,7 +469,7 @@ export function AvatarStudio() {
                   id="avatar_topic_input"
                 />
               </div>
-              
+
               <div>
                 <label className="text-xs font-semibold text-slate-500 block mb-1">Фокус-тезисы (Контекст)</label>
                 <textarea
@@ -470,11 +503,10 @@ export function AvatarStudio() {
                       onClick={() => {
                         setHeygenPlan(plan);
                       }}
-                      className={`py-2 px-1 text-[10px] capitalize font-mono font-bold rounded-xl border transition-all ${
-                        heygenPlan === plan
+                      className={`py-2 px-1 text-[10px] capitalize font-mono font-bold rounded-xl border transition-all ${heygenPlan === plan
                           ? 'bg-violet-600 text-white border-violet-600 shadow-md ring-2 ring-violet-200'
                           : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                      }`}
+                        }`}
                     >
                       {plan}
                     </button>
@@ -493,7 +525,7 @@ export function AvatarStudio() {
                     { sec: 300, desc: '~20 кред. (Business)', render: '~10 мин рендер' },
                   ].map((item) => {
                     const isSelected = durationSeconds === item.sec;
-                    
+
                     // Enforce Plan Constraints Client-side warning
                     const limits: Record<string, number> = {
                       trial: 30,
@@ -512,13 +544,12 @@ export function AvatarStudio() {
                           setDurationSeconds(item.sec);
                           setDurationMinutes(Math.ceil(item.sec / 60));
                         }}
-                        className={`p-3 rounded-2xl border text-left transition-all relative overflow-hidden group ${
-                          isSelected
+                        className={`p-3 rounded-2xl border text-left transition-all relative overflow-hidden group ${isSelected
                             ? 'bg-slate-900 text-white border-slate-900 shadow-md'
                             : isLimitBlocked
-                            ? 'bg-slate-100 opacity-40 cursor-not-allowed border-slate-100'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                        }`}
+                              ? 'bg-slate-100 opacity-40 cursor-not-allowed border-slate-100'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          }`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-semibold text-xs leading-none">
@@ -532,7 +563,7 @@ export function AvatarStudio() {
                           {item.desc}
                         </p>
                         <span className="text-[8px] block opacity-70 mt-1">{item.render}</span>
-                        
+
                         {isLimitBlocked && (
                           <div className="absolute top-1 right-1" title="Недоступно на этом тарифе">
                             <AlertTriangle className="w-3 h-3 text-amber-500" />
@@ -551,18 +582,16 @@ export function AvatarStudio() {
                   <button
                     type="button"
                     onClick={() => setRenderMode('preview')}
-                    className={`px-3 py-1 text-[10px] uppercase font-mono tracking-wider transition-all ${
-                      renderMode === 'preview' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-500'
-                    }`}
+                    className={`px-3 py-1 text-[10px] uppercase font-mono tracking-wider transition-all ${renderMode === 'preview' ? 'bg-indigo-600 text-white font-bold' : 'text-slate-500'
+                      }`}
                   >
                     Preview
                   </button>
                   <button
                     type="button"
                     onClick={() => setRenderMode('production')}
-                    className={`px-3 py-1 text-[10px] uppercase font-mono tracking-wider transition-all ${
-                      renderMode === 'production' ? 'bg-violet-600 text-white font-bold' : 'text-slate-500'
-                    }`}
+                    className={`px-3 py-1 text-[10px] uppercase font-mono tracking-wider transition-all ${renderMode === 'production' ? 'bg-violet-600 text-white font-bold' : 'text-slate-500'
+                      }`}
                   >
                     HD
                   </button>
@@ -601,11 +630,10 @@ export function AvatarStudio() {
                       onClick={() => {
                         setSelectedVoiceId(voice.id);
                       }}
-                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all duration-300 relative group flex gap-3 ${
-                        isSelected
+                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all duration-300 relative group flex gap-3 ${isSelected
                           ? 'border-violet-600 bg-violet-50/10 shadow-md ring-1 ring-violet-500'
                           : 'border-slate-200 hover:border-slate-350 bg-white'
-                      }`}
+                        }`}
                       id={`voice_option_${voice.id}`}
                     >
                       {/* Playback Button with dynamic waveform layout */}
@@ -615,11 +643,10 @@ export function AvatarStudio() {
                           e.stopPropagation();
                           startRussianVoicePreview(voice);
                         }}
-                        className={`w-9 h-9 rounded-full shrink-0 flex items-center justify-center border transition-all ${
-                          isPlaying
+                        className={`w-9 h-9 rounded-full shrink-0 flex items-center justify-center border transition-all ${isPlaying
                             ? 'bg-rose-500 text-white border-rose-500 shadow'
                             : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'
-                        }`}
+                          }`}
                         title="Прослушать образец голоса"
                       >
                         {isPlaying ? (
@@ -741,7 +768,7 @@ export function AvatarStudio() {
                     <option value="female">Женский</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <span className="block mb-1 text-[9px] font-mono text-slate-400 uppercase">Возрастная группа</span>
                   <select
@@ -804,11 +831,10 @@ export function AvatarStudio() {
                     onMouseEnter={() => setHoveredAvatarId(avatar.id)}
                     onMouseLeave={() => setHoveredAvatarId(null)}
                     onClick={() => setSelectedAvatar(avatar)}
-                    className={`relative rounded-2xl overflow-hidden border cursor-pointer group transition-all duration-300 ${
-                      isSelected 
-                        ? 'border-violet-600 ring-2 ring-violet-500/40 shadow-lg scale-[0.98]' 
+                    className={`relative rounded-2xl overflow-hidden border cursor-pointer group transition-all duration-300 ${isSelected
+                        ? 'border-violet-600 ring-2 ring-violet-500/40 shadow-lg scale-[0.98]'
                         : 'border-slate-200 hover:border-slate-400 bg-slate-50'
-                    }`}
+                      }`}
                     id={`avatar_card_${avatar.id}`}
                   >
                     {/* Visual Anchor Container (Image or Autoplay Video) */}
@@ -845,11 +871,10 @@ export function AvatarStudio() {
                           e.stopPropagation();
                           startVoicePreview(avatar);
                         }}
-                        className={`absolute bottom-2 right-2 p-1.5 rounded-full backdrop-blur shadow-md transition-all ${
-                          isPlayingVoice 
-                            ? 'bg-rose-500 text-white' 
+                        className={`absolute bottom-2 right-2 p-1.5 rounded-full backdrop-blur shadow-md transition-all ${isPlayingVoice
+                            ? 'bg-rose-500 text-white'
                             : 'bg-white/85 text-slate-700 hover:bg-white'
-                        }`}
+                          }`}
                         title="Прослушать образец голоса"
                       >
                         {isPlayingVoice ? (
@@ -876,9 +901,9 @@ export function AvatarStudio() {
                           const hasWorkspaceMatch = workspaceLooks.some((look: any) => {
                             const name = (look.look_name || look.avatar_name || '').toLowerCase();
                             const lookId = (look.look_id || '').toLowerCase();
-                            return name.includes(avatar.name.toLowerCase()) || 
-                                   lookId.includes(avatar.id.replace('-', '_')) || 
-                                   lookId.includes(avatar.id);
+                            return name.includes(avatar.name.toLowerCase()) ||
+                              lookId.includes(avatar.id.replace('-', '_')) ||
+                              lookId.includes(avatar.id);
                           });
 
                           if (hasWorkspaceMatch) {
@@ -898,11 +923,11 @@ export function AvatarStudio() {
                           }
                         })()}
                       </div>
-                      
+
                       <p className="text-[10px] text-slate-400 truncate mt-1 font-medium">
                         {avatar.clothingStyle || 'Smart Casual'}
                       </p>
-                      
+
                       <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-slate-100 text-[8px] font-mono">
                         <span className="text-slate-500 bg-slate-100 px-1 py-0.5 rounded">
                           Энергия: {avatar.energyLevel}/10
@@ -928,7 +953,7 @@ export function AvatarStudio() {
 
         {/* Right Stage Column (Steps 4 to 7) */}
         <div className="lg:col-span-8 space-y-6" id="right_stage_column">
-          
+
           {/* Main Empty State or Interactive Scripting panel */}
           {!script && !isGeneratingScript ? (
             <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center h-full flex flex-col items-center justify-center min-h-[450px]" id="empty_studio_panel">
@@ -954,7 +979,7 @@ export function AvatarStudio() {
           ) : (
             // Steps 4 & 5: Script Loaded & Editor mode active
             <div className="space-y-6" id="script_loaded_workspace">
-              
+
               {/* Script Title & Metadata Header Summary */}
               <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4" id="script_details_box">
                 <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-4 gap-3">
@@ -971,7 +996,7 @@ export function AvatarStudio() {
                     </div>
                     <h2 className="text-lg font-semibold text-slate-850 mt-1.5">{script.title}</h2>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleCopyFullScript}
@@ -1082,11 +1107,10 @@ export function AvatarStudio() {
                     return (
                       <div
                         key={scene.id}
-                        className={`p-5 rounded-2xl border transition-all duration-300 ${
-                          isEditing 
-                            ? 'bg-emerald-50/20 border-emerald-200 shadow-md' 
+                        className={`p-5 rounded-2xl border transition-all duration-300 ${isEditing
+                            ? 'bg-emerald-50/20 border-emerald-200 shadow-md'
                             : 'bg-white border-slate-200 hover:border-slate-350 shadow-sm'
-                        }`}
+                          }`}
                         id={`scene_editor_item_${scene.id}`}
                       >
                         <div className="flex justify-between items-start mb-3">
@@ -1227,11 +1251,10 @@ export function AvatarStudio() {
                     <button
                       onClick={triggerVideoRender}
                       disabled={spamCooldownLeft > 0}
-                      className={`font-semibold py-2.5 px-6 rounded-xl text-xs transition-all tracking-tight inline-flex items-center gap-2 shadow-sm ${
-                        spamCooldownLeft > 0 
-                          ? 'bg-slate-200 text-slate-500 cursor-not-allowed border border-slate-300' 
+                      className={`font-semibold py-2.5 px-6 rounded-xl text-xs transition-all tracking-tight inline-flex items-center gap-2 shadow-sm ${spamCooldownLeft > 0
+                          ? 'bg-slate-200 text-slate-500 cursor-not-allowed border border-slate-300'
                           : 'bg-slate-900 hover:bg-slate-800 text-white'
-                      }`}
+                        }`}
                       id="launch_render_btn"
                     >
                       {spamCooldownLeft > 0 ? (
@@ -1251,7 +1274,7 @@ export function AvatarStudio() {
                   // Requirements 8 & 9: Detailed multi-stage progress pipeline metrics
                   <div className="space-y-4 p-5 bg-slate-950 text-slate-100 rounded-2xl shadow-xl font-mono relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-[3px] bg-slate-800">
-                      <div 
+                      <div
                         className="h-full bg-gradient-to-r from-indigo-500 via-rose-500 to-emerald-500 transition-all duration-500"
                         style={{ width: `${progressPercent}%` }}
                       />
@@ -1295,7 +1318,7 @@ export function AvatarStudio() {
                         <span className="text-[10px]">Времени прошло:</span>
                         <span className="text-rose-400 font-bold">{elapsedSeconds} сек</span>
                       </div>
-                      
+
                       <button
                         onClick={cancelGeneration}
                         className="py-1 px-3 bg-red-950/40 text-red-400 hover:bg-red-900/30 border border-red-900/40 rounded text-[10px] transition-all"
@@ -1481,24 +1504,23 @@ export function AvatarStudio() {
                 {renderHistory.length > 0 && (
                   <div className="border border-slate-200 rounded-2xl p-5 bg-white shadow-sm space-y-3" id="render_history_panel">
                     <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                       <div className="flex items-center gap-1.5">
-                         <Layers className="w-4 h-4 text-slate-500" />
-                         <span className="text-xs uppercase font-mono tracking-wider font-bold text-slate-500">Последние рендеры (История)</span>
-                       </div>
-                       <span className="text-[10px] text-slate-400">Сохранено: {renderHistory.length}/5</span>
+                      <div className="flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-slate-500" />
+                        <span className="text-xs uppercase font-mono tracking-wider font-bold text-slate-500">Последние рендеры (История)</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400">Сохранено: {renderHistory.length}/5</span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                       {renderHistory.map((item) => {
                         const isCurrentActive = renderedVideoUrl === item.videoUrl;
                         return (
-                          <button 
+                          <button
                             key={item.id}
                             onClick={() => selectHistoryItem(item)}
-                            className={`p-1.5 rounded-xl border transition-all cursor-pointer group text-left relative block focus:outline-none ${
-                              isCurrentActive 
-                                ? 'bg-slate-900 text-white border-slate-900 shadow-md ring-1 ring-slate-900' 
+                            className={`p-1.5 rounded-xl border transition-all cursor-pointer group text-left relative block focus:outline-none ${isCurrentActive
+                                ? 'bg-slate-900 text-white border-slate-900 shadow-md ring-1 ring-slate-900'
                                 : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                            }`}
+                              }`}
                           >
                             <div className="aspect-video w-full rounded-lg overflow-hidden bg-slate-200 relative">
                               <img src={item.thumbnailUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=300&h=300'} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
@@ -1512,10 +1534,10 @@ export function AvatarStudio() {
                               </p>
                               <div className="flex items-center justify-between mt-1 text-[8px] opacity-70">
                                 <span className="font-mono">{item.avatar.name}</span>
-                                <span>{new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                <span>{new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                               </div>
                             </div>
-                            <button 
+                            <button
                               onClick={(e) => deleteHistoryItem(item.id, e)}
                               className="absolute top-2 right-2 p-1 bg-white/90 text-red-600 hover:bg-white rounded-full shadow transition-opacity opacity-0 group-hover:opacity-100"
                               title="Удалить рендер"
