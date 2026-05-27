@@ -14,7 +14,6 @@ export interface RenderHistoryItem {
 }
 import { generateAvatarVideo } from '../services/generateAvatarVideo';
 import { checkAvatarStatus } from '../services/checkAvatarStatus';
-import { generateVideoAvatar } from '@/src/services/ai/client';
 import { useSettingsStore } from '@/src/stores/useSettingsStore';
 
 export function useAvatarStudio() {
