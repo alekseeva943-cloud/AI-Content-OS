@@ -2,12 +2,12 @@
 
 import { RegistryVoice } from '../constants/voiceRegistry';
 
-// Simple in-memory cache
+// Memory cache
 const audioCache =
   new Map<string, Blob>();
 
 /**
- * Stable cache key.
+ * Generate stable cache key.
  */
 function computeCacheKey(
   text: string,
@@ -16,37 +16,31 @@ function computeCacheKey(
 
   let hash = 0;
 
-  const raw =
+  const rawKey =
     `${voiceId}:${text}`;
 
   for (
     let i = 0;
-    i < raw.length;
+    i < rawKey.length;
     i++
   ) {
 
-    const chr =
-      raw.charCodeAt(i);
+    const char =
+      rawKey.charCodeAt(i);
 
     hash =
       (hash << 5) -
       hash +
-      chr;
+      char;
 
     hash |= 0;
   }
 
-  return `browser_tts_${Math.abs(hash)}`;
+  return `cached_speech_${Math.abs(hash)}`;
 }
 
 /**
- * Browser speech synthesis →
- * audio placeholder blob.
- *
- * IMPORTANT:
- * We FULLY DISABLE ElevenLabs API.
- *
- * Homework / demo mode only.
+ * ElevenLabs synthesis.
  */
 export async function synthesizeElevenLabsAudio(
   text: string,
@@ -58,7 +52,7 @@ export async function synthesizeElevenLabsAudio(
   cacheHit: boolean;
 }> {
 
-  if (!text?.trim()) {
+  if (!text) {
 
     throw new Error(
       'Пустой текст для синтеза.'
@@ -72,11 +66,11 @@ export async function synthesizeElevenLabsAudio(
       voice.localId
     );
 
-  const cached =
+  const cachedBlob =
     audioCache.get(cacheKey);
 
-  // CACHE
-  if (cached) {
+  // CACHE HIT
+  if (cachedBlob) {
 
     onLog?.({
       type: 'response',
@@ -89,25 +83,28 @@ export async function synthesizeElevenLabsAudio(
     });
 
     return {
-      audioBlob: cached,
+      audioBlob: cachedBlob,
       cacheHit: true
     };
   }
 
-  // ======================================================
-  // BROWSER TTS
-  // ======================================================
-
-  const synth =
-    window.speechSynthesis;
-
-  if (!synth) {
+  // MOCK MODE
+  if (
+    !apiKey ||
+    apiKey.trim().length < 10
+  ) {
 
     throw new Error(
-      'Browser SpeechSynthesis недоступен.'
+      'ElevenLabs API key missing.'
     );
 
   }
+
+  const processedText =
+    text;
+
+  const startTime =
+    Date.now();
 
   onLog?.({
     type: 'request',
@@ -116,131 +113,108 @@ export async function synthesizeElevenLabsAudio(
       '[AUDIO GENERATION]',
 
     message:
-      `Browser TTS synthesis: ${voice.displayName}`,
+      `ElevenLabs synthesis: ${voice.displayName}`,
 
     data: {
-      provider:
-        'browser_speech_synthesis',
+      voiceId:
+        voice.providerVoiceId,
 
-      gender:
-        voice.gender
-    }
-  });
+      model:
+        'eleven_turbo_v2_5',
 
-  // Wait voices load
-  await new Promise<void>((resolve) => {
-
-    const voices =
-      synth.getVoices();
-
-    if (voices.length > 0) {
-      resolve();
-      return;
-    }
-
-    const handler = () => {
-      resolve();
-      synth.removeEventListener(
-        'voiceschanged',
-        handler
-      );
-    };
-
-    synth.addEventListener(
-      'voiceschanged',
-      handler
-    );
-  });
-
-  const utterance =
-    new SpeechSynthesisUtterance(
-      text
-    );
-
-  utterance.lang = 'ru-RU';
-
-  // Different voice routing
-  const availableVoices =
-    synth.getVoices();
-
-  const selectedVoice =
-    availableVoices.find((v) => {
-
-      const name =
-        v.name.toLowerCase();
-
-      if (
-        voice.gender ===
-        'female'
-      ) {
-
-        return (
-          name.includes('irina') ||
-          name.includes('zira') ||
-          name.includes('female')
-        );
+      settings: {
+        stability: 0.42,
+        similarity_boost: 0.72,
+        style: 0.65,
+        use_speaker_boost: false
       }
+    }
+  });
 
-      return (
-        name.includes('pavel') ||
-        name.includes('david') ||
-        name.includes('male')
-      );
+  const endpoint =
+    `https://api.elevenlabs.io/v1/text-to-speech/${voice.providerVoiceId}`;
 
+  const response =
+    await fetch(endpoint, {
+
+      method: 'POST',
+
+      headers: {
+        'xi-api-key': apiKey,
+
+        'Content-Type':
+          'application/json',
+
+        'accept':
+          'audio/mpeg'
+      },
+
+      body: JSON.stringify({
+
+        text:
+          processedText,
+
+        model_id:
+          'eleven_turbo_v2_5',
+
+        voice_settings: {
+
+          // Lower stability
+          // = more human emotion
+          stability: 0.42,
+
+          // Lower similarity
+          // = less cloned robotic tone
+          similarity_boost: 0.72,
+
+          // Higher style
+          // = cinematic delivery
+          style: 0.65,
+
+          // IMPORTANT:
+          // speaker boost creates
+          // metallic artifacts.
+          use_speaker_boost: false
+        }
+      })
     });
 
-  if (selectedVoice) {
+  const latencyMs =
+    Date.now() -
+    startTime;
 
-    utterance.voice =
-      selectedVoice;
+  // ERROR
+  if (!response.ok) {
 
-  }
+    const errorText =
+      await response.text();
 
-  // Different cadence
-  if (
-    voice.gender ===
-    'female'
-  ) {
+    onLog?.({
+      type: 'error',
 
-    utterance.rate = 0.92;
-    utterance.pitch = 1.12;
+      module:
+        '[AUDIO GENERATION]',
 
-  } else {
+      message:
+        `ElevenLabs Error ${response.status}`,
 
-    utterance.rate = 1;
-    utterance.pitch = 0.92;
-
-  }
-
-  utterance.volume = 1;
-
-  // Speak preview
-  synth.cancel();
-  synth.speak(utterance);
-
-  // ======================================================
-  // IMPORTANT
-  //
-  // Browser speech synthesis
-  // CANNOT export audio.
-  //
-  // So for homework/demo mode
-  // we create a tiny placeholder mp3 blob.
-  //
-  // HeyGen accepts external URL later.
-  // ======================================================
-
-  const fakeAudioBlob =
-    new Blob(
-      ['demo-browser-tts'],
-      {
-        type: 'audio/mpeg'
+      data: {
+        errorText,
+        latencyMs
       }
+    });
+
+    throw new Error(
+      `ElevenLabs API Error (${response.status}): ${errorText}`
     );
+  }
+
+  const audioBlob =
+    await response.blob();
 
   audioCache.set(
     cacheKey,
-    fakeAudioBlob
+    audioBlob
   );
 
   onLog?.({
@@ -250,21 +224,24 @@ export async function synthesizeElevenLabsAudio(
       '[AUDIO GENERATION]',
 
     message:
-      `Browser TTS generated successfully (${voice.displayName})`,
+      `Voice generated successfully (${voice.displayName})`,
 
     data: {
-      provider:
-        'browser_speech_synthesis',
+      latencyMs,
+
+      sizeKB:
+        (
+          audioBlob.size /
+          1024
+        ).toFixed(1),
 
       contentType:
-        fakeAudioBlob.type
+        audioBlob.type
     }
   });
 
   return {
-    audioBlob:
-      fakeAudioBlob,
-
+    audioBlob,
     cacheHit: false
   };
 }
