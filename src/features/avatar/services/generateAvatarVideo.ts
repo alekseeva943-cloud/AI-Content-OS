@@ -21,6 +21,8 @@ export interface GenerateVideoRequest {
 
   heygenApiKey?: string;
 
+  openaiApiKey?: string;
+
   onStageChange?: (
     stage: string,
     percent: number
@@ -61,14 +63,12 @@ ${scenesText}
   `.trim();
 }
 
-function mapVoiceId(
+function mapOpenAIVoice(
   localVoiceId: string
 ): string {
 
   const normalized =
     localVoiceId.toLowerCase();
-
-  // SAFE BUILT-IN HEYGEN VOICES
 
   if (
     normalized.includes('anna') ||
@@ -76,10 +76,10 @@ function mapVoiceId(
     normalized.includes('nadezhda')
   ) {
 
-    return '1bd001e7e50f421d891986aad5158bc8';
+    return 'nova';
   }
 
-  return '7424b8f4d64a4d0c8d8b8a6d0f6f2d1';
+  return 'alloy';
 }
 
 export async function generateAvatarVideo(
@@ -101,7 +101,7 @@ export async function generateAvatarVideo(
 
   req.onStageChange?.(
     'Проверка аватара',
-    25
+    20
   );
 
   const resolvedAvatar =
@@ -111,15 +111,185 @@ export async function generateAvatarVideo(
       addLog
     );
 
+  // =====================================================
+  // OPENAI TTS
+  // =====================================================
+
   req.onStageChange?.(
-    'Отправка в HeyGen',
+    'Генерация озвучки',
+    45
+  );
+
+  const openaiVoice =
+    mapOpenAIVoice(
+      req.voiceId
+    );
+
+  addLog({
+
+    type: 'request',
+
+    module:
+      '[OPENAI TTS]',
+
+    message:
+      'Generating OpenAI speech',
+
+    data: {
+
+      voice:
+        openaiVoice
+    }
+  });
+
+  const ttsResponse =
+    await fetch(
+      'https://api.openai.com/v1/audio/speech',
+      {
+
+        method: 'POST',
+
+        headers: {
+
+          Authorization:
+            `Bearer ${req.openaiApiKey}`,
+
+          'Content-Type':
+            'application/json'
+        },
+
+        body:
+          JSON.stringify({
+
+            model:
+              'gpt-4o-mini-tts',
+
+            voice:
+              openaiVoice,
+
+            input:
+              fullScript,
+
+            format:
+              'mp3'
+          })
+      }
+    );
+
+  if (!ttsResponse.ok) {
+
+    const errorText =
+      await ttsResponse.text();
+
+    throw new Error(
+      `OpenAI TTS Error: ${errorText}`
+    );
+  }
+
+  const audioBlob =
+    await ttsResponse.blob();
+
+  addLog({
+
+    type: 'response',
+
+    module:
+      '[OPENAI TTS]',
+
+    message:
+      'Speech generated successfully',
+
+    data: {
+
+      sizeKB:
+        (
+          audioBlob.size / 1024
+        ).toFixed(1)
+    }
+  });
+
+  // =====================================================
+  // TMP UPLOAD
+  // =====================================================
+
+  req.onStageChange?.(
+    'Загрузка аудио',
     60
   );
 
-  const heygenVoiceId =
-    mapVoiceId(
-      req.voiceId
+  const audioFile =
+    new File(
+      [audioBlob],
+      'speech.mp3',
+      {
+        type:
+          'audio/mpeg'
+      }
     );
+
+  const formData =
+    new FormData();
+
+  formData.append(
+    'file',
+    audioFile
+  );
+
+  const uploadResp =
+    await fetch(
+      'https://tmpfiles.org/api/v1/upload',
+      {
+
+        method: 'POST',
+
+        body:
+          formData
+      }
+    );
+
+  const uploadJson =
+    await uploadResp.json();
+
+  const rawUrl =
+    uploadJson?.data?.url;
+
+  if (!rawUrl) {
+
+    throw new Error(
+      'Не удалось загрузить временное аудио.'
+    );
+  }
+
+  const audioUrl =
+    rawUrl.replace(
+      'tmpfiles.org/',
+      'tmpfiles.org/dl/'
+    );
+
+  addLog({
+
+    type: 'response',
+
+    module:
+      '[TEMP AUDIO]',
+
+    message:
+      'Temporary audio URL created',
+
+    data: {
+
+      audioUrl
+    }
+  });
+
+  // =====================================================
+  // HEYGEN RENDER
+  // =====================================================
+
+  req.onStageChange?.(
+    'Отправка в HeyGen',
+    80
+  );
 
   const payload = {
 
@@ -136,18 +306,23 @@ export async function generateAvatarVideo(
 
           avatar_style:
             (
-              req.avatar.avatarStyle === 'close-up'
-                ? 'closeUp'
-                : req.avatar.avatarStyle
-            ) || 'normal'
+              req.avatar.avatarStyle ===
+              'close-up'
+            )
+              ? 'closeUp'
+              : (
+                  req.avatar.avatarStyle ||
+                  'normal'
+                )
         },
 
         voice: {
 
-          type: 'text',
+          type:
+            'audio',
 
-          input_text:
-            fullScript
+          audio_url:
+            audioUrl
         }
       }
     ],
@@ -168,9 +343,10 @@ export async function generateAvatarVideo(
       '[HEYGEN RENDER]',
 
     message:
-      'Sending native HeyGen render request',
+      'Sending HeyGen render request',
 
-    data: payload
+    data:
+      payload
   });
 
   const response =
@@ -204,7 +380,7 @@ export async function generateAvatarVideo(
     parsed =
       JSON.parse(rawText);
 
-  } catch { }
+  } catch {}
 
   if (!response.ok) {
 
@@ -218,11 +394,12 @@ export async function generateAvatarVideo(
       message:
         `HeyGen Error ${response.status}`,
 
-      data: rawText
+      data:
+        rawText
     });
 
     throw new Error(
-      parsed?.message ||
+      parsed?.error?.message ||
       rawText ||
       'HeyGen render failed.'
     );
@@ -273,10 +450,7 @@ export async function generateAvatarVideo(
 
     data: {
 
-      videoId,
-
-      provider:
-        'Native HeyGen TTS'
+      videoId
     }
   });
 
@@ -290,7 +464,7 @@ export async function generateAvatarVideo(
       parsed,
 
     provider:
-      'HeyGen Native TTS',
+      'OpenAI TTS + HeyGen',
 
     estimatedCost,
 
