@@ -37,6 +37,9 @@ export function useAvatarStudio() {
   const settings = useSettingsStore();
   const heygenApiKey = settings.heygenKey;
 
+  const addLog =
+    console.log;
+
   // ====================================================
   // INPUTS
   // ====================================================
@@ -161,7 +164,30 @@ export function useAvatarStudio() {
     setIsGeneratingScript(true);
     setErrorMessage(null);
 
+
+
+
     try {
+
+      addLog({
+
+        type: 'request',
+
+        module:
+          '[AI SCRIPT]',
+
+        message:
+          'Starting OpenAI script generation',
+
+        data: {
+
+          topic,
+
+          durationMinutes
+        }
+      });
+
+
       const response =
         await fetch(
           'https://api.openai.com/v1/chat/completions',
@@ -258,6 +284,24 @@ ${durationMinutes} минут.
           }
         );
 
+
+      addLog({
+
+        type: 'response',
+
+        module:
+          '[AI SCRIPT]',
+
+        message:
+          'OpenAI response received',
+
+        data: {
+
+          status:
+            response.status
+        }
+      });
+
       if (!response.ok) {
 
         const errorText =
@@ -270,6 +314,24 @@ ${durationMinutes} минут.
 
       const data =
         await response.json();
+
+      console.log(
+        '[AI SCRIPT RAW]',
+        data
+      );
+
+      addLog({
+
+        type: 'response',
+
+        module:
+          '[AI SCRIPT]',
+
+        message:
+          'Raw OpenAI payload received',
+
+        data
+      });
 
       const parsed =
         JSON.parse(
@@ -370,6 +432,10 @@ ${durationMinutes} минут.
           visuals: scene.visuals
         };
       });
+
+      setScript(
+        generatedScript
+      );
 
       setScenesEditVals(mappedScenes);
       setIsDirty(false);
