@@ -140,134 +140,239 @@ export function usePodcastAudio(
     return `${segmentId}_${voiceId}_st${stability}_sm${similarity}_sy${style}_en${energy}_sp${speed.toFixed(2)}_sb${useSpeakerBoost ? 1 : 0}_${modelId}`;
   };
 
-  utterance.onend = () => {
-    setPlayingId(null);
+
+  const synthesizeSegmentDirectly = async (
+    segmentId: string,
+    text: string,
+    voiceId: string,
+    isHost: boolean
+  ): Promise<AudioCacheEntry> => {
+    const activeSettings = isHost ? hostSettings : guestSettings;
+
+    const key = getCacheKey(
+      segmentId,
+      voiceId,
+      activeSettings?.stability,
+      activeSettings?.similarity_boost,
+      activeSettings?.style,
+      activeSettings?.energy,
+      activeSettings?.speed,
+      activeSettings?.use_speaker_boost,
+      activeSettings?.modelId
+    );
+
+    // Check cache
+    if (audioCache[key]) {
+      console.log(`[VOICE STATUS] Cache HIT for key="${key}"`);
+      return audioCache[key];
+    }
+
+    if (!elevenlabsKey) {
+      throw new Error('ElevenLabs key not configured');
+    }
+
+    const startMs = Date.now();
+
+    // Apply speech rhythm engine BEFORE sending text to Elevenlabs as requested by Requirement 10
+    const enhancedText = applySpeechRhythm(text, activeSettings, voiceId);
+
+    const voiceInfo = HUMAN_VOICE_LIBRARY[voiceId] || HUMAN_VOICE_LIBRARY['pNInz6obpgdq5TaqLwtY'];
+
+    const payload = {
+      text: enhancedText,
+      voiceId,
+      apiKey: elevenlabsKey,
+      modelId: activeSettings?.modelId || 'eleven_multilingual_v2',
+      voiceSettings: activeSettings ? {
+        stability: activeSettings.stability / 100,
+        similarity_boost: activeSettings.similarity_boost / 100,
+        style: activeSettings.style / 100,
+        use_speaker_boost: activeSettings.use_speaker_boost
+      } : undefined,
+      speaker: isHost ? 'host' : 'guest',
+      voiceName: voiceInfo?.name
+    };
+
+    console.log(`[VOICE SYNTHESIS PIPELINE] Launching raw ElevenLabs call with actual settings:`, payload);
+
+    // Call synthesizer backend
+    const response = await fetch('/api/podcast/synthesize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[VOICE STATUS] Elevenlabs Synthesis HTTP Failure:`, errorText);
+      throw new Error(errorText || 'Failed to synthesize segment audio');
+    }
+
+    const durationMs = Date.now() - startMs;
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const entry = { url, blob, voiceId };
+
+    console.log(`[VOICE STATUS] Elevenlabs Synthesis Success. Key cached: "${key}"`);
+
+    // Update diagnosis
+    const profile = voiceInfo?.voiceProfile;
+    setLastSynthesisDiagnostic({
+      voiceId,
+      voiceName: voiceInfo?.name || 'Unknown',
+      modelId: payload.modelId,
+      stability: activeSettings?.stability ?? 45,
+      similarity_boost: activeSettings?.similarity_boost ?? 75,
+      style: activeSettings?.style ?? 45,
+      speed: activeSettings?.speed ?? 1.0,
+      energy: activeSettings?.energy ?? 50,
+      cacheHit: false,
+      durationMs,
+      rawPayload: payload,
+      textRef: text,
+      pitch: profile?.pitch ?? 1.0,
+      energy_curve: profile?.energy_curve ?? 'dynamic',
+      punctuation_behavior: profile?.punctuation_behavior ?? 'natural',
+      pause_density: profile?.pause_density ?? 'medium',
+      emotionality: profile?.emotionality ?? 50,
+      cadence: profile?.cadence ?? 'steady'
+    });
+
+    // Update state cache immediately
+    setAudioCache(prev => ({ ...prev, [key]: entry }));
+    return entry;
   };
 
-  utterance.onerror = () => {
-    setPlayingId(null);
+  const togglePlaySegment = async (segmentId: string, text: string, voiceId: string, speaker?: 'host' | 'guest') => {
+    const isHost = speaker === 'host' || voiceId === voiceSelection?.hostVoiceId;
+    const activeSettings = isHost ? hostSettings : guestSettings;
+
+    if (playingId === segmentId) {
+      stopCurrentAudio();
+    } else {
+      const key = getCacheKey(
+        segmentId,
+        voiceId,
+        activeSettings?.stability,
+        activeSettings?.similarity_boost,
+        activeSettings?.style,
+        activeSettings?.energy,
+        activeSettings?.speed,
+        activeSettings?.use_speaker_boost,
+        activeSettings?.modelId
+      );
+      const cached = audioCache[key];
+
+      if (cached) {
+        console.log(`[VOICE PLAY] Playing from audio cache key: "${key}"`);
+        const voiceInfo = HUMAN_VOICE_LIBRARY[voiceId] || HUMAN_VOICE_LIBRARY['pNInz6obpgdq5TaqLwtY'];
+        const profile = voiceInfo?.voiceProfile;
+
+        setLastSynthesisDiagnostic({
+          voiceId,
+          voiceName: voiceInfo?.name || 'Unknown',
+          modelId: activeSettings?.modelId || 'eleven_multilingual_v2',
+          stability: activeSettings?.stability ?? 45,
+          similarity_boost: activeSettings?.similarity_boost ?? 75,
+          style: activeSettings?.style ?? 45,
+          speed: activeSettings?.speed ?? 1.0,
+          energy: activeSettings?.energy ?? 50,
+          cacheHit: true,
+          durationMs: 0,
+          rawPayload: {
+            text: "... (cached stream reference) ...",
+            voiceId,
+            modelId: activeSettings?.modelId || 'eleven_multilingual_v2'
+          },
+          textRef: text,
+          pitch: profile?.pitch ?? 1.0,
+          energy_curve: profile?.energy_curve ?? 'dynamic',
+          punctuation_behavior: profile?.punctuation_behavior ?? 'natural',
+          pause_density: profile?.pause_density ?? 'medium',
+          emotionality: profile?.emotionality ?? 50,
+          cadence: profile?.cadence ?? 'steady'
+        });
+
+        playUrl(cached.url, segmentId, isHost);
+      } else {
+        if (!elevenlabsKey) {
+
+          toast.error(
+            'ElevenLabs API-ключ не настроен.'
+          );
+
+          return;
+        }
+
+        setSynthesizingId(segmentId);
+        try {
+          const entry = await synthesizeSegmentDirectly(segmentId, text, voiceId, isHost);
+          // Invalidate merged full episode if a segment gets regenerated
+          setFullEpisodeUrl(null);
+          setFullEpisodeBlob(null);
+          playUrl(entry.url, segmentId, isHost);
+        } catch (err: any) {
+          console.error(`[VOICE ERROR] Synthesis failed, falling back to WebSpeechTTS:`, err);
+          toast.error(`Ошибка ElevenLabs: ${err.message || 'Связь прервана'}. Используем локальный синтезатор...`);
+          toast.error(
+            'Ошибка ElevenLabs. Browser fallback отключён.'
+          );
+        } finally {
+          setSynthesizingId(null);
+        }
+      }
+    }
   };
 
-  synthUtteranceRef.current = utterance;
-  window.speechSynthesis.speak(utterance);
-
-} catch (err) {
-  console.error('[VOICE TTS EXCEPTION]', err);
-  toast.error('Ошибка встроенного воспроизведения');
-}
-  };
-
-const synthesizeSegmentDirectly = async (
-  segmentId: string,
-  text: string,
-  voiceId: string,
-  isHost: boolean
-): Promise<AudioCacheEntry> => {
-  const activeSettings = isHost ? hostSettings : guestSettings;
-
-  const key = getCacheKey(
-    segmentId,
-    voiceId,
-    activeSettings?.stability,
-    activeSettings?.similarity_boost,
-    activeSettings?.style,
-    activeSettings?.energy,
-    activeSettings?.speed,
-    activeSettings?.use_speaker_boost,
-    activeSettings?.modelId
-  );
-
-  // Check cache
-  if (audioCache[key]) {
-    console.log(`[VOICE STATUS] Cache HIT for key="${key}"`);
-    return audioCache[key];
-  }
-
-  if (!elevenlabsKey) {
-    throw new Error('ElevenLabs key not configured');
-  }
-
-  const startMs = Date.now();
-
-  // Apply speech rhythm engine BEFORE sending text to Elevenlabs as requested by Requirement 10
-  const enhancedText = applySpeechRhythm(text, activeSettings, voiceId);
-
-  const voiceInfo = HUMAN_VOICE_LIBRARY[voiceId] || HUMAN_VOICE_LIBRARY['pNInz6obpgdq5TaqLwtY'];
-
-  const payload = {
-    text: enhancedText,
-    voiceId,
-    apiKey: elevenlabsKey,
-    modelId: activeSettings?.modelId || 'eleven_multilingual_v2',
-    voiceSettings: activeSettings ? {
-      stability: activeSettings.stability / 100,
-      similarity_boost: activeSettings.similarity_boost / 100,
-      style: activeSettings.style / 100,
-      use_speaker_boost: activeSettings.use_speaker_boost
-    } : undefined,
-    speaker: isHost ? 'host' : 'guest',
-    voiceName: voiceInfo?.name
-  };
-
-  console.log(`[VOICE SYNTHESIS PIPELINE] Launching raw ElevenLabs call with actual settings:`, payload);
-
-  // Call synthesizer backend
-  const response = await fetch('/api/podcast/synthesize', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`[VOICE STATUS] Elevenlabs Synthesis HTTP Failure:`, errorText);
-    throw new Error(errorText || 'Failed to synthesize segment audio');
-  }
-
-  const durationMs = Date.now() - startMs;
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const entry = { url, blob, voiceId };
-
-  console.log(`[VOICE STATUS] Elevenlabs Synthesis Success. Key cached: "${key}"`);
-
-  // Update diagnosis
-  const profile = voiceInfo?.voiceProfile;
-  setLastSynthesisDiagnostic({
-    voiceId,
-    voiceName: voiceInfo?.name || 'Unknown',
-    modelId: payload.modelId,
-    stability: activeSettings?.stability ?? 45,
-    similarity_boost: activeSettings?.similarity_boost ?? 75,
-    style: activeSettings?.style ?? 45,
-    speed: activeSettings?.speed ?? 1.0,
-    energy: activeSettings?.energy ?? 50,
-    cacheHit: false,
-    durationMs,
-    rawPayload: payload,
-    textRef: text,
-    pitch: profile?.pitch ?? 1.0,
-    energy_curve: profile?.energy_curve ?? 'dynamic',
-    punctuation_behavior: profile?.punctuation_behavior ?? 'natural',
-    pause_density: profile?.pause_density ?? 'medium',
-    emotionality: profile?.emotionality ?? 50,
-    cadence: profile?.cadence ?? 'steady'
-  });
-
-  // Update state cache immediately
-  setAudioCache(prev => ({ ...prev, [key]: entry }));
-  return entry;
-};
-
-const togglePlaySegment = async (segmentId: string, text: string, voiceId: string, speaker?: 'host' | 'guest') => {
-  const isHost = speaker === 'host' || voiceId === voiceSelection?.hostVoiceId;
-  const activeSettings = isHost ? hostSettings : guestSettings;
-
-  if (playingId === segmentId) {
+  const playUrl = (url: string, segmentId: string, isHost: boolean) => {
     stopCurrentAudio();
-  } else {
+    const audio = new Audio(url);
+    audioRef.current = audio;
+
+    // Read local/realtime settings to apply playback rate dynamically
+    const activeSettings = isHost ? hostSettings : guestSettings;
+    const baseSpeed = activeSettings?.speed ?? 1.0;
+
+    // Map ENERGY directly to human speech rate micro-adjustments
+    const energyMod = activeSettings?.energy ? (activeSettings.energy - 50) / 400 : 0;
+    const finalSpeed = Math.max(0.7, Math.min(1.5, baseSpeed + energyMod));
+
+    // Ensure playback rate is applied even after resource finishes buffering
+    audio.oncanplay = () => {
+      audio.playbackRate = finalSpeed;
+    };
+    audio.playbackRate = finalSpeed;
+
+    console.log(`[PLAYER ENGINE] Playing segment ID: ${segmentId}. Base rate: ${baseSpeed}x. Modified by energy: ${finalSpeed.toFixed(2)}x`);
+
+    audio.onplay = () => {
+      setPlayingId(segmentId);
+    };
+
+    audio.onended = () => {
+      setPlayingId(null);
+    };
+
+    audio.onerror = () => {
+      toast.error('Ошибка аудио-плеера');
+      setPlayingId(null);
+    };
+
+    audio.play();
+  };
+
+  const downloadSegmentMp3 = async (
+    segmentId: string,
+    text: string,
+    voiceId: string,
+    title: string,
+    speaker?: 'host' | 'guest'
+  ) => {
+    const isHost = speaker === 'host' || voiceId === voiceSelection?.hostVoiceId;
+    const activeSettings = isHost ? hostSettings : guestSettings;
+
     const key = getCacheKey(
       segmentId,
       voiceId,
@@ -282,287 +387,166 @@ const togglePlaySegment = async (segmentId: string, text: string, voiceId: strin
     const cached = audioCache[key];
 
     if (cached) {
-      console.log(`[VOICE PLAY] Playing from audio cache key: "${key}"`);
-      const voiceInfo = HUMAN_VOICE_LIBRARY[voiceId] || HUMAN_VOICE_LIBRARY['pNInz6obpgdq5TaqLwtY'];
-      const profile = voiceInfo?.voiceProfile;
-
-      setLastSynthesisDiagnostic({
-        voiceId,
-        voiceName: voiceInfo?.name || 'Unknown',
-        modelId: activeSettings?.modelId || 'eleven_multilingual_v2',
-        stability: activeSettings?.stability ?? 45,
-        similarity_boost: activeSettings?.similarity_boost ?? 75,
-        style: activeSettings?.style ?? 45,
-        speed: activeSettings?.speed ?? 1.0,
-        energy: activeSettings?.energy ?? 50,
-        cacheHit: true,
-        durationMs: 0,
-        rawPayload: {
-          text: "... (cached stream reference) ...",
-          voiceId,
-          modelId: activeSettings?.modelId || 'eleven_multilingual_v2'
-        },
-        textRef: text,
-        pitch: profile?.pitch ?? 1.0,
-        energy_curve: profile?.energy_curve ?? 'dynamic',
-        punctuation_behavior: profile?.punctuation_behavior ?? 'natural',
-        pause_density: profile?.pause_density ?? 'medium',
-        emotionality: profile?.emotionality ?? 50,
-        cadence: profile?.cadence ?? 'steady'
-      });
-
-      playUrl(cached.url, segmentId, isHost);
+      triggerBrowserDownload(cached.url, `${title}.mp3`);
     } else {
       if (!elevenlabsKey) {
-
-        toast.error(
-          'ElevenLabs API-ключ не настроен.'
-        );
-
+        toast.error('Необходим ElevenLabs API-ключ для экспорта MP3 файлов');
         return;
       }
 
-      setSynthesizingId(segmentId);
+      const toastId = toast.loading('Генерация MP3-версии сегмента от ElevenLabs...');
       try {
         const entry = await synthesizeSegmentDirectly(segmentId, text, voiceId, isHost);
-        // Invalidate merged full episode if a segment gets regenerated
-        setFullEpisodeUrl(null);
-        setFullEpisodeBlob(null);
-        playUrl(entry.url, segmentId, isHost);
+        triggerBrowserDownload(entry.url, `${title}.mp3`);
+        toast.success('Аудио успешно загружено на компьютер!', { id: toastId });
       } catch (err: any) {
-        console.error(`[VOICE ERROR] Synthesis failed, falling back to WebSpeechTTS:`, err);
-        toast.error(`Ошибка ElevenLabs: ${err.message || 'Связь прервана'}. Используем локальный синтезатор...`);
-        toast.error(
-          'Ошибка ElevenLabs. Browser fallback отключён.'
-        );
-      } finally {
-        setSynthesizingId(null);
+        console.error(err);
+        toast.error(`Ошибка импорта: ${err.message}`, { id: toastId });
       }
     }
-  }
-};
-
-const playUrl = (url: string, segmentId: string, isHost: boolean) => {
-  stopCurrentAudio();
-  const audio = new Audio(url);
-  audioRef.current = audio;
-
-  // Read local/realtime settings to apply playback rate dynamically
-  const activeSettings = isHost ? hostSettings : guestSettings;
-  const baseSpeed = activeSettings?.speed ?? 1.0;
-
-  // Map ENERGY directly to human speech rate micro-adjustments
-  const energyMod = activeSettings?.energy ? (activeSettings.energy - 50) / 400 : 0;
-  const finalSpeed = Math.max(0.7, Math.min(1.5, baseSpeed + energyMod));
-
-  // Ensure playback rate is applied even after resource finishes buffering
-  audio.oncanplay = () => {
-    audio.playbackRate = finalSpeed;
-  };
-  audio.playbackRate = finalSpeed;
-
-  console.log(`[PLAYER ENGINE] Playing segment ID: ${segmentId}. Base rate: ${baseSpeed}x. Modified by energy: ${finalSpeed.toFixed(2)}x`);
-
-  audio.onplay = () => {
-    setPlayingId(segmentId);
   };
 
-  audio.onended = () => {
-    setPlayingId(null);
-  };
-
-  audio.onerror = () => {
-    toast.error('Ошибка аудио-плеера');
-    setPlayingId(null);
-  };
-
-  audio.play();
-};
-
-const downloadSegmentMp3 = async (
-  segmentId: string,
-  text: string,
-  voiceId: string,
-  title: string,
-  speaker?: 'host' | 'guest'
-) => {
-  const isHost = speaker === 'host' || voiceId === voiceSelection?.hostVoiceId;
-  const activeSettings = isHost ? hostSettings : guestSettings;
-
-  const key = getCacheKey(
-    segmentId,
-    voiceId,
-    activeSettings?.stability,
-    activeSettings?.similarity_boost,
-    activeSettings?.style,
-    activeSettings?.energy,
-    activeSettings?.speed,
-    activeSettings?.use_speaker_boost,
-    activeSettings?.modelId
-  );
-  const cached = audioCache[key];
-
-  if (cached) {
-    triggerBrowserDownload(cached.url, `${title}.mp3`);
-  } else {
+  // Compile and merge the entire podcast episodes
+  const synthesizeAndMergeFullEpisode = async (script: ScriptSegment[], currentVoiceSelection: VoiceSelection) => {
     if (!elevenlabsKey) {
-      toast.error('Необходим ElevenLabs API-ключ для экспорта MP3 файлов');
+      toast.error('ElevenLabs API-ключ не настроен в Настройках. Пожалуйста, укажите его для объединения озвученных дорожек.');
       return;
     }
 
-    const toastId = toast.loading('Генерация MP3-версии сегмента от ElevenLabs...');
+    setIsSynthesizingFull(true);
+    setFullProgress('Запуск компиляции полного выпуска подкаста...');
+
+    try {
+      const blobsToMerge: Blob[] = [];
+      const totalCount = script.length;
+
+      for (let i = 0; i < totalCount; i++) {
+        const segment = script[i];
+        const isHost = segment.speaker === 'host';
+        const voiceId = isHost ? currentVoiceSelection.hostVoiceId : (currentVoiceSelection.guestVoiceId || 'pNInz6obpgdq5TaqLwtY');
+
+        const activeSettings = isHost ? hostSettings : guestSettings;
+        const key = getCacheKey(
+          segment.id,
+          voiceId,
+          activeSettings?.stability,
+          activeSettings?.similarity_boost,
+          activeSettings?.style,
+          activeSettings?.energy,
+          activeSettings?.speed,
+          activeSettings?.use_speaker_boost,
+          activeSettings?.modelId
+        );
+
+        setFullProgress(`Озвучка [${i + 1}/${totalCount}]: Реплика "${segment.speakerName}"...`);
+
+        let entry = audioCache[key];
+        if (!entry) {
+          entry = await synthesizeSegmentDirectly(segment.id, segment.text, voiceId, isHost);
+          // Wait briefly to avoid hitting rate limits too fast
+          await new Promise(res => setTimeout(res, 220));
+        }
+
+        blobsToMerge.push(entry.blob);
+      }
+
+      setFullProgress('Объединение звуковых дорожек и сведение подкаста...');
+      const mergedBlob = new Blob(blobsToMerge, { type: 'audio/mpeg' });
+      const mergedUrl = URL.createObjectURL(mergedBlob);
+
+      setFullEpisodeBlob(mergedBlob);
+      setFullEpisodeUrl(mergedUrl);
+      toast.success('Полная дорожка выпуска успешно сведена! Плеер готов.');
+    } catch (err: any) {
+      console.error('[MERGE PODCAST] Compilation failed:', err);
+      toast.error(`Ошибка сведения выпуска: ${err.message || 'Связь с ElevenLabs оборвалась.'}`);
+    } finally {
+      setIsSynthesizingFull(false);
+      setFullProgress(null);
+    }
+  };
+
+  const downloadFullEpisode = (filename = 'podcast_episode.mp3') => {
+    if (!fullEpisodeUrl) {
+      toast.error('Сначала озвучьте полный выпуск подкаста');
+      return;
+    }
+    triggerBrowserDownload(fullEpisodeUrl, filename);
+  };
+
+  const triggerBrowserDownload = (url: string, filename: string) => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const invalidateSegmentCache = (segmentId: string) => {
+    setAudioCache(prev => {
+      const copy = { ...prev };
+      let count = 0;
+      Object.keys(copy).forEach(key => {
+        if (key.startsWith(`${segmentId}_`)) {
+          delete copy[key];
+          count++;
+        }
+      });
+      if (count > 0) {
+        console.log(`[SEGMENT EDIT] Cache keys removed for segmentId=${segmentId}: ${count}`);
+      }
+      return copy;
+    });
+    setFullEpisodeUrl(null);
+    setFullEpisodeBlob(null);
+  };
+
+  const forceRegenerateSegmentAudio = async (
+    segmentId: string,
+    text: string,
+    voiceId: string,
+    speaker?: 'host' | 'guest'
+  ): Promise<any> => {
+    const isHost = speaker === 'host' || voiceId === voiceSelection?.hostVoiceId;
+    const activeSettings = isHost ? hostSettings : guestSettings;
+
+    invalidateSegmentCache(segmentId);
+
+    setSynthesizingId(segmentId);
+    const startMs = Date.now();
+    console.log(`[SEGMENT EDIT] Force regenerating audio for segment = ${segmentId}...`);
     try {
       const entry = await synthesizeSegmentDirectly(segmentId, text, voiceId, isHost);
-      triggerBrowserDownload(entry.url, `${title}.mp3`);
-      toast.success('Аудио успешно загружено на компьютер!', { id: toastId });
+      const latency = Date.now() - startMs;
+      console.log(`[SEGMENT EDIT] Audio regenerated successfully. Latency: ${latency}ms`);
+      return entry;
     } catch (err: any) {
-      console.error(err);
-      toast.error(`Ошибка импорта: ${err.message}`, { id: toastId });
+      console.error(`[SEGMENT EDIT] Force regenerate failed:`, err);
+      throw err;
+    } finally {
+      setSynthesizingId(null);
     }
-  }
-};
+  };
 
-// Compile and merge the entire podcast episodes
-const synthesizeAndMergeFullEpisode = async (script: ScriptSegment[], currentVoiceSelection: VoiceSelection) => {
-  if (!elevenlabsKey) {
-    toast.error('ElevenLabs API-ключ не настроен в Настройках. Пожалуйста, укажите его для объединения озвученных дорожек.');
-    return;
-  }
+  return {
+    audioCache,
+    synthesizingId,
+    playingId,
+    lastSynthesisDiagnostic,
+    togglePlaySegment,
+    downloadSegmentMp3,
+    stopCurrentAudio,
+    getCacheKey, // export helper
+    invalidateSegmentCache,
+    forceRegenerateSegmentAudio,
 
-  setIsSynthesizingFull(true);
-  setFullProgress('Запуск компиляции полного выпуска подкаста...');
-
-  try {
-    const blobsToMerge: Blob[] = [];
-    const totalCount = script.length;
-
-    for (let i = 0; i < totalCount; i++) {
-      const segment = script[i];
-      const isHost = segment.speaker === 'host';
-      const voiceId = isHost ? currentVoiceSelection.hostVoiceId : (currentVoiceSelection.guestVoiceId || 'pNInz6obpgdq5TaqLwtY');
-
-      const activeSettings = isHost ? hostSettings : guestSettings;
-      const key = getCacheKey(
-        segment.id,
-        voiceId,
-        activeSettings?.stability,
-        activeSettings?.similarity_boost,
-        activeSettings?.style,
-        activeSettings?.energy,
-        activeSettings?.speed,
-        activeSettings?.use_speaker_boost,
-        activeSettings?.modelId
-      );
-
-      setFullProgress(`Озвучка [${i + 1}/${totalCount}]: Реплика "${segment.speakerName}"...`);
-
-      let entry = audioCache[key];
-      if (!entry) {
-        entry = await synthesizeSegmentDirectly(segment.id, segment.text, voiceId, isHost);
-        // Wait briefly to avoid hitting rate limits too fast
-        await new Promise(res => setTimeout(res, 220));
-      }
-
-      blobsToMerge.push(entry.blob);
-    }
-
-    setFullProgress('Объединение звуковых дорожек и сведение подкаста...');
-    const mergedBlob = new Blob(blobsToMerge, { type: 'audio/mpeg' });
-    const mergedUrl = URL.createObjectURL(mergedBlob);
-
-    setFullEpisodeBlob(mergedBlob);
-    setFullEpisodeUrl(mergedUrl);
-    toast.success('Полная дорожка выпуска успешно сведена! Плеер готов.');
-  } catch (err: any) {
-    console.error('[MERGE PODCAST] Compilation failed:', err);
-    toast.error(`Ошибка сведения выпуска: ${err.message || 'Связь с ElevenLabs оборвалась.'}`);
-  } finally {
-    setIsSynthesizingFull(false);
-    setFullProgress(null);
-  }
-};
-
-const downloadFullEpisode = (filename = 'podcast_episode.mp3') => {
-  if (!fullEpisodeUrl) {
-    toast.error('Сначала озвучьте полный выпуск подкаста');
-    return;
-  }
-  triggerBrowserDownload(fullEpisodeUrl, filename);
-};
-
-const triggerBrowserDownload = (url: string, filename: string) => {
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-};
-
-const invalidateSegmentCache = (segmentId: string) => {
-  setAudioCache(prev => {
-    const copy = { ...prev };
-    let count = 0;
-    Object.keys(copy).forEach(key => {
-      if (key.startsWith(`${segmentId}_`)) {
-        delete copy[key];
-        count++;
-      }
-    });
-    if (count > 0) {
-      console.log(`[SEGMENT EDIT] Cache keys removed for segmentId=${segmentId}: ${count}`);
-    }
-    return copy;
-  });
-  setFullEpisodeUrl(null);
-  setFullEpisodeBlob(null);
-};
-
-const forceRegenerateSegmentAudio = async (
-  segmentId: string,
-  text: string,
-  voiceId: string,
-  speaker?: 'host' | 'guest'
-): Promise<any> => {
-  const isHost = speaker === 'host' || voiceId === voiceSelection?.hostVoiceId;
-  const activeSettings = isHost ? hostSettings : guestSettings;
-
-  invalidateSegmentCache(segmentId);
-
-  setSynthesizingId(segmentId);
-  const startMs = Date.now();
-  console.log(`[SEGMENT EDIT] Force regenerating audio for segment = ${segmentId}...`);
-  try {
-    const entry = await synthesizeSegmentDirectly(segmentId, text, voiceId, isHost);
-    const latency = Date.now() - startMs;
-    console.log(`[SEGMENT EDIT] Audio regenerated successfully. Latency: ${latency}ms`);
-    return entry;
-  } catch (err: any) {
-    console.error(`[SEGMENT EDIT] Force regenerate failed:`, err);
-    throw err;
-  } finally {
-    setSynthesizingId(null);
-  }
-};
-
-return {
-  audioCache,
-  synthesizingId,
-  playingId,
-  lastSynthesisDiagnostic,
-  togglePlaySegment,
-  downloadSegmentMp3,
-  stopCurrentAudio,
-  getCacheKey, // export helper
-  invalidateSegmentCache,
-  forceRegenerateSegmentAudio,
-
-  // Full Episode Support
-  isSynthesizingFull,
-  fullProgress,
-  fullEpisodeUrl,
-  fullEpisodeBlob,
-  synthesizeAndMergeFullEpisode,
-  downloadFullEpisode
-};
+    // Full Episode Support
+    isSynthesizingFull,
+    fullProgress,
+    fullEpisodeUrl,
+    fullEpisodeBlob,
+    synthesizeAndMergeFullEpisode,
+    downloadFullEpisode
+  };
 }
