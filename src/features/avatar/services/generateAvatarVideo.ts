@@ -68,7 +68,7 @@ function mapVoiceId(
   const normalized =
     localVoiceId.toLowerCase();
 
-  // HEYGEN / AZURE VOICES
+  // SAFE BUILT-IN HEYGEN VOICES
 
   if (
     normalized.includes('anna') ||
@@ -76,10 +76,10 @@ function mapVoiceId(
     normalized.includes('nadezhda')
   ) {
 
-    return 'ru-RU-SvetlanaNeural';
+    return '1bd001e7e50f421d891986aad5158bc8';
   }
 
-  return 'ru-RU-DmitryNeural';
+  return '7424b8f4d64a4d0c8d8b8a6d0f6f2d1';
 }
 
 export async function generateAvatarVideo(
