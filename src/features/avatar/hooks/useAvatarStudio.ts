@@ -280,77 +280,202 @@ export function useAvatarStudio() {
         fallbackTriggered: false
       });
 
-      const renderResponse = await generateAvatarVideo({
-        script,
-        avatar: selectedAvatar,
-        voiceId: selectedVoiceId,
-        heygenApiKey
-      });
+     const renderResponse =
+  await generateAvatarVideo({
 
-      if (!renderResponse.success) {
-        throw new Error('Не удалось запустить рендер.');
+    script,
+
+    avatar:
+      selectedAvatar,
+
+    voiceId:
+      selectedVoiceId,
+
+    heygenApiKey,
+
+    openaiApiKey:
+      settings.openaiApiKey,
+
+    onStageChange:
+      (stage, percent) => {
+
+        setStatusMessage(
+          stage
+        );
+
+        setProgressPercent(
+          percent
+        );
+
       }
+  });
 
-      setStage('waiting_render');
-      setProgressPercent(45);
+if (!renderResponse.success) {
 
-      const videoId = renderResponse.videoId;
+  throw new Error(
+    'Не удалось запустить рендер.'
+  );
 
-      pollingRef.current = setInterval(async () => {
-        try {
-          const statusResp = await checkAvatarStatus({
+}
+
+setStage(
+  'waiting_render'
+);
+
+setProgressPercent(45);
+
+const videoId =
+  renderResponse.videoId;
+
+pollingRef.current =
+  setInterval(
+    async () => {
+
+      try {
+
+        const statusResp =
+          await checkAvatarStatus({
+
             videoId,
+
             heygenApiKey
           });
 
-          if (statusResp.status === 'completed') {
-            if (pollingRef.current) {
-              clearInterval(pollingRef.current);
-            }
+        if (
+          statusResp.status ===
+          'completed'
+        ) {
 
-            setProgressPercent(100);
-            setStage('idle');
-            setStatusMessage('Видео готово');
-            setRenderedVideoUrl(statusResp.videoUrl || null);
-            setRenderedThumbnailUrl(statusResp.thumbnailUrl || null);
+          if (
+            pollingRef.current
+          ) {
 
-            // Add item to history
-            const newItem: RenderHistoryItem = {
-              id: videoId || String(Date.now()),
-              timestamp: Date.now(),
-              topic: topic || 'Альтернативный ролик',
-              avatar: selectedAvatar,
-              videoUrl: statusResp.videoUrl || '',
-              thumbnailUrl: statusResp.thumbnailUrl || '',
-              script: { ...script }
-            };
-            setRenderHistory((prev) => [newItem, ...prev]);
-            setSpamCooldownLeft(60); // Anti-spam cooldown 60 seconds
-          } else if (statusResp.status === 'failed') {
-            if (pollingRef.current) {
-              clearInterval(pollingRef.current);
-            }
-            throw new Error(
-              statusResp.error || 'HeyGen render failed.'
+            clearInterval(
+              pollingRef.current
             );
+
           }
-        } catch (pollErr: any) {
-          if (pollingRef.current) {
-            clearInterval(pollingRef.current);
+
+          setProgressPercent(
+            100
+          );
+
+          setStage(
+            'idle'
+          );
+
+          setStatusMessage(
+            'Видео готово'
+          );
+
+          setRenderedVideoUrl(
+            statusResp.videoUrl ||
+            null
+          );
+
+          setRenderedThumbnailUrl(
+            statusResp.thumbnailUrl ||
+            null
+          );
+
+          const newItem:
+            RenderHistoryItem = {
+
+            id:
+              videoId ||
+              String(Date.now()),
+
+            timestamp:
+              Date.now(),
+
+            topic:
+              topic ||
+              'AI Avatar Video',
+
+            avatar:
+              selectedAvatar,
+
+            videoUrl:
+              statusResp.videoUrl ||
+              '',
+
+            thumbnailUrl:
+              statusResp.thumbnailUrl ||
+              '',
+
+            script:
+              { ...script }
+          };
+
+          setRenderHistory(
+            (prev) => [
+              newItem,
+              ...prev
+            ]
+          );
+
+          setSpamCooldownLeft(
+            60
+          );
+
+        } else if (
+          statusResp.status ===
+          'failed'
+        ) {
+
+          if (
+            pollingRef.current
+          ) {
+
+            clearInterval(
+              pollingRef.current
+            );
+
           }
-          setStage('error');
-          setErrorMessage(
-            pollErr.message || 'Ошибка проверки статуса.'
+
+          throw new Error(
+
+            typeof statusResp.error ===
+            'string'
+
+              ? statusResp.error
+
+              : JSON.stringify(
+                  statusResp.error
+                ) ||
+
+                'HeyGen render failed.'
           );
         }
-      }, 3000);
-    } catch (err: any) {
-      setStage('error');
-      setErrorMessage(
-        err.message || 'Ошибка запуска рендера.'
-      );
-    }
-  };
+
+      } catch (pollErr: any) {
+
+        if (
+          pollingRef.current
+        ) {
+
+          clearInterval(
+            pollingRef.current
+          );
+
+        }
+
+        setStage(
+          'error'
+        );
+
+        setErrorMessage(
+
+          pollErr?.message ||
+
+          'Ошибка проверки статуса.'
+        );
+      }
+
+    },
+
+    3000
+  );
 
   // ====================================================
   // CANCEL
