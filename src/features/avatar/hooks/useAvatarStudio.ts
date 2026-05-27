@@ -156,21 +156,30 @@ export function useAvatarStudio() {
 
   // 1. Generate Script independent from video rendering
   const generateScript = async () => {
+
     if (!topic.trim()) {
+
       alert('Введите тему выпуска');
+
       return;
+
     }
+
     setIsGeneratingScript(true);
+
     setErrorMessage(null);
+
     setScript(null);
+
     try {
-      // Call OpenAI to get the script
 
+      const generatedScript: AvatarScript = {
 
-      const fakeScript = {
-        hook: `Добро пожаловать. Сегодня говорим про: ${topic}`,
+        hook:
+          `Добро пожаловать. Сегодня говорим про: ${topic}`,
 
         scenes: [
+
           {
             id: 'scene_1',
 
@@ -188,15 +197,17 @@ export function useAvatarStudio() {
               'Это демонстрационный AI-аватар для домашнего задания.',
 
             visuals:
-              'Студийный аватар рассказывает материал.'
+              'Студийный AI-аватар рассказывает материал.'
           }
         ]
       };
 
-      setScript(fakeScript);
+      setScript(
+        generatedScript
+      );
 
       setHookEditVal(
-        fakeScript.hook
+        generatedScript.hook
       );
 
       const mappedScenes: Record<
@@ -207,15 +218,16 @@ export function useAvatarStudio() {
         }
       > = {};
 
-      fakeScript.scenes.forEach(
-        (s: any) => {
+      generatedScript.scenes.forEach(
+        (scene) => {
 
-          mappedScenes[s.id] = {
+          mappedScenes[scene.id] = {
+
             narration:
-              s.narration,
+              scene.narration,
 
             visuals:
-              s.visuals
+              scene.visuals
           };
 
         }
@@ -226,13 +238,63 @@ export function useAvatarStudio() {
       );
 
       setIsDirty(false);
-    
+
     } catch (err: any) {
-    console.error(err);
-    setErrorMessage(err.message || 'Не удалось сгенерировать сценарий. Проверьте OpenAI API ключ.');
-  } finally {
-    setIsGeneratingScript(false);
-  }
+
+      console.error(err);
+
+      setErrorMessage(
+        err.message ||
+        'Не удалось сгенерировать сценарий.'
+      );
+
+    } finally {
+
+      setIsGeneratingScript(false);
+
+    }
+  };
+
+  setScript(fakeScript);
+
+  setHookEditVal(
+    fakeScript.hook
+  );
+
+  const mappedScenes: Record<
+    string,
+    {
+      narration: string;
+      visuals: string;
+    }
+  > = {};
+
+  fakeScript.scenes.forEach(
+    (s: any) => {
+
+      mappedScenes[s.id] = {
+        narration:
+          s.narration,
+
+        visuals:
+          s.visuals
+      };
+
+    }
+  );
+
+  setScenesEditVals(
+    mappedScenes
+  );
+
+  setIsDirty(false);
+
+} catch (err: any) {
+  console.error(err);
+  setErrorMessage(err.message || 'Не удалось сгенерировать сценарий. Проверьте OpenAI API ключ.');
+} finally {
+  setIsGeneratingScript(false);
+}
 };
 
 // 2. Edit Script Handlers
