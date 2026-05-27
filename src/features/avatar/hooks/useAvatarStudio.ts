@@ -69,7 +69,7 @@ export function useAvatarStudio() {
   // States
   const [script, setScript] = useState<AvatarScript | null>(null);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
-  
+
   // Script inline editing states
   const [hookEditVal, setHookEditVal] = useState('');
   const [scenesEditVals, setScenesEditVals] = useState<Record<string, { narration: string; visuals: string }>>({});
@@ -93,7 +93,7 @@ export function useAvatarStudio() {
   useEffect(() => {
     try {
       localStorage.setItem('avatar_render_history', JSON.stringify(renderHistory));
-    } catch {}
+    } catch { }
   }, [renderHistory]);
 
   const selectHistoryItem = (item: RenderHistoryItem) => {
@@ -165,241 +165,288 @@ export function useAvatarStudio() {
     setScript(null);
     try {
       // Call OpenAI to get the script
-      const data = await generateVideoAvatar({
-        topic,
-        context: `${context}\nTarget Duration: ${durationSeconds} seconds (${durationSeconds / 60} minutes)`
-      });
 
-      if (data) {
-        setScript(data);
-        setHookEditVal(data.hook);
-        const mappedscenes: Record<string, { narration: string; visuals: string }> = {};
-        data.scenes.forEach((s: any) => {
-          mappedscenes[s.id] = { narration: s.narration, visuals: s.visuals };
-        });
-        setScenesEditVals(mappedscenes);
-        setIsDirty(false);
-      }
-    } catch (err: any) {
-      console.error(err);
-      setErrorMessage(err.message || 'Не удалось сгенерировать сценарий. Проверьте OpenAI API ключ.');
-    } finally {
-      setIsGeneratingScript(false);
-    }
-  };
 
-  // 2. Edit Script Handlers
-  const handleSaveHook = () => {
-    if (script) {
-      setScript({
-        ...script,
-        hook: hookEditVal
-      });
-      setIsDirty(true);
-      setIsEditingHook(false);
-    }
-  };
+      const fakeScript = {
+        hook: `Добро пожаловать. Сегодня говорим про: ${topic}`,
 
-  const handleSaveScene = (id: string, text: string, visuals: string) => {
-    if (script) {
-      const updatedScenes = script.scenes.map(s => {
-        if (s.id === id) {
-          return { ...s, narration: text, visuals };
-        }
-        return s;
-      });
-      setScript({
-        ...script,
-        scenes: updatedScenes
-      });
-      setIsDirty(true);
-      setEditingSceneId(null);
-    }
-  };
+        scenes: [
+          {
+            id: 'scene_1',
 
-  // 3. Trigger video rendering via HeyGen (Requirement 7 & 8 & 9)
-  const triggerVideoRender = async () => {
-    if (!script) return;
+            narration:
+              `Сегодня мы подробно разберем тему: ${topic}.`,
 
-    // PRE-RENDER PLAN VALIDATIONS (Plan-Aware Limits Verification)
-    const limits: Record<string, number> = {
-      trial: 30,
-      creator: 60,
-      business: 300,
-      enterprise: 1800
-    };
-    const maxAllowed = limits[heygenPlan] || 30;
-    if (durationSeconds > maxAllowed) {
-      setErrorMessage(`Превышен лимит тарифа! Ваш тариф HeyGen (${heygenPlan.toUpperCase()}) не поддерживает рендеры длиннее ${maxAllowed} сек. Пожалуйста, измените длительность.`);
-      return;
-    }
+            visuals:
+              'Кинематографичные кадры по теме.'
+          },
 
-    // Rate Limiting Prevention Clashing Click Safeguards
-    if (spamCooldownLeft > 0) {
-      setErrorMessage(`Защита от спама: Пожалуйста, подождите перед повторной отправкой. Кулдаун: ${spamCooldownLeft} секунд.`);
-      return;
-    }
+          {
+            id: 'scene_2',
 
-    setStage('building_script');
-    setProgressPercent(5);
-    setStatusMessage('Форматирование сценария...');
-    setElapsedSeconds(0);
-    setErrorMessage(null);
-    setRenderedVideoUrl(null);
+            narration:
+              'Это демонстрационный AI-аватар для домашнего задания.',
 
-    // Simulated short timers for staging (Requirements 8 & 9)
-    try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setStage('preparing_payload');
-      setProgressPercent(15);
-      setStatusMessage('Мультиплексирование настроек аватара и голоса...');
-
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setStage('sending_request');
-      setProgressPercent(25);
-      setStatusMessage('Отправка запроса в HeyGen...');
-
-      const renderResponse = await generateAvatarVideo({
-        script,
-        avatar: selectedAvatar,
-        voiceId: selectedVoiceId,
-        heygenApiKey
-      });
-
-      setEstimatedCost(renderResponse.estimatedCost);
-      if (renderResponse.voiceTrace) {
-        setActiveVoiceTrace(renderResponse.voiceTrace);
-      }
-
-      if (renderResponse.success) {
-        setStage('waiting_render');
-        setProgressPercent(40);
-        setStatusMessage('Ожидание рендеринга видео в HeyGen (в потоке)...');
-        setRequestCount(prev => prev + 1);
-        setSpamCooldownLeft(10); // Trigger a 10s anti-spam lock key safety cooldown
-
-        // Start polling (Requirement 7)
-        let retries = 0;
-        const videoId = renderResponse.videoId;
-
-        pollingRef.current = setInterval(async () => {
-          try {
-            retries++;
-            const statusResp = await checkAvatarStatus({
-              videoId,
-              heygenApiKey,
-              retryCount: retries
-            });
-
-            // Calculate active progress percent
-            const currentPercent = Math.min(40 + retries * 12, 95);
-            setProgressPercent(currentPercent);
-
-            if (statusResp.status === 'completed') {
-              if (pollingRef.current) clearInterval(pollingRef.current);
-              
-              setStage('fetching_asset');
-              setProgressPercent(98);
-              setStatusMessage('Получение готового MP4 файла...');
-              await new Promise(r => setTimeout(r, 600));
-
-              setStage('finalizing_player');
-              setProgressPercent(100);
-              setStatusMessage('Готово!');
-
-              const videoUrl = statusResp.videoUrl || '';
-              const thumbnailUrl = statusResp.thumbnailUrl || '';
-
-              setRenderedVideoUrl(videoUrl);
-              setRenderedThumbnailUrl(thumbnailUrl);
-              setStage('idle');
-
-              // Append to render history safely (Requirement 11)
-              if (videoUrl) {
-                const newItem: RenderHistoryItem = {
-                  id: `render_${Date.now()}`,
-                  timestamp: Date.now(),
-                  topic: topic || 'Информационное видео',
-                  avatar: selectedAvatar,
-                  videoUrl,
-                  thumbnailUrl,
-                  script: script,
-                  voiceTrace: renderResponse.voiceTrace
-                };
-                setRenderHistory(prev => [newItem, ...prev].slice(0, 5));
-              }
-            } else if (statusResp.status === 'failed') {
-              if (pollingRef.current) clearInterval(pollingRef.current);
-              throw new Error(statusResp.error || 'HeyGen рендеринг зафейлился.');
-            }
-          } catch (pollErr: any) {
-            if (pollingRef.current) clearInterval(pollingRef.current);
-            setStage('error');
-            setErrorMessage(pollErr.message || 'Ошибка поплинга рендера.');
+            visuals:
+              'Студийный аватар рассказывает материал.'
           }
-        }, 3000); // Poll every 3 seconds
+        ]
+      };
 
-      } else {
-        throw new Error('Не удалось поставить видео в очередь HeyGen');
-      }
+      setScript(fakeScript);
 
+      setHookEditVal(
+        fakeScript.hook
+      );
+
+      const mappedScenes: Record<
+        string,
+        {
+          narration: string;
+          visuals: string;
+        }
+      > = {};
+
+      fakeScript.scenes.forEach(
+        (s: any) => {
+
+          mappedScenes[s.id] = {
+            narration:
+              s.narration,
+
+            visuals:
+              s.visuals
+          };
+
+        }
+      );
+
+      setScenesEditVals(
+        mappedScenes
+      );
+
+      setIsDirty(false);
+    }
     } catch (err: any) {
-      setStage('error');
-      setErrorMessage(err.message || 'Ошибка запуска рендеринга аватара.');
+    console.error(err);
+    setErrorMessage(err.message || 'Не удалось сгенерировать сценарий. Проверьте OpenAI API ключ.');
+  } finally {
+    setIsGeneratingScript(false);
+  }
+};
+
+// 2. Edit Script Handlers
+const handleSaveHook = () => {
+  if (script) {
+    setScript({
+      ...script,
+      hook: hookEditVal
+    });
+    setIsDirty(true);
+    setIsEditingHook(false);
+  }
+};
+
+const handleSaveScene = (id: string, text: string, visuals: string) => {
+  if (script) {
+    const updatedScenes = script.scenes.map(s => {
+      if (s.id === id) {
+        return { ...s, narration: text, visuals };
+      }
+      return s;
+    });
+    setScript({
+      ...script,
+      scenes: updatedScenes
+    });
+    setIsDirty(true);
+    setEditingSceneId(null);
+  }
+};
+
+// 3. Trigger video rendering via HeyGen (Requirement 7 & 8 & 9)
+const triggerVideoRender = async () => {
+  if (!script) return;
+
+  // PRE-RENDER PLAN VALIDATIONS (Plan-Aware Limits Verification)
+  const limits: Record<string, number> = {
+    trial: 30,
+    creator: 60,
+    business: 300,
+    enterprise: 1800
+  };
+  const maxAllowed = limits[heygenPlan] || 30;
+  if (durationSeconds > maxAllowed) {
+    setErrorMessage(`Превышен лимит тарифа! Ваш тариф HeyGen (${heygenPlan.toUpperCase()}) не поддерживает рендеры длиннее ${maxAllowed} сек. Пожалуйста, измените длительность.`);
+    return;
+  }
+
+  // Rate Limiting Prevention Clashing Click Safeguards
+  if (spamCooldownLeft > 0) {
+    setErrorMessage(`Защита от спама: Пожалуйста, подождите перед повторной отправкой. Кулдаун: ${spamCooldownLeft} секунд.`);
+    return;
+  }
+
+  setStage('building_script');
+  setProgressPercent(5);
+  setStatusMessage('Форматирование сценария...');
+  setElapsedSeconds(0);
+  setErrorMessage(null);
+  setRenderedVideoUrl(null);
+
+  // Simulated short timers for staging (Requirements 8 & 9)
+  try {
+    await new Promise(resolve => setTimeout(resolve, 800));
+    setStage('preparing_payload');
+    setProgressPercent(15);
+    setStatusMessage('Мультиплексирование настроек аватара и голоса...');
+
+    await new Promise(resolve => setTimeout(resolve, 800));
+    setStage('sending_request');
+    setProgressPercent(25);
+    setStatusMessage('Отправка запроса в HeyGen...');
+
+    const renderResponse = await generateAvatarVideo({
+      script,
+      avatar: selectedAvatar,
+      voiceId: selectedVoiceId,
+      heygenApiKey
+    });
+
+    setEstimatedCost(renderResponse.estimatedCost);
+    if (renderResponse.voiceTrace) {
+      setActiveVoiceTrace(renderResponse.voiceTrace);
     }
-  };
 
-  const cancelGeneration = () => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
+    if (renderResponse.success) {
+      setStage('waiting_render');
+      setProgressPercent(40);
+      setStatusMessage('Ожидание рендеринга видео в HeyGen (в потоке)...');
+      setRequestCount(prev => prev + 1);
+      setSpamCooldownLeft(10); // Trigger a 10s anti-spam lock key safety cooldown
+
+      // Start polling (Requirement 7)
+      let retries = 0;
+      const videoId = renderResponse.videoId;
+
+      pollingRef.current = setInterval(async () => {
+        try {
+          retries++;
+          const statusResp = await checkAvatarStatus({
+            videoId,
+            heygenApiKey,
+            retryCount: retries
+          });
+
+          // Calculate active progress percent
+          const currentPercent = Math.min(40 + retries * 12, 95);
+          setProgressPercent(currentPercent);
+
+          if (statusResp.status === 'completed') {
+            if (pollingRef.current) clearInterval(pollingRef.current);
+
+            setStage('fetching_asset');
+            setProgressPercent(98);
+            setStatusMessage('Получение готового MP4 файла...');
+            await new Promise(r => setTimeout(r, 600));
+
+            setStage('finalizing_player');
+            setProgressPercent(100);
+            setStatusMessage('Готово!');
+
+            const videoUrl = statusResp.videoUrl || '';
+            const thumbnailUrl = statusResp.thumbnailUrl || '';
+
+            setRenderedVideoUrl(videoUrl);
+            setRenderedThumbnailUrl(thumbnailUrl);
+            setStage('idle');
+
+            // Append to render history safely (Requirement 11)
+            if (videoUrl) {
+              const newItem: RenderHistoryItem = {
+                id: `render_${Date.now()}`,
+                timestamp: Date.now(),
+                topic: topic || 'Информационное видео',
+                avatar: selectedAvatar,
+                videoUrl,
+                thumbnailUrl,
+                script: script,
+                voiceTrace: renderResponse.voiceTrace
+              };
+              setRenderHistory(prev => [newItem, ...prev].slice(0, 5));
+            }
+          } else if (statusResp.status === 'failed') {
+            if (pollingRef.current) clearInterval(pollingRef.current);
+            throw new Error(statusResp.error || 'HeyGen рендеринг зафейлился.');
+          }
+        } catch (pollErr: any) {
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          setStage('error');
+          setErrorMessage(pollErr.message || 'Ошибка поплинга рендера.');
+        }
+      }, 3000); // Poll every 3 seconds
+
+    } else {
+      throw new Error('Не удалось поставить видео в очередь HeyGen');
     }
-    setStage('idle');
-    setProgressPercent(0);
-    setStatusMessage('');
-    setErrorMessage('Генерация отменена пользователем.');
-  };
 
-  return {
-    topic, setTopic,
-    context, setContext,
-    durationMinutes, setDurationMinutes,
-    selectedAvatar, setSelectedAvatar,
-    script, setScript,
-    isGeneratingScript,
-    generateScript,
+  } catch (err: any) {
+    setStage('error');
+    setErrorMessage(err.message || 'Ошибка запуска рендеринга аватара.');
+  }
+};
 
-    // Editing State
-    hookEditVal, setHookEditVal,
-    scenesEditVals, setScenesEditVals,
-    isEditingHook, setIsEditingHook,
-    editingSceneId, setEditingSceneId,
-    isDirty, setIsDirty,
-    handleSaveHook,
-    handleSaveScene,
+const cancelGeneration = () => {
+  if (pollingRef.current) {
+    clearInterval(pollingRef.current);
+  }
+  setStage('idle');
+  setProgressPercent(0);
+  setStatusMessage('');
+  setErrorMessage('Генерация отменена пользователем.');
+};
 
-    // Generation Progress
-    stage,
-    progressPercent,
-    statusMessage,
-    elapsedSeconds,
-    renderedVideoUrl,
-    renderedThumbnailUrl,
-    estimatedCost,
-    requestCount,
-    errorMessage,
-    triggerVideoRender,
-    cancelGeneration,
-    heygenApiKey,
-    renderHistory,
-    selectHistoryItem,
-    deleteHistoryItem,
+return {
+  topic, setTopic,
+  context, setContext,
+  durationMinutes, setDurationMinutes,
+  selectedAvatar, setSelectedAvatar,
+  script, setScript,
+  isGeneratingScript,
+  generateScript,
 
-    // Extended Premium State Outputs
-    selectedVoiceId, setSelectedVoiceId,
-    heygenPlan, setHeygenPlan,
-    renderMode, setRenderMode,
-    durationSeconds, setDurationSeconds,
-    spamCooldownLeft,
-    activeVoiceTrace, setActiveVoiceTrace
-  };
+  // Editing State
+  hookEditVal, setHookEditVal,
+  scenesEditVals, setScenesEditVals,
+  isEditingHook, setIsEditingHook,
+  editingSceneId, setEditingSceneId,
+  isDirty, setIsDirty,
+  handleSaveHook,
+  handleSaveScene,
+
+  // Generation Progress
+  stage,
+  progressPercent,
+  statusMessage,
+  elapsedSeconds,
+  renderedVideoUrl,
+  renderedThumbnailUrl,
+  estimatedCost,
+  requestCount,
+  errorMessage,
+  triggerVideoRender,
+  cancelGeneration,
+  heygenApiKey,
+  renderHistory,
+  selectHistoryItem,
+  deleteHistoryItem,
+
+  // Extended Premium State Outputs
+  selectedVoiceId, setSelectedVoiceId,
+  heygenPlan, setHeygenPlan,
+  renderMode, setRenderMode,
+  durationSeconds, setDurationSeconds,
+  spamCooldownLeft,
+  activeVoiceTrace, setActiveVoiceTrace
+};
 }
