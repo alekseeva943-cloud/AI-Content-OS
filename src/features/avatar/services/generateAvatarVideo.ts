@@ -135,8 +135,11 @@ export async function generateAvatarVideo(
             resolvedAvatar.heygenAvatarId,
 
           avatar_style:
-            req.avatar.avatarStyle ||
-            'normal'
+            (
+              req.avatar.avatarStyle === 'close-up'
+                ? 'closeUp'
+                : req.avatar.avatarStyle
+            ) || 'normal'
         },
 
         voice: {
@@ -205,7 +208,7 @@ export async function generateAvatarVideo(
     parsed =
       JSON.parse(rawText);
 
-  } catch {}
+  } catch { }
 
   if (!response.ok) {
 
