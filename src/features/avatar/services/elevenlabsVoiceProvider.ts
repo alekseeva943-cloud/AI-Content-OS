@@ -201,9 +201,45 @@ export async function fetchAvailableVoices(
     const data = await response.json();
 
     const rawVoices = data.voices || [];
-// src/services/elevenlabsService.ts
 
-import { RegistryVoice } from '../constants/voiceRegistry';
+    const normalizedVoices =
+      rawVoices
+        .map(normalizeElevenLabsVoice)
+        .filter(Boolean) as RegistryVoice[];
+
+    // IMPORTANT:
+    //
+    // Runtime ElevenLabs voices are used
+    // ONLY for validation.
+    //
+    // UI and routing must ALWAYS use
+    // canonical VOICE_REGISTRY voices.
+    //
+    // Never merge runtime voices into
+    // selectable voice pool.
+
+    voiceCache = {
+      voices: staticVoices,
+      fetchedAt: now
+    };
+
+    return staticVoices;
+
+  } catch (err) {
+
+    console.error(
+      '[VOICE REGISTRY] Failed loading ElevenLabs voices',
+      err
+    );
+
+    voiceCache = {
+      voices: staticVoices,
+      fetchedAt: now
+    };
+
+    return staticVoices;
+  }
+}
 
 // ======================================================
 // MEMORY CACHE
@@ -820,44 +856,6 @@ export function clearSynthesisCache(): void {
 
   audioCache.clear();
 
-}
-    const normalizedVoices =
-      rawVoices
-        .map(normalizeElevenLabsVoice)
-        .filter(Boolean) as RegistryVoice[];
-
-    // IMPORTANT:
-    //
-    // Runtime ElevenLabs voices are used
-    // ONLY for validation.
-    //
-    // UI and routing must ALWAYS use
-    // canonical VOICE_REGISTRY voices.
-    //
-    // Never merge runtime voices into
-    // selectable voice pool.
-
-    voiceCache = {
-      voices: staticVoices,
-      fetchedAt: now
-    };
-
-    return staticVoices;
-
-  } catch (err) {
-
-    console.error(
-      '[VOICE REGISTRY] Failed loading ElevenLabs voices',
-      err
-    );
-
-    voiceCache = {
-      voices: staticVoices,
-      fetchedAt: now
-    };
-
-    return staticVoices;
-  }
 }
 
 /**
