@@ -144,14 +144,10 @@ export async function generateAvatarVideo(
 
         voice: {
 
-          type:
-            'text',
+          type: 'text',
 
           input_text:
-            fullScript,
-
-          voice_id:
-            heygenVoiceId
+            fullScript
         }
       }
     ],
