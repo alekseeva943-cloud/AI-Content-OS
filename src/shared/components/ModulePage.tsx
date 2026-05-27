@@ -264,13 +264,11 @@ export function ModulePage({ config }: ModulePageProps) {
         missingFields.length > 0
       ) {
 
-        toast.error(
-          `Заполните обязательные поля: ${missingFields
+        toast.info(
+          `Для лучшего результата рекомендуется заполнить: ${missingFields
             .map((f) => f.label)
             .join(', ')}`
         );
-
-        return;
       }
     }
     setIsCampaignLoading(true);
@@ -566,7 +564,7 @@ export function ModulePage({ config }: ModulePageProps) {
                 >
                   <div className="p-6 rounded-3xl bg-[#10B981]/5 border border-[#10B981]/10 mb-2">
                     <p className="text-[13px] text-[#065F46] font-semibold leading-relaxed">
-                      AI проанализировал Ваш запрос. Для создания безупречной кампании без "заглушек", пожалуйста, уточните следующие детали:
+                      AI проанализировал Ваш запрос. Для создания безупречной кампании, пожалуйста, уточните следующие детали:
                     </p>
                   </div>
                   {moduleState.requirements.map((req: VariableRequirement) => (
@@ -587,7 +585,11 @@ export function ModulePage({ config }: ModulePageProps) {
                       ) : (
                         <AIInput
                           type={req.type === 'number' ? 'number' : (req.type === 'url' ? 'url' : 'text')}
-                          placeholder={req.importance === 'critical' ? 'Обязательно для заполнения...' : 'Опционально...'}
+                          placeholder={
+                            req.importance === 'critical'
+                              ? 'Рекомендуется для лучшего результата...'
+                              : 'Опционально...'
+                          }
                           value={formValues.variables?.[req.id] || ''}
                           onChange={(e) => {
                             const nextVars = { ...(formValues.variables || {}), [req.id]: e.target.value };
