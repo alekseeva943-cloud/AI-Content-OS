@@ -142,6 +142,15 @@ export async function generateAvatarVideo(
     }
   });
 
+  console.log(
+    '[OPENAI TTS] Starting request'
+  );
+
+  console.log(
+    '[OPENAI TTS] API Key exists:',
+    !!req.openaiApiKey
+  );
+
   const ttsResponse =
     await fetch(
       'https://api.openai.com/v1/audio/speech',
@@ -188,6 +197,11 @@ export async function generateAvatarVideo(
 
   const audioBlob =
     await ttsResponse.blob();
+
+  console.log(
+    '[OPENAI TTS] Audio blob created',
+    audioBlob.size
+  );
 
   addLog({
 
@@ -311,9 +325,9 @@ export async function generateAvatarVideo(
             )
               ? 'closeUp'
               : (
-                  req.avatar.avatarStyle ||
-                  'normal'
-                )
+                req.avatar.avatarStyle ||
+                'normal'
+              )
         },
 
         voice: {
@@ -380,7 +394,7 @@ export async function generateAvatarVideo(
     parsed =
       JSON.parse(rawText);
 
-  } catch {}
+  } catch { }
 
   if (!response.ok) {
 
