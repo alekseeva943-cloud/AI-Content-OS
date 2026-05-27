@@ -162,37 +162,198 @@ export function useAvatarStudio() {
     setErrorMessage(null);
 
     try {
-      const generatedScript: AvatarScript = {
-        title: `Релиз по теме: ${topic}`,
-        description: `Сценарий выпуска об аватарах для ${topic}`,
-        summary: `Обзор преимуществ использования AI-инструментариев.`,
-        hook: `Добро пожаловать. Сегодня говорим про: ${topic}`,
-        captionStyles: {
-          font: 'Inter',
-          color: '#ffffff',
-          animation: 'fade-in'
-        },
-        scenes: [
+      const response =
+        await fetch(
+          'https://api.openai.com/v1/chat/completions',
           {
-            id: 'scene_1',
-            narration: `Сегодня мы подробно разбираем тему: ${topic}.`,
-            visuals: 'Кинематографичный AI-аватар.',
-            emotion: 'neutral',
-            gesture: 'none',
-            durationSeconds: 10
-          },
-          {
-            id: 'scene_2',
-            narration: 'Это демонстрационная генерация AI-аватара.',
-            visuals: 'Студийный AI аватар рассказывает материал.',
-            emotion: 'friendly',
-            gesture: 'slight_nod',
-            durationSeconds: 15
-          }
-        ]
-      };
 
-      setScript(generatedScript);
+            method: 'POST',
+
+            headers: {
+
+              Authorization:
+                `Bearer ${settings.openaiKey}`,
+
+              'Content-Type':
+                'application/json'
+            },
+
+            body:
+              JSON.stringify({
+
+                model:
+                  'gpt-4.1-mini',
+
+                temperature:
+                  0.85,
+
+                messages: [
+
+                  {
+                    role:
+                      'system',
+
+                    content:
+                      `
+Ты профессиональный AI-сценарист
+для вертикальных AI-avatar видео.
+
+Пиши:
+- кинематографично,
+- эмоционально,
+- современно,
+- без воды,
+- с удержанием внимания.
+
+Верни JSON.
+
+Формат:
+
+{
+  "title": "",
+  "description": "",
+  "summary": "",
+  "hook": "",
+  "scenes": [
+    {
+      "id": "",
+      "narration": "",
+      "visuals": "",
+      "emotion": "",
+      "gesture": "",
+      "durationSeconds": 10
+    }
+  ]
+}
+`
+                  },
+
+                  {
+                    role:
+                      'user',
+
+                    content:
+                      `
+Тема:
+${topic}
+
+Контекст:
+${context}
+
+Длительность:
+${durationMinutes} минут.
+
+Сделай сильный hook.
+Добавь динамику.
+Сделай сцены живыми.
+`
+                  }
+                ],
+
+                response_format: {
+                  type:
+                    'json_object'
+                }
+              })
+          }
+        );
+
+      if (!response.ok) {
+
+        const errorText =
+          await response.text();
+
+        throw new Error(
+          `OpenAI Script Error: ${errorText}`
+        );
+      }
+
+      const data =
+        await response.json();
+
+      const parsed =
+        JSON.parse(
+          data.choices[0]
+            .message
+            .content
+        );
+
+      const generatedScript:
+        AvatarScript = {
+
+        title:
+          parsed.title ||
+
+          `Видео про ${topic}`,
+
+        description:
+          parsed.description ||
+
+          '',
+
+        summary:
+          parsed.summary ||
+
+          '',
+
+        hook:
+          parsed.hook ||
+
+          `Сегодня говорим про ${topic}`,
+
+        captionStyles: {
+
+          font:
+            'Inter',
+
+          color:
+            '#ffffff',
+
+          animation:
+            'fade-in'
+        },
+
+        scenes:
+          (
+            parsed.scenes || []
+          ).map(
+
+            (
+              scene: any,
+              index: number
+            ) => ({
+
+              id:
+                scene.id ||
+
+                `scene_${index + 1}`,
+
+              narration:
+                scene.narration ||
+
+                '',
+
+              visuals:
+                scene.visuals ||
+
+                'AI cinematic avatar scene',
+
+              emotion:
+                scene.emotion ||
+
+                'neutral',
+
+              gesture:
+                scene.gesture ||
+
+                'none',
+
+              durationSeconds:
+                scene.durationSeconds ||
+                10
+            })
+          )
+      };
       setHookEditVal(generatedScript.hook);
 
       const mappedScenes: Record<
@@ -280,209 +441,209 @@ export function useAvatarStudio() {
         fallbackTriggered: false
       });
 
-     const renderResponse =
-  await generateAvatarVideo({
+      const renderResponse =
+        await generateAvatarVideo({
 
-    script,
+          script,
 
-    avatar:
-      selectedAvatar,
+          avatar:
+            selectedAvatar,
 
-    voiceId:
-      selectedVoiceId,
+          voiceId:
+            selectedVoiceId,
 
-    heygenApiKey,
+          heygenApiKey,
 
-    openaiApiKey:
-      settings.openaiKey,
+          openaiApiKey:
+            settings.openaiKey,
 
-    onStageChange:
-      (stage, percent) => {
+          onStageChange:
+            (stage, percent) => {
 
-        setStatusMessage(
-          stage
-        );
+              setStatusMessage(
+                stage
+              );
 
-        setProgressPercent(
-          percent
+              setProgressPercent(
+                percent
+              );
+
+            }
+        });
+
+      if (!renderResponse.success) {
+
+        throw new Error(
+          'Не удалось запустить рендер.'
         );
 
       }
-  });
 
-if (!renderResponse.success) {
+      setStage(
+        'waiting_render'
+      );
 
-  throw new Error(
-    'Не удалось запустить рендер.'
-  );
+      setProgressPercent(45);
 
-}
+      const videoId =
+        renderResponse.videoId;
 
-setStage(
-  'waiting_render'
-);
+      pollingRef.current =
+        setInterval(
+          async () => {
 
-setProgressPercent(45);
+            try {
 
-const videoId =
-  renderResponse.videoId;
+              const statusResp =
+                await checkAvatarStatus({
 
-pollingRef.current =
-  setInterval(
-    async () => {
+                  videoId,
 
-      try {
+                  heygenApiKey
+                });
 
-        const statusResp =
-          await checkAvatarStatus({
+              if (
+                statusResp.status ===
+                'completed'
+              ) {
 
-            videoId,
+                if (
+                  pollingRef.current
+                ) {
 
-            heygenApiKey
-          });
+                  clearInterval(
+                    pollingRef.current
+                  );
 
-        if (
-          statusResp.status ===
-          'completed'
-        ) {
+                }
 
-          if (
-            pollingRef.current
-          ) {
+                setProgressPercent(
+                  100
+                );
 
-            clearInterval(
-              pollingRef.current
-            );
+                setStage(
+                  'idle'
+                );
 
-          }
+                setStatusMessage(
+                  'Видео готово'
+                );
 
-          setProgressPercent(
-            100
-          );
+                setRenderedVideoUrl(
+                  statusResp.videoUrl ||
+                  null
+                );
 
-          setStage(
-            'idle'
-          );
+                setRenderedThumbnailUrl(
+                  statusResp.thumbnailUrl ||
+                  null
+                );
 
-          setStatusMessage(
-            'Видео готово'
-          );
+                const newItem:
+                  RenderHistoryItem = {
 
-          setRenderedVideoUrl(
-            statusResp.videoUrl ||
-            null
-          );
+                  id:
+                    videoId ||
+                    String(Date.now()),
 
-          setRenderedThumbnailUrl(
-            statusResp.thumbnailUrl ||
-            null
-          );
+                  timestamp:
+                    Date.now(),
 
-          const newItem:
-            RenderHistoryItem = {
+                  topic:
+                    topic ||
+                    'AI Avatar Video',
 
-            id:
-              videoId ||
-              String(Date.now()),
+                  avatar:
+                    selectedAvatar,
 
-            timestamp:
-              Date.now(),
+                  videoUrl:
+                    statusResp.videoUrl ||
+                    '',
 
-            topic:
-              topic ||
-              'AI Avatar Video',
+                  thumbnailUrl:
+                    statusResp.thumbnailUrl ||
+                    '',
 
-            avatar:
-              selectedAvatar,
+                  script:
+                    { ...script }
+                };
 
-            videoUrl:
-              statusResp.videoUrl ||
-              '',
+                setRenderHistory(
+                  (prev) => [
+                    newItem,
+                    ...prev
+                  ]
+                );
 
-            thumbnailUrl:
-              statusResp.thumbnailUrl ||
-              '',
+                setSpamCooldownLeft(
+                  60
+                );
 
-            script:
-              { ...script }
-          };
+              } else if (
+                statusResp.status ===
+                'failed'
+              ) {
 
-          setRenderHistory(
-            (prev) => [
-              newItem,
-              ...prev
-            ]
-          );
+                if (
+                  pollingRef.current
+                ) {
 
-          setSpamCooldownLeft(
-            60
-          );
+                  clearInterval(
+                    pollingRef.current
+                  );
 
-        } else if (
-          statusResp.status ===
-          'failed'
-        ) {
+                }
 
-          if (
-            pollingRef.current
-          ) {
+                throw new Error(
 
-            clearInterval(
-              pollingRef.current
-            );
+                  typeof statusResp.error ===
+                    'string'
 
-          }
+                    ? statusResp.error
 
-          throw new Error(
+                    : JSON.stringify(
+                      statusResp.error
+                    ) ||
 
-            typeof statusResp.error ===
-            'string'
+                    'HeyGen render failed.'
+                );
+              }
 
-              ? statusResp.error
+            } catch (pollErr: any) {
 
-              : JSON.stringify(
-                  statusResp.error
-                ) ||
+              if (
+                pollingRef.current
+              ) {
 
-                'HeyGen render failed.'
-          );
-        }
+                clearInterval(
+                  pollingRef.current
+                );
 
-      } catch (pollErr: any) {
+              }
 
-        if (
-          pollingRef.current
-        ) {
+              setStage(
+                'error'
+              );
 
-          clearInterval(
-            pollingRef.current
-          );
+              setErrorMessage(
 
-        }
+                pollErr?.message ||
 
-        setStage(
-          'error'
+                'Ошибка проверки статуса.'
+              );
+            }
+
+          },
+
+          3000
         );
-
-        setErrorMessage(
-
-          pollErr?.message ||
-
-          'Ошибка проверки статуса.'
-        );
-      }
-
-    },
-
-    3000
-  );
-} catch (err: any) {
-  setStage('error');
-  setErrorMessage(
-    err.message || 'Ошибка запуска рендера.'
-  );
-}
-};
+    } catch (err: any) {
+      setStage('error');
+      setErrorMessage(
+        err.message || 'Ошибка запуска рендера.'
+      );
+    }
+  };
 
   // ====================================================
   // CANCEL
